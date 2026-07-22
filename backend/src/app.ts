@@ -10,6 +10,7 @@ import {
   notFoundMiddleware,
   errorMiddleware,
 } from "./middleware";
+import { authRouter } from "./modules/auth";
 
 const app = express();
 
@@ -33,6 +34,8 @@ app.use(express.urlencoded({ extended: true }));
 app.use(maintenanceMiddleware);
 
 // 6. Application Routes
+app.use("/api/auth", authRouter);
+
 app.get("/", (_req, res) => {
   res.status(200).json({
     success: true,
