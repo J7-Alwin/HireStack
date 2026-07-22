@@ -1,3 +1,5 @@
+import { env } from "../../config";
+
 export const AUTH_MESSAGES = {
   INVALID_CREDENTIALS: "Invalid email or password",
   ACCOUNT_SUSPENDED: "Your account has been suspended",
@@ -10,4 +12,25 @@ export const AUTH_MESSAGES = {
   RESEND_VERIFICATION_SUCCESS: "Verification email resent successfully.",
   LOGOUT_SUCCESS: "Logged out successfully.",
   SESSION_EXPIRED: "Session expired or invalid.",
+};
+
+export const PASSWORD_POLICY = {
+  MIN_LENGTH: 8,
+  MAX_LENGTH: 100,
+};
+
+export const getSessionExpiryDate = (expiresIn: string = env.JWT_REFRESH_EXPIRES_IN): Date => {
+  const match = expiresIn.match(/^(\d+)([smhd])$/);
+  if (!match) {
+    return new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  }
+  const value = parseInt(match[1], 10);
+  const unit = match[2];
+  const msMap: Record<string, number> = {
+    s: 1000,
+    m: 60 * 1000,
+    h: 60 * 60 * 1000,
+    d: 24 * 60 * 60 * 1000,
+  };
+  return new Date(Date.now() + value * (msMap[unit] || 24 * 60 * 60 * 1000));
 };

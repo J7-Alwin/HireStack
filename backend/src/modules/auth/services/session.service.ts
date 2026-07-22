@@ -1,6 +1,8 @@
 import { createHash } from "crypto";
 import { prisma } from "../../../config/prisma";
 import { Session } from "@prisma/client";
+import { UnauthorizedError } from "../../../shared/errors/UnauthorizedError";
+import { AUTH_MESSAGES, getSessionExpiryDate } from "../auth.constants";
 
 export const sessionService = {
   hashToken: (token: string): string => {
@@ -15,7 +17,7 @@ export const sessionService = {
     expiresAt?: Date
   ): Promise<Session> => {
     const refreshTokenHash = sessionService.hashToken(token);
-    const expiry = expiresAt || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    const expiry = expiresAt || getSessionExpiryDate();
 
     return await prisma.session.create({
       data: {
@@ -45,14 +47,14 @@ export const sessionService = {
   ): Promise<Session> => {
     const oldHash = sessionService.hashToken(oldToken);
     const newHash = sessionService.hashToken(newToken);
-    const expiry = expiresAt || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    const expiry = expiresAt || getSessionExpiryDate();
 
     const session = await prisma.session.findFirst({
       where: { refreshTokenHash: oldHash, revokedAt: null },
     });
 
     if (!session) {
-      throw new Error("Session not found or already revoked");
+      throw new UnauthorizedError(AUTH_MESSAGES.SESSION_EXPIRED);
     }
 
     return await prisma.session.update({
