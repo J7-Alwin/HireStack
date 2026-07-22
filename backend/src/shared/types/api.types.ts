@@ -23,5 +23,7 @@ export interface RequestUser {
 declare module "express-serve-static-core" {
   interface Request {
     user?: RequestUser;
+    requestId?: string;
+    startTime?: number;
   }
 }
