@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { UPLOAD_LIMITS, ALLOWED_EXTENSIONS } from "../constants/upload.constants";
+import { ALLOWED_EXTENSIONS } from "../constants/upload.constants";
 
 export const fileSchema = z.object({
   fieldname: z.string(),

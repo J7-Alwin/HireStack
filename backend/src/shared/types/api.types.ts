@@ -1,12 +1,12 @@
 import { Role } from "../enums/role.enum";
 import { AccountStatus } from "../enums/status.enum";
 
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   success: boolean;
   message: string;
   data?: T;
-  meta?: Record<string, any>;
-  errors?: any[];
+  meta?: Record<string, unknown>;
+  errors?: unknown[];
   stack?: string | null;
 }
 
@@ -19,11 +19,9 @@ export interface RequestUser {
   recruiterId?: string | null;
 }
 
-// Extend global express Request namespace (or declare it so it can be typed)
-declare global {
-  namespace Express {
-    interface Request {
-      user?: RequestUser;
-    }
+// Extend express Request using declare module instead of namespace
+declare module "express-serve-static-core" {
+  interface Request {
+    user?: RequestUser;
   }
 }

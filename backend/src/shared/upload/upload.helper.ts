@@ -1,5 +1,3 @@
-import { ALLOWED_EXTENSIONS } from "../constants/upload.constants";
-import { ALLOWED_MIME_TYPES } from "./mime.types";
 
 export const uploadHelper = {
   isValidSize: (fileSize: number, maxSize: number): boolean => {

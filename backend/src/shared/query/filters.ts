@@ -1,5 +1,5 @@
-export function buildFilterConditions(filters: Record<string, any>): Record<string, any> {
-  const where: Record<string, any> = {};
+export function buildFilterConditions(filters: Record<string, unknown>): Record<string, unknown> {
+  const where: Record<string, unknown> = {};
 
   for (const [key, value] of Object.entries(filters)) {
     if (value === undefined || value === null || value === "") {

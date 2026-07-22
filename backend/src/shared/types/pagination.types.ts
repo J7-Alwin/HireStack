@@ -7,12 +7,12 @@ export interface PaginationParams {
   sortOrder?: SortOrder;
 }
 
-export interface PaginationMeta {
+export type PaginationMeta = {
   page: number;
   limit: number;
   total: number;
   totalPages: number;
-}
+};
 
 export interface PaginatedResult<T> {
   data: T[];

@@ -1,5 +1,5 @@
 export const objectUtils = {
-  pick: <T extends Record<string, any>, K extends keyof T>(obj: T, keys: K[]): Pick<T, K> => {
+  pick: <T extends Record<string, unknown>, K extends keyof T>(obj: T, keys: K[]): Pick<T, K> => {
     const result = {} as Pick<T, K>;
     for (const key of keys) {
       if (key in obj) {
@@ -9,7 +9,7 @@ export const objectUtils = {
     return result;
   },
 
-  omit: <T extends Record<string, any>, K extends keyof T>(obj: T, keys: K[]): Omit<T, K> => {
+  omit: <T extends Record<string, unknown>, K extends keyof T>(obj: T, keys: K[]): Omit<T, K> => {
     const result = { ...obj };
     for (const key of keys) {
       delete result[key];
@@ -17,9 +17,9 @@ export const objectUtils = {
     return result;
   },
 
-  removeUndefined: <T extends Record<string, any>>(obj: T): Partial<T> => {
-    const result = { ...obj };
-    for (const key of Object.keys(result)) {
+  removeUndefined: <T extends Record<string, unknown>>(obj: T): Partial<T> => {
+    const result = { ...obj } as Partial<T>;
+    for (const key of Object.keys(result) as Array<keyof T>) {
       if (result[key] === undefined) {
         delete result[key];
       }

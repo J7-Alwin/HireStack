@@ -4,7 +4,7 @@ import { env } from "../../config";
 
 export function generateRefreshToken(payload: JwtPayload): string {
   return jwtHelper.sign(payload, env.JWT_REFRESH_SECRET, {
-    expiresIn: env.JWT_REFRESH_EXPIRES_IN as any,
+    expiresIn: env.JWT_REFRESH_EXPIRES_IN as import("jsonwebtoken").SignOptions["expiresIn"],
   });
 }
 

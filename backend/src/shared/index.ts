@@ -12,5 +12,4 @@ export * from "./validators";
 export * from "./upload";
 export * from "./utils";
 export * from "./types";
-export { prisma } from "../config/prisma";
-export { env } from "../config/env";
+

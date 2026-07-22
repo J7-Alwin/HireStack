@@ -7,7 +7,7 @@ const storage = multer.memoryStorage();
 
 // File filter checking extensions and MIME types
 const fileFilter = (
-  req: any,
+  req: import("express").Request,
   file: Express.Multer.File,
   callback: multer.FileFilterCallback
 ) => {

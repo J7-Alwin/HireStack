@@ -21,7 +21,7 @@ export const dateUtils = {
     return dayjs(date1).isAfter(dayjs(date2));
   },
 
-  isValid: (date: any): boolean => {
-    return dayjs(date).isValid();
+  isValid: (date: unknown): boolean => {
+    return dayjs(date as Date | string | number).isValid();
   },
 };

@@ -6,7 +6,7 @@ import { PaginationParams } from "../pagination/pagination.types";
 
 export interface BuildQueryParams {
   pagination?: PaginationParams;
-  filters?: Record<string, any>;
+  filters?: Record<string, unknown>;
   search?: string;
   searchFields?: string[];
 }
@@ -19,7 +19,7 @@ export function buildPrismaQuery(params: BuildQueryParams) {
   const searchConditions = buildSearchCondition(search, searchFields);
   const sortConditions = buildSortCondition(pagination.sortBy, pagination.sortOrder);
 
-  const where: Record<string, any> = { ...filterConditions };
+  const where: Record<string, unknown> = { ...filterConditions };
 
   if (searchConditions) {
     where.AND = [searchConditions];

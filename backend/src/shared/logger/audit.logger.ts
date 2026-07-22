@@ -12,7 +12,7 @@ export interface AuditLogData {
   severity: "INFO" | "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
   ipAddress?: string;
   userAgent?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export const auditLogger = {
