@@ -2,6 +2,7 @@ import { Request, Response, NextFunction, RequestHandler } from "express";
 import { verifyAccessToken } from "../shared/jwt/access-token";
 import { UnauthorizedError } from "../shared/errors/UnauthorizedError";
 import { AccountStatus } from "../shared/enums/status.enum";
+import { AuthenticatedUser } from "../shared/types/api.types";
 
 export const authMiddleware: RequestHandler = (req: Request, _res: Response, next: NextFunction): void => {
   const authHeader = req.headers.authorization;
@@ -23,7 +24,16 @@ export const authMiddleware: RequestHandler = (req: Request, _res: Response, nex
       return next(new UnauthorizedError("Account is inactive"));
     }
 
-    req.user = decoded;
+    const user: AuthenticatedUser = {
+      id: decoded.id,
+      email: decoded.email,
+      role: decoded.role,
+      status: decoded.status,
+      companyId: decoded.companyId,
+      recruiterId: decoded.recruiterId,
+    };
+
+    req.user = user;
     next();
   } catch (error) {
     next(new UnauthorizedError("Invalid or expired access token", error));

@@ -2,25 +2,45 @@ import { Request, Response, NextFunction, RequestHandler } from "express";
 import { HTTP_STATUS } from "../shared/constants/api.constants";
 import { errorResponse } from "../shared/responses/error.response";
 
-let isMaintenanceMode = process.env.MAINTENANCE_MODE === "true";
+export interface MaintenanceService {
+  isUnderMaintenance(req: Request): Promise<boolean> | boolean;
+}
 
-export const setMaintenanceMode = (enabled: boolean): void => {
-  isMaintenanceMode = enabled;
+export const defaultMaintenanceService: MaintenanceService = {
+  isUnderMaintenance: () => {
+    return process.env.MAINTENANCE_MODE === "true";
+  },
 };
 
-export const maintenanceMiddleware: RequestHandler = (req: Request, res: Response, next: NextFunction): void => {
+let currentService = defaultMaintenanceService;
+
+export const setMaintenanceService = (service: MaintenanceService): void => {
+  currentService = service;
+};
+
+export const maintenanceMiddleware: RequestHandler = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
   // Allow health endpoints and admin routes to bypass maintenance mode
   const path = req.path || req.url || "";
   if (path === "/health" || path === "/api/health" || path.startsWith("/admin")) {
     return next();
   }
 
-  if (isMaintenanceMode) {
-    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(
-      errorResponse("The server is currently undergoing maintenance. Please check back later.")
-    );
-    return;
-  }
+  try {
+    const isMaintenance = await currentService.isUnderMaintenance(req);
 
-  next();
+    if (isMaintenance) {
+      res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(
+        errorResponse("The server is currently undergoing maintenance. Please check back later.")
+      );
+      return;
+    }
+
+    next();
+  } catch (error) {
+    next(error);
+  }
 };

@@ -10,7 +10,7 @@ export interface ApiResponse<T = unknown> {
   stack?: string | null;
 }
 
-export interface RequestUser {
+export interface AuthenticatedUser {
   id: string;
   email: string;
   role: Role;
@@ -19,10 +19,12 @@ export interface RequestUser {
   recruiterId?: string | null;
 }
 
+export type RequestUser = AuthenticatedUser;
+
 // Extend express Request using declare module instead of namespace
 declare module "express-serve-static-core" {
   interface Request {
-    user?: RequestUser;
+    user?: AuthenticatedUser;
     requestId?: string;
     startTime?: number;
   }

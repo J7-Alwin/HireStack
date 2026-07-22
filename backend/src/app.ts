@@ -5,7 +5,7 @@ import {
   requestLoggerMiddleware,
   helmetMiddleware,
   corsMiddleware,
-  createRateLimiter,
+  generalLimiter,
   maintenanceMiddleware,
   notFoundMiddleware,
   errorMiddleware,
@@ -23,7 +23,7 @@ app.use(requestLoggerMiddleware);
 // 3. Global Security & Limits
 app.use(helmetMiddleware());
 app.use(corsMiddleware());
-app.use(createRateLimiter());
+app.use(generalLimiter);
 
 // 4. Body Parser
 app.use(express.json());

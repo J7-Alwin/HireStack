@@ -24,7 +24,20 @@ const envSchema = z.object({
 
     BCRYPT_SALT_ROUNDS: z.coerce.number().min(10).max(15),
 
-    CLIENT_URL: z.string().url(),
+    CLIENT_URL: z.string().min(1).refine(
+        (val) => {
+            const urls = val.split(",").map((url) => url.trim());
+            return urls.every((url) => {
+                try {
+                    new URL(url);
+                    return true;
+                } catch {
+                    return false;
+                }
+            });
+        },
+        { message: "CLIENT_URL must be a valid URL or a comma-separated list of valid URLs" }
+    ),
 });
 
 const parsed = envSchema.safeParse(process.env);

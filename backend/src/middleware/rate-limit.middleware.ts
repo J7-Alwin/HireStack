@@ -22,3 +22,22 @@ export function createRateLimiter(options?: RateLimitOptions): RequestHandler {
     },
   }) as unknown as RequestHandler;
 }
+
+// Preset Limiters
+export const generalLimiter = createRateLimiter({
+  windowMs: 60 * 1000, // 1 minute
+  max: 100,
+  message: "Too many requests, please try again later",
+});
+
+export const authLimiter = createRateLimiter({
+  windowMs: 60 * 1000, // 1 minute
+  max: 5,
+  message: "Too many authentication requests, please try again later",
+});
+
+export const uploadLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20,
+  message: "Too many upload requests, please try again later",
+});

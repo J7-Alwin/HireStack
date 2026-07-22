@@ -10,7 +10,10 @@ export const corsMiddleware = (): RequestHandler => {
         return callback(null, true);
       }
 
-      const allowedOrigins = [env.CLIENT_URL];
+      const allowedOrigins = (env.CLIENT_URL || "")
+        .split(",")
+        .map((url) => url.trim())
+        .filter((url) => url !== "");
 
       // In development, allow localhost origins
       if (process.env.NODE_ENV === "development") {
