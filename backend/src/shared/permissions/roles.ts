@@ -4,6 +4,20 @@ import { Permission } from "./permissions";
 export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   [Role.SUPER_ADMIN]: Object.values(Permission),
   
+  [Role.COMPANY_ADMIN]: [
+    Permission.CREATE_JOB,
+    Permission.EDIT_JOB,
+    Permission.DELETE_JOB,
+    Permission.VIEW_JOB,
+    Permission.VIEW_APPLICATION,
+    Permission.MANAGE_APPLICATION_STATUS,
+    Permission.EDIT_COMPANY,
+    Permission.VIEW_COMPANY,
+    Permission.VIEW_RESUME,
+    Permission.MANAGE_RECRUITERS,
+    Permission.MANAGE_USERS,
+  ],
+  
   [Role.RECRUITER]: [
     Permission.CREATE_JOB,
     Permission.EDIT_JOB,

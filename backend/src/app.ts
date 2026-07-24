@@ -11,6 +11,7 @@ import {
   errorMiddleware,
 } from "./middleware";
 import { authRouter } from "./modules/auth";
+import { usersRouter } from "./modules/users";
 
 const app = express();
 
@@ -35,6 +36,7 @@ app.use(maintenanceMiddleware);
 
 // 6. Application Routes
 app.use("/api/auth", authRouter);
+app.use("/api/users", usersRouter);
 
 app.get("/", (_req, res) => {
   res.status(200).json({

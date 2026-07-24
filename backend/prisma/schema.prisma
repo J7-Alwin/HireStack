@@ -8,6 +8,7 @@ datasource db {
 
 enum Role {
   SUPER_ADMIN
+  COMPANY_ADMIN
   RECRUITER
   CANDIDATE
 }
@@ -16,6 +17,7 @@ enum AccountStatus {
   ACTIVE
   INACTIVE
   SUSPENDED
+  PENDING
 }
 
 model User {
@@ -24,10 +26,13 @@ model User {
   email     String @unique
   password  String
 
+  name      String?
   role      Role
   status    AccountStatus @default(ACTIVE)
 
   isVerified Boolean @default(false)
+  companyId  String?
+  deletedAt  DateTime?
 
   // Auth additions
   mustChangePassword           Boolean   @default(false)
