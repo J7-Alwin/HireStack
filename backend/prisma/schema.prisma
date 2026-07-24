@@ -77,15 +77,9 @@ model Company {
   industry     String?
   companySize  String?
   logoUrl      String?
-  coverImage   String?
-  email        String?
-  phone        String?
+  contactEmail String?
+  contactPhone String?
   headquarters String?
-  foundedYear  Int?
-  linkedin     String?
-  twitter      String?
-  facebook     String?
-  instagram    String?
   
   isVerified   Boolean       @default(false)
   status       AccountStatus @default(ACTIVE)

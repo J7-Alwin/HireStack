@@ -12,7 +12,6 @@ import { Prisma } from "@prisma/client";
 
 export const companiesService = {
   getCompanyById: async (id: string, currentUser: AuthenticatedUser): Promise<SafeCompany> => {
-    // Determine if we should search deleted (Super Admin only)
     const includeDeleted = currentUser.role === Role.SUPER_ADMIN;
     const company = await companiesRepository.findById(id, includeDeleted);
 
@@ -20,7 +19,6 @@ export const companiesService = {
       throw new NotFoundError(COMPANIES_MESSAGES.COMPANY_NOT_FOUND);
     }
 
-    // Role-based authorization & Company Isolation checks
     if (currentUser.role === Role.SUPER_ADMIN) {
       return company;
     }
@@ -39,19 +37,16 @@ export const companiesService = {
     filters: CompanyQueryFilters,
     currentUser: AuthenticatedUser
   ): Promise<PaginatedResult<SafeCompany>> => {
-    // Only Super Admin can list companies
     if (currentUser.role !== Role.SUPER_ADMIN) {
       throw new ForbiddenError(COMPANIES_MESSAGES.FORBIDDEN_ACCESS);
     }
 
     const where: Prisma.CompanyWhereInput = {};
 
-    // Soft delete filtering
     if (!filters.showDeleted) {
       where.deletedAt = null;
     }
 
-    // Filters
     if (filters.industry) {
       where.industry = filters.industry;
     }
@@ -73,10 +68,9 @@ export const companiesService = {
           { name: { contains: searchLower, mode: "insensitive" } },
           { industry: { contains: searchLower, mode: "insensitive" } },
           { website: { contains: searchLower, mode: "insensitive" } },
-          { email: { contains: searchLower, mode: "insensitive" } },
+          { contactEmail: { contains: searchLower, mode: "insensitive" } },
         ];
 
-        // Check if search matches AccountStatus enum
         const matchedStatus = Object.values(AccountStatus).find(
           (s) => s.toLowerCase() === searchLower.toLowerCase()
         );
@@ -119,7 +113,6 @@ export const companiesService = {
     data: Partial<Prisma.CompanyUpdateInput>,
     currentUser: AuthenticatedUser
   ): Promise<SafeCompany> => {
-    // Check permission: Super Admin or Company Admin of the same company
     if (currentUser.role !== Role.SUPER_ADMIN && currentUser.role !== Role.COMPANY_ADMIN) {
       throw new ForbiddenError(COMPANIES_MESSAGES.FORBIDDEN_ACCESS);
     }
@@ -130,13 +123,11 @@ export const companiesService = {
       }
     }
 
-    // Verify company exists
     const company = await companiesRepository.findById(id);
     if (!company) {
       throw new NotFoundError(COMPANIES_MESSAGES.COMPANY_NOT_FOUND);
     }
 
-    // Check unique company name if changing name
     if (data.name && typeof data.name === "string" && data.name !== company.name) {
       const existingCompany = await companiesRepository.findByName(data.name);
       if (existingCompany && existingCompany.id !== id) {
@@ -146,7 +137,6 @@ export const companiesService = {
 
     const updatedCompany = await companiesRepository.update(id, data);
 
-    // Audit Logging
     auditLogger.log({
       userId: currentUser.id,
       userEmail: currentUser.email,
@@ -172,7 +162,6 @@ export const companiesService = {
     status: AccountStatus,
     currentUser: AuthenticatedUser
   ): Promise<SafeCompany> => {
-    // Only Super Admin can change company status
     if (currentUser.role !== Role.SUPER_ADMIN) {
       throw new ForbiddenError(COMPANIES_MESSAGES.FORBIDDEN_STATUS_UPDATE);
     }
@@ -184,7 +173,6 @@ export const companiesService = {
 
     const updatedCompany = await companiesRepository.updateStatus(id, status);
 
-    // Audit Logging
     auditLogger.log({
       userId: currentUser.id,
       userEmail: currentUser.email,
@@ -208,7 +196,6 @@ export const companiesService = {
   },
 
   softDeleteCompany: async (id: string, currentUser: AuthenticatedUser): Promise<SafeCompany> => {
-    // Only Super Admin can delete companies
     if (currentUser.role !== Role.SUPER_ADMIN) {
       throw new ForbiddenError(COMPANIES_MESSAGES.FORBIDDEN_DELETE);
     }
@@ -220,7 +207,6 @@ export const companiesService = {
 
     const deletedCompany = await companiesRepository.softDelete(id);
 
-    // Audit Logging
     auditLogger.log({
       userId: currentUser.id,
       userEmail: currentUser.email,
@@ -242,25 +228,21 @@ export const companiesService = {
   },
 
   restoreCompany: async (id: string, currentUser: AuthenticatedUser): Promise<SafeCompany> => {
-    // Only Super Admin can restore companies
     if (currentUser.role !== Role.SUPER_ADMIN) {
       throw new ForbiddenError(COMPANIES_MESSAGES.FORBIDDEN_RESTORE);
     }
 
-    // Must fetch including deleted
     const company = await companiesRepository.findById(id, true);
     if (!company) {
       throw new NotFoundError(COMPANIES_MESSAGES.COMPANY_NOT_FOUND);
     }
 
     if (!company.deletedAt) {
-      // Not deleted, return as is
       return company;
     }
 
     const restoredCompany = await companiesRepository.restore(id);
 
-    // Audit Logging
     auditLogger.log({
       userId: currentUser.id,
       userEmail: currentUser.email,

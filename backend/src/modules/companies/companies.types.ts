@@ -29,16 +29,10 @@ export interface CompanyOnboardingInput {
     website?: string;
     industry: string;
     companySize: string;
-    email?: string;
-    phone?: string;
+    contactEmail?: string;
+    contactPhone?: string;
     headquarters?: string;
-    foundedYear?: number;
-    linkedin?: string;
-    twitter?: string;
-    facebook?: string;
-    instagram?: string;
     logoUrl?: string;
-    coverImage?: string;
   };
   admin: CompanyOnboardingAdminInput;
 }

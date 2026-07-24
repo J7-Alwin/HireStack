@@ -32,19 +32,10 @@ export const onboardingSchema = z.object({
     website: optionalUrlSchema,
     industry: z.string().trim().min(1, "Industry is required"),
     companySize: z.string().trim().min(1, "Company size is required"),
-    email: z.preprocess((val) => (val === "" ? undefined : val), z.string().email("Invalid email address format").optional()),
-    phone: z.string().trim().min(5, "Phone number must be at least 5 characters").optional().or(z.literal("")),
+    contactEmail: z.preprocess((val) => (val === "" ? undefined : val), z.string().email("Invalid email address format").optional()),
+    contactPhone: z.string().trim().min(5, "Phone number must be at least 5 characters").optional().or(z.literal("")),
     headquarters: z.string().trim().optional(),
-    foundedYear: z.preprocess(
-      (val) => (typeof val === "string" ? parseInt(val, 10) : val),
-      z.number().int().min(1700).max(2100).optional()
-    ),
-    linkedin: optionalUrlSchema,
-    twitter: optionalUrlSchema,
-    facebook: optionalUrlSchema,
-    instagram: optionalUrlSchema,
     logoUrl: optionalUrlSchema,
-    coverImage: optionalUrlSchema,
   }),
   admin: z.object({
     email: emailValidatorSchema,
@@ -58,19 +49,10 @@ export const updateCompanySchema = z.object({
   website: optionalUrlSchema,
   industry: z.string().trim().min(1, "Industry is required").optional(),
   companySize: z.string().trim().min(1, "Company size is required").optional(),
-  email: z.preprocess((val) => (val === "" ? undefined : val), z.string().email("Invalid email address format").optional()),
-  phone: z.string().trim().min(5, "Phone number must be at least 5 characters").optional().or(z.literal("")),
+  contactEmail: z.preprocess((val) => (val === "" ? undefined : val), z.string().email("Invalid email address format").optional()),
+  contactPhone: z.string().trim().min(5, "Phone number must be at least 5 characters").optional().or(z.literal("")),
   headquarters: z.string().trim().optional(),
-  foundedYear: z.preprocess(
-    (val) => (typeof val === "string" ? parseInt(val, 10) : val),
-    z.number().int().min(1700).max(2100).optional()
-  ),
-  linkedin: optionalUrlSchema,
-  twitter: optionalUrlSchema,
-  facebook: optionalUrlSchema,
-  instagram: optionalUrlSchema,
   logoUrl: optionalUrlSchema,
-  coverImage: optionalUrlSchema,
 });
 
 export const listCompaniesQuerySchema = z.object({

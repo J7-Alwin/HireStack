@@ -1,8 +1,8 @@
 import { prisma } from "../../config/prisma";
-import { Prisma, AccountStatus as PrismaAccountStatus } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { safeCompanySelect } from "../../shared/prisma/selects/company.select";
-import { safeUserSelect } from "../../shared/prisma/selects/user.select";
 import { AccountStatus } from "../../shared/enums/status.enum";
+import { AccountStatus as PrismaAccountStatus } from "@prisma/client";
 
 export const companiesRepository = {
   findById: async (id: string, includeDeleted = false) => {
@@ -81,33 +81,6 @@ export const companiesRepository = {
       where: { id },
       data: { deletedAt: null },
       select: safeCompanySelect,
-    });
-  },
-
-  onboardCompany: async (
-    companyData: Prisma.CompanyCreateWithoutUsersInput,
-    adminData: Omit<Prisma.UserCreateInput, "company">
-  ) => {
-    return await prisma.$transaction(async (tx) => {
-      // 1. Create company
-      const company = await tx.company.create({
-        data: companyData,
-        select: safeCompanySelect,
-      });
-
-      // 2. Create the first company admin linked to this company
-      const admin = await tx.user.create({
-        data: {
-          ...adminData,
-          companyId: company.id,
-        },
-        select: safeUserSelect,
-      });
-
-      return {
-        company,
-        admin,
-      };
     });
   },
 };
