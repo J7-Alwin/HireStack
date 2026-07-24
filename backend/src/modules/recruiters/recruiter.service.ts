@@ -14,7 +14,6 @@ import { AuthenticatedUser, PaginatedResult } from "../../shared/types";
 import { NotFoundError } from "../../shared/errors/NotFoundError";
 import { ForbiddenError } from "../../shared/errors/ForbiddenError";
 import { ConflictError } from "../../shared/errors/ConflictError";
-import { ValidationError } from "../../shared/errors/ValidationError";
 import { UnprocessableEntityError } from "../../shared/errors/UnprocessableEntityError";
 import { RECRUITERS_MESSAGES } from "./recruiter.constants";
 import { Prisma } from "@prisma/client";
@@ -38,10 +37,8 @@ async function validateDepartment(departmentId: string, companyId: string): Prom
 }
 
 function validateRecruiterOwnership(recruiterCompanyId: string | null, currentUser: AuthenticatedUser): void {
-  if (currentUser.role === Role.COMPANY_ADMIN) {
-    if (!currentUser.companyId || currentUser.companyId !== recruiterCompanyId) {
-      throw new ForbiddenError(RECRUITERS_MESSAGES.CROSS_COMPANY_ACCESS_FORBIDDEN);
-    }
+  if (!currentUser.companyId || currentUser.companyId !== recruiterCompanyId) {
+    throw new ForbiddenError(RECRUITERS_MESSAGES.CROSS_COMPANY_ACCESS_FORBIDDEN);
   }
 }
 
@@ -78,11 +75,11 @@ async function createRecruiterUser(
 }
 
 export const recruiterService = {
-  createRecruiterByCompanyAdmin: async (
+  createRecruiter: async (
     input: RecruiterCreateInput,
     currentUser: AuthenticatedUser
   ): Promise<{ recruiter: SafeUser; temporaryPassword: string }> => {
-    if (currentUser.role !== Role.COMPANY_ADMIN) {
+    if (currentUser.role !== Role.SUPER_ADMIN && currentUser.role !== Role.COMPANY_ADMIN) {
       throw new ForbiddenError(RECRUITERS_MESSAGES.FORBIDDEN_MODIFICATION);
     }
 
@@ -113,46 +110,12 @@ export const recruiterService = {
     return { recruiter, temporaryPassword: tempPassword };
   },
 
-  createRecruiterBySuperAdmin: async (
-    input: RecruiterCreateInput & { companyId: string },
-    currentUser: AuthenticatedUser
-  ): Promise<{ recruiter: SafeUser; temporaryPassword: string }> => {
-    if (currentUser.role !== Role.SUPER_ADMIN) {
-      throw new ForbiddenError(RECRUITERS_MESSAGES.FORBIDDEN_MODIFICATION);
-    }
-
-    const companyId = input.companyId;
-    if (!companyId) {
-      throw new ValidationError("companyId is required for SUPER_ADMIN");
-    }
-
-    const company = await companiesRepository.findById(companyId);
-    if (!company) {
-      throw new NotFoundError(RECRUITERS_MESSAGES.COMPANY_NOT_FOUND);
-    }
-
-    await validateDepartment(input.departmentId, companyId);
-
-    const existingUser = await recruiterRepository.findUserByEmail(input.email, true);
-    if (existingUser) {
-      throw new ConflictError(RECRUITERS_MESSAGES.EMAIL_ALREADY_EXISTS);
-    }
-
-    const tempPassword = passwordHelper.generateTemporaryPassword(12);
-    const tempPasswordHash = await hashPassword(tempPassword);
-
-    const recruiter = await createRecruiterUser(input, companyId, tempPasswordHash);
-
-    return { recruiter, temporaryPassword: tempPassword };
-  },
-
   getRecruiterById: async (id: string, currentUser: AuthenticatedUser): Promise<SafeUser> => {
     if (currentUser.role !== Role.SUPER_ADMIN && currentUser.role !== Role.COMPANY_ADMIN) {
       throw new ForbiddenError(RECRUITERS_MESSAGES.FORBIDDEN_MODIFICATION);
     }
 
-    const includeDeleted = currentUser.role === Role.SUPER_ADMIN;
-    const recruiter = await validateRecruiterExists(id, includeDeleted);
+    const recruiter = await validateRecruiterExists(id);
 
     validateRecruiterOwnership(recruiter.companyId, currentUser);
 
@@ -167,22 +130,17 @@ export const recruiterService = {
       throw new ForbiddenError(RECRUITERS_MESSAGES.FORBIDDEN_MODIFICATION);
     }
 
+    if (!currentUser.companyId) {
+      throw new ForbiddenError(RECRUITERS_MESSAGES.FORBIDDEN_ACCESS);
+    }
+
+    const companyId = currentUser.companyId;
+
     const where: Prisma.UserWhereInput = {
       role: Role.RECRUITER as unknown as "RECRUITER",
+      companyId,
+      deletedAt: null, // Scoped to non-deleted records only
     };
-
-    // Tenant Isolation
-    if (currentUser.role === Role.SUPER_ADMIN) {
-      if (!filters.showDeleted) {
-        where.deletedAt = null;
-      }
-    } else {
-      if (!currentUser.companyId) {
-        throw new ForbiddenError(RECRUITERS_MESSAGES.FORBIDDEN_ACCESS);
-      }
-      where.companyId = currentUser.companyId;
-      where.deletedAt = null; // Company Admins can never see soft-deleted
-    }
 
     // Additional Filters
     if (filters.department) {

@@ -5,9 +5,8 @@ import { paginationResponse } from "../../shared/responses/pagination.response";
 import { HTTP_STATUS } from "../../shared/constants/api.constants";
 import { UnauthorizedError } from "../../shared/errors/UnauthorizedError";
 import { RECRUITERS_MESSAGES } from "./recruiter.constants";
-import { RecruiterQueryFilters, RecruiterUpdateInput, SafeUser } from "./recruiter.types";
-import { Role } from "../../shared/enums/role.enum";
-import { createRecruiterSchema, superAdminCreateRecruiterSchema } from "./recruiter.validation";
+import { RecruiterQueryFilters, RecruiterUpdateInput } from "./recruiter.types";
+import { createRecruiterSchema } from "./recruiter.validation";
 
 export const recruiterController = {
   createRecruiter: async (req: Request, res: Response): Promise<void> => {
@@ -16,20 +15,11 @@ export const recruiterController = {
       throw new UnauthorizedError("Unauthenticated");
     }
 
-    let result: { recruiter: SafeUser; temporaryPassword: string };
-    if (currentUser.role === Role.SUPER_ADMIN) {
-      const parsedBody = superAdminCreateRecruiterSchema.parse(req.body);
-      result = await recruiterService.createRecruiterBySuperAdmin(
-        parsedBody,
-        currentUser
-      );
-    } else {
-      const parsedBody = createRecruiterSchema.parse(req.body);
-      result = await recruiterService.createRecruiterByCompanyAdmin(
-        parsedBody,
-        currentUser
-      );
-    }
+    const parsedBody = createRecruiterSchema.parse(req.body);
+    const result = await recruiterService.createRecruiter(
+      parsedBody,
+      currentUser
+    );
 
     res.status(HTTP_STATUS.CREATED).json(
       successResponse(RECRUITERS_MESSAGES.RECRUITER_CREATED, result)

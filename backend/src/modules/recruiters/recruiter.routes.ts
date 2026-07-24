@@ -6,6 +6,7 @@ import { validateRequest } from "../../middleware/validation.middleware";
 import { authorizeRoles } from "../../middleware/role.middleware";
 import { Role } from "../../shared/enums/role.enum";
 import {
+  createRecruiterSchema,
   updateRecruiterSchema,
   changeDepartmentSchema,
   listRecruitersQuerySchema,
@@ -23,6 +24,7 @@ router.use(authorizeRoles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN));
 // POST /recruiters - Create a recruiter
 router.post(
   "/",
+  validateRequest({ body: createRecruiterSchema }),
   asyncHandler(recruiterController.createRecruiter)
 );
 
