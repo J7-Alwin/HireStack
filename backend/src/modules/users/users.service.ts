@@ -5,8 +5,10 @@ import { UserQueryFilters, SafeUser } from "./users.types";
 import { AuthenticatedUser, PaginatedResult } from "../../shared/types";
 import { NotFoundError } from "../../shared/errors/NotFoundError";
 import { ForbiddenError } from "../../shared/errors/ForbiddenError";
+import { ValidationError } from "../../shared/errors/ValidationError";
 import { auditLogger } from "../../shared/logger/audit.logger";
 import { USERS_MESSAGES } from "./users.constants";
+import { Prisma } from "@prisma/client";
 
 export const usersService = {
   getCurrentUser: async (id: string): Promise<SafeUser> => {
@@ -76,13 +78,75 @@ export const usersService = {
 
       // COMPANY_ADMIN cannot see soft-deleted users
       queryFilters.showDeleted = false;
-    } else if (currentUser.role === Role.SUPER_ADMIN) {
-      // SUPER_ADMIN can filter by companyId if provided, otherwise sees everyone
     }
 
-    const { data, total } = await usersRepository.findMany(queryFilters);
+    // Construct the database query filters (Service logic)
+    const where: Prisma.UserWhereInput = {};
+
+    // Soft delete filtering
+    if (!queryFilters.showDeleted) {
+      where.deletedAt = null;
+    }
+
+    // Role filtering
+    if (queryFilters.role) {
+      where.role = queryFilters.role as unknown as Prisma.EnumRoleFilter;
+    }
+
+    // Status filtering
+    if (queryFilters.status) {
+      where.status = queryFilters.status as unknown as Prisma.EnumAccountStatusFilter;
+    }
+
+    // Company isolation/filtering
+    if (queryFilters.companyId) {
+      where.companyId = queryFilters.companyId;
+    }
+
+    // Search query matching
+    if (queryFilters.search) {
+      const searchLower = queryFilters.search.trim();
+      if (searchLower) {
+        const orConditions: Prisma.UserWhereInput[] = [
+          { name: { contains: searchLower, mode: "insensitive" } },
+          { email: { contains: searchLower, mode: "insensitive" } },
+          { companyId: { contains: searchLower, mode: "insensitive" } },
+        ];
+
+        // Check if search matches Role enum
+        const matchedRole = Object.values(Role).find(
+          (r) => r.toLowerCase() === searchLower.toLowerCase()
+        );
+        if (matchedRole) {
+          orConditions.push({ role: matchedRole as unknown as Prisma.EnumRoleFilter });
+        }
+
+        // Check if search matches AccountStatus enum
+        const matchedStatus = Object.values(AccountStatus).find(
+          (s) => s.toLowerCase() === searchLower.toLowerCase()
+        );
+        if (matchedStatus) {
+          orConditions.push({ status: matchedStatus as unknown as Prisma.EnumAccountStatusFilter });
+        }
+
+        where.OR = orConditions;
+      }
+    }
+
     const page = queryFilters.page || 1;
     const limit = queryFilters.limit || 10;
+    const skip = (page - 1) * limit;
+
+    const sortBy = queryFilters.sortBy || "createdAt";
+    const sortOrder = queryFilters.sortOrder || "desc";
+    const orderBy: Prisma.UserOrderByWithRelationInput = { [sortBy]: sortOrder };
+
+    const { data, total } = await usersRepository.findMany({
+      where,
+      orderBy,
+      skip,
+      take: limit,
+    });
 
     return {
       data,
@@ -100,6 +164,11 @@ export const usersService = {
     status: AccountStatus,
     currentUser: AuthenticatedUser
   ): Promise<SafeUser> => {
+    // Prevent self status suspension or deactivation
+    if (id === currentUser.id && (status === AccountStatus.SUSPENDED || status === AccountStatus.INACTIVE)) {
+      throw new ValidationError("You cannot deactivate or suspend your own account");
+    }
+
     // Only SUPER_ADMIN and COMPANY_ADMIN can update status
     if (currentUser.role !== Role.SUPER_ADMIN && currentUser.role !== Role.COMPANY_ADMIN) {
       throw new ForbiddenError(USERS_MESSAGES.FORBIDDEN_ACCESS);
@@ -124,7 +193,7 @@ export const usersService = {
 
     const updatedUser = await usersRepository.updateStatus(id, status);
 
-    // Audit Log the status change
+    // Standardised Audit Logging
     auditLogger.log({
       userId: currentUser.id,
       userEmail: currentUser.email,
@@ -135,12 +204,24 @@ export const usersService = {
       resourceType: "USER",
       description: `Updated status of user ${user.email} (${id}) from ${user.status} to ${status}`,
       severity: "MEDIUM",
+      metadata: {
+        actorCompanyId: currentUser.companyId || null,
+        targetCompanyId: user.companyId || null,
+        oldStatus: user.status,
+        newStatus: status,
+        timestamp: new Date().toISOString(),
+      },
     });
 
     return updatedUser;
   },
 
   softDeleteUser: async (id: string, currentUser: AuthenticatedUser): Promise<SafeUser> => {
+    // Prevent self deletion
+    if (id === currentUser.id) {
+      throw new ValidationError("You cannot delete your own account");
+    }
+
     // Only SUPER_ADMIN can soft delete users
     if (currentUser.role !== Role.SUPER_ADMIN) {
       throw new ForbiddenError(USERS_MESSAGES.FORBIDDEN_DELETE);
@@ -153,7 +234,7 @@ export const usersService = {
 
     const deletedUser = await usersRepository.softDelete(id);
 
-    // Audit Log the deletion
+    // Standardised Audit Logging
     auditLogger.log({
       userId: currentUser.id,
       userEmail: currentUser.email,
@@ -164,6 +245,11 @@ export const usersService = {
       resourceType: "USER",
       description: `Soft deleted user ${user.email} (${id})`,
       severity: "HIGH",
+      metadata: {
+        actorCompanyId: currentUser.companyId || null,
+        targetCompanyId: user.companyId || null,
+        timestamp: new Date().toISOString(),
+      },
     });
 
     return deletedUser;
@@ -188,7 +274,7 @@ export const usersService = {
 
     const restoredUser = await usersRepository.restore(id);
 
-    // Audit Log the restore
+    // Standardised Audit Logging
     auditLogger.log({
       userId: currentUser.id,
       userEmail: currentUser.email,
@@ -199,6 +285,11 @@ export const usersService = {
       resourceType: "USER",
       description: `Restored soft-deleted user ${user.email} (${id})`,
       severity: "HIGH",
+      metadata: {
+        actorCompanyId: currentUser.companyId || null,
+        targetCompanyId: user.companyId || null,
+        timestamp: new Date().toISOString(),
+      },
     });
 
     return restoredUser;

@@ -13,18 +13,4 @@ export interface UserQueryFilters {
   showDeleted?: boolean;
 }
 
-export interface SafeUser {
-  id: string;
-  email: string;
-  name: string | null;
-  role: Role;
-  status: AccountStatus;
-  isVerified: boolean;
-  companyId: string | null;
-  deletedAt: Date | null;
-  mustChangePassword: boolean;
-  lastLoginAt: Date | null;
-  passwordChangedAt: Date | null;
-  createdAt: Date;
-  updatedAt: Date;
-}
+export { SafeUser } from "../../shared/prisma/selects/user.select";
