@@ -54,6 +54,10 @@ export const createRecruiterSchema = z.object({
   avatar: optionalUrlSchema,
 }).strict();
 
+export const superAdminCreateRecruiterSchema = createRecruiterSchema.extend({
+  companyId: z.string().min(1, "companyId is required for SUPER_ADMIN"),
+}).strict();
+
 export const updateRecruiterSchema = z.object({
   firstName: z
     .string()
@@ -107,8 +111,7 @@ export const listRecruitersQuerySchema = z.object({
     return val;
   }, z.boolean().optional()),
   showDeleted: booleanPreprocess(),
-  companyId: z.string().optional(),
-});
+}).strict();
 
 export const recruiterIdParamSchema = z.object({
   id: z.string().min(1, "Recruiter ID is required"),

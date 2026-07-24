@@ -2,7 +2,7 @@ import { prisma } from "../../config/prisma";
 import { Prisma } from "@prisma/client";
 import { safeUserSelect } from "../../shared/prisma/selects/user.select";
 import { Role } from "../../shared/enums/role.enum";
-import { AccountStatus } from "../../shared/enums/status.enum";
+
 
 export const recruiterRepository = {
   findById: async (id: string, includeDeleted = false) => {
@@ -54,38 +54,30 @@ export const recruiterRepository = {
   },
 
   updateStatus: async (id: string, isActive: boolean) => {
-    const status = isActive ? AccountStatus.ACTIVE : AccountStatus.INACTIVE;
     return await prisma.user.update({
       where: { id },
-      data: { 
-        isActive,
-        status: status as unknown as "ACTIVE" | "INACTIVE",
-      },
+      data: { isActive },
       select: safeUserSelect,
     });
   },
 
-  softDelete: async (id: string, uniqueDeletedEmail: string) => {
+  softDelete: async (id: string) => {
     return await prisma.user.update({
       where: { id },
       data: {
         deletedAt: new Date(),
         isActive: false,
-        status: AccountStatus.INACTIVE as unknown as "INACTIVE",
-        email: uniqueDeletedEmail,
       },
       select: safeUserSelect,
     });
   },
 
-  restore: async (id: string, originalEmail: string) => {
+  restore: async (id: string) => {
     return await prisma.user.update({
       where: { id },
       data: {
         deletedAt: null,
         isActive: true,
-        status: AccountStatus.ACTIVE as unknown as "ACTIVE",
-        email: originalEmail,
       },
       select: safeUserSelect,
     });

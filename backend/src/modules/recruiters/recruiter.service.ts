@@ -1,10 +1,9 @@
-import { randomBytes } from "crypto";
 import { recruiterRepository } from "./recruiter.repository";
 import { departmentsRepository } from "../departments/departments.repository";
 import { companiesRepository } from "../companies/companies.repository";
 import { Role } from "../../shared/enums/role.enum";
 import { AccountStatus } from "../../shared/enums/status.enum";
-import { hashPassword } from "../../shared/password";
+import { hashPassword, passwordHelper } from "../../shared/password";
 import {
   RecruiterQueryFilters,
   RecruiterCreateInput,
@@ -20,88 +19,131 @@ import { UnprocessableEntityError } from "../../shared/errors/UnprocessableEntit
 import { RECRUITERS_MESSAGES } from "./recruiter.constants";
 import { Prisma } from "@prisma/client";
 
+// Private module helpers
+
+async function validateDepartment(departmentId: string, companyId: string): Promise<void> {
+  const department = await departmentsRepository.findById(departmentId);
+  if (!department) {
+    throw new UnprocessableEntityError(RECRUITERS_MESSAGES.DEPARTMENT_NOT_FOUND);
+  }
+  if (department.companyId !== companyId) {
+    throw new UnprocessableEntityError(RECRUITERS_MESSAGES.DEPARTMENT_COMPANY_MISMATCH);
+  }
+  if (!department.isActive) {
+    throw new UnprocessableEntityError(RECRUITERS_MESSAGES.DEPARTMENT_INACTIVE);
+  }
+  if (department.deletedAt) {
+    throw new UnprocessableEntityError(RECRUITERS_MESSAGES.DEPARTMENT_DELETED);
+  }
+}
+
+function validateRecruiterOwnership(recruiterCompanyId: string | null, currentUser: AuthenticatedUser): void {
+  if (currentUser.role === Role.COMPANY_ADMIN) {
+    if (!currentUser.companyId || currentUser.companyId !== recruiterCompanyId) {
+      throw new ForbiddenError(RECRUITERS_MESSAGES.CROSS_COMPANY_ACCESS_FORBIDDEN);
+    }
+  }
+}
+
+async function validateRecruiterExists(id: string, includeDeleted = false): Promise<SafeUser> {
+  const recruiter = await recruiterRepository.findById(id, includeDeleted);
+  if (!recruiter) {
+    throw new NotFoundError(RECRUITERS_MESSAGES.RECRUITER_NOT_FOUND);
+  }
+  return recruiter;
+}
+
+async function createRecruiterUser(
+  input: RecruiterCreateInput,
+  companyId: string,
+  tempPasswordHash: string
+): Promise<SafeUser> {
+  return await recruiterRepository.create({
+    email: input.email.trim().toLowerCase(),
+    password: tempPasswordHash,
+    firstName: input.firstName.trim(),
+    lastName: input.lastName.trim(),
+    name: `${input.firstName.trim()} ${input.lastName.trim()}`,
+    phone: input.phone?.trim() || null,
+    avatar: input.avatar?.trim() || null,
+    designation: input.designation.trim(),
+    experience: input.experience || 0,
+    role: Role.RECRUITER as unknown as "RECRUITER",
+    isActive: true,
+    isVerified: true,
+    mustChangePassword: true,
+    companyId,
+    departmentId: input.departmentId,
+  });
+}
+
 export const recruiterService = {
-  createRecruiter: async (
-    input: RecruiterCreateInput & { companyId?: string },
+  createRecruiterByCompanyAdmin: async (
+    input: RecruiterCreateInput,
     currentUser: AuthenticatedUser
   ): Promise<{ recruiter: SafeUser; temporaryPassword: string }> => {
-    // 1. Authorization check: SUPER_ADMIN or COMPANY_ADMIN only
-    if (currentUser.role !== Role.SUPER_ADMIN && currentUser.role !== Role.COMPANY_ADMIN) {
+    if (currentUser.role !== Role.COMPANY_ADMIN) {
       throw new ForbiddenError(RECRUITERS_MESSAGES.FORBIDDEN_MODIFICATION);
     }
 
-    // 2. Derive companyId
-    let targetCompanyId: string;
-    if (currentUser.role === Role.SUPER_ADMIN) {
-      if (!input.companyId) {
-        throw new ValidationError("companyId is required for SUPER_ADMIN");
-      }
-      targetCompanyId = input.companyId;
-    } else {
-      if (!currentUser.companyId) {
-        throw new ForbiddenError(RECRUITERS_MESSAGES.FORBIDDEN_ACCESS);
-      }
-      targetCompanyId = currentUser.companyId;
+    if (!currentUser.companyId) {
+      throw new ForbiddenError(RECRUITERS_MESSAGES.FORBIDDEN_ACCESS);
     }
 
-    // 3. Verify company exists
-    const company = await companiesRepository.findById(targetCompanyId);
+    const companyId = currentUser.companyId;
+
+    // Verify company exists
+    const company = await companiesRepository.findById(companyId);
     if (!company) {
       throw new NotFoundError(RECRUITERS_MESSAGES.COMPANY_NOT_FOUND);
     }
 
-    // 4. Validate department details
-    const department = await departmentsRepository.findById(input.departmentId);
-    if (!department) {
-      throw new UnprocessableEntityError(RECRUITERS_MESSAGES.DEPARTMENT_NOT_FOUND);
-    }
-    if (department.companyId !== targetCompanyId) {
-      throw new UnprocessableEntityError(RECRUITERS_MESSAGES.DEPARTMENT_COMPANY_MISMATCH);
-    }
-    if (!department.isActive) {
-      throw new UnprocessableEntityError(RECRUITERS_MESSAGES.DEPARTMENT_INACTIVE);
-    }
-    if (department.deletedAt) {
-      throw new UnprocessableEntityError(RECRUITERS_MESSAGES.DEPARTMENT_DELETED);
-    }
+    await validateDepartment(input.departmentId, companyId);
 
-    // 5. Verify email uniqueness globally (including deleted)
     const existingUser = await recruiterRepository.findUserByEmail(input.email, true);
     if (existingUser) {
       throw new ConflictError(RECRUITERS_MESSAGES.EMAIL_ALREADY_EXISTS);
     }
 
-    // 6. Generate temporary password
-    const randomHex = randomBytes(6).toString("hex");
-    const tempPassword = `T3mp!${randomHex}$`;
+    const tempPassword = passwordHelper.generateTemporaryPassword(12);
+    const tempPasswordHash = await hashPassword(tempPassword);
 
-    // 7. Hash password
-    const passwordHash = await hashPassword(tempPassword);
+    const recruiter = await createRecruiterUser(input, companyId, tempPasswordHash);
 
-    // 8. Create user record with role = RECRUITER
-    const recruiter = await recruiterRepository.create({
-      email: input.email.trim().toLowerCase(),
-      password: passwordHash,
-      firstName: input.firstName.trim(),
-      lastName: input.lastName.trim(),
-      name: `${input.firstName.trim()} ${input.lastName.trim()}`,
-      phone: input.phone?.trim() || null,
-      avatar: input.avatar?.trim() || null,
-      designation: input.designation.trim(),
-      experience: input.experience || 0,
-      role: Role.RECRUITER as unknown as "RECRUITER",
-      status: AccountStatus.ACTIVE as unknown as "ACTIVE",
-      isActive: true,
-      isVerified: true,
-      mustChangePassword: true,
-      companyId: targetCompanyId,
-      departmentId: input.departmentId,
-    });
+    return { recruiter, temporaryPassword: tempPassword };
+  },
 
-    return {
-      recruiter,
-      temporaryPassword: tempPassword,
-    };
+  createRecruiterBySuperAdmin: async (
+    input: RecruiterCreateInput & { companyId: string },
+    currentUser: AuthenticatedUser
+  ): Promise<{ recruiter: SafeUser; temporaryPassword: string }> => {
+    if (currentUser.role !== Role.SUPER_ADMIN) {
+      throw new ForbiddenError(RECRUITERS_MESSAGES.FORBIDDEN_MODIFICATION);
+    }
+
+    const companyId = input.companyId;
+    if (!companyId) {
+      throw new ValidationError("companyId is required for SUPER_ADMIN");
+    }
+
+    const company = await companiesRepository.findById(companyId);
+    if (!company) {
+      throw new NotFoundError(RECRUITERS_MESSAGES.COMPANY_NOT_FOUND);
+    }
+
+    await validateDepartment(input.departmentId, companyId);
+
+    const existingUser = await recruiterRepository.findUserByEmail(input.email, true);
+    if (existingUser) {
+      throw new ConflictError(RECRUITERS_MESSAGES.EMAIL_ALREADY_EXISTS);
+    }
+
+    const tempPassword = passwordHelper.generateTemporaryPassword(12);
+    const tempPasswordHash = await hashPassword(tempPassword);
+
+    const recruiter = await createRecruiterUser(input, companyId, tempPasswordHash);
+
+    return { recruiter, temporaryPassword: tempPassword };
   },
 
   getRecruiterById: async (id: string, currentUser: AuthenticatedUser): Promise<SafeUser> => {
@@ -110,18 +152,9 @@ export const recruiterService = {
     }
 
     const includeDeleted = currentUser.role === Role.SUPER_ADMIN;
-    const recruiter = await recruiterRepository.findById(id, includeDeleted);
+    const recruiter = await validateRecruiterExists(id, includeDeleted);
 
-    if (!recruiter) {
-      throw new NotFoundError(RECRUITERS_MESSAGES.RECRUITER_NOT_FOUND);
-    }
-
-    // Tenant Isolation
-    if (currentUser.role === Role.COMPANY_ADMIN) {
-      if (!currentUser.companyId || currentUser.companyId !== recruiter.companyId) {
-        throw new ForbiddenError(RECRUITERS_MESSAGES.CROSS_COMPANY_ACCESS_FORBIDDEN);
-      }
-    }
+    validateRecruiterOwnership(recruiter.companyId, currentUser);
 
     return recruiter;
   },
@@ -138,11 +171,8 @@ export const recruiterService = {
       role: Role.RECRUITER as unknown as "RECRUITER",
     };
 
-    // Tenant Isolation / Query parameter overrides
+    // Tenant Isolation
     if (currentUser.role === Role.SUPER_ADMIN) {
-      if (filters.companyId) {
-        where.companyId = filters.companyId;
-      }
       if (!filters.showDeleted) {
         where.deletedAt = null;
       }
@@ -232,35 +262,14 @@ export const recruiterService = {
       throw new ForbiddenError(RECRUITERS_MESSAGES.FORBIDDEN_MODIFICATION);
     }
 
-    const recruiter = await recruiterRepository.findById(id);
-    if (!recruiter) {
-      throw new NotFoundError(RECRUITERS_MESSAGES.RECRUITER_NOT_FOUND);
-    }
+    const recruiter = await validateRecruiterExists(id);
 
-    // Tenant Isolation
-    if (currentUser.role === Role.COMPANY_ADMIN) {
-      if (!currentUser.companyId || currentUser.companyId !== recruiter.companyId) {
-        throw new ForbiddenError(RECRUITERS_MESSAGES.CROSS_COMPANY_ACCESS_FORBIDDEN);
-      }
-    }
+    validateRecruiterOwnership(recruiter.companyId, currentUser);
 
     const updateData: Prisma.UserUncheckedUpdateInput = {};
 
-    // Validate department assignment if provided
     if (input.departmentId) {
-      const department = await departmentsRepository.findById(input.departmentId);
-      if (!department) {
-        throw new UnprocessableEntityError(RECRUITERS_MESSAGES.DEPARTMENT_NOT_FOUND);
-      }
-      if (department.companyId !== recruiter.companyId) {
-        throw new UnprocessableEntityError(RECRUITERS_MESSAGES.DEPARTMENT_COMPANY_MISMATCH);
-      }
-      if (!department.isActive) {
-        throw new UnprocessableEntityError(RECRUITERS_MESSAGES.DEPARTMENT_INACTIVE);
-      }
-      if (department.deletedAt) {
-        throw new UnprocessableEntityError(RECRUITERS_MESSAGES.DEPARTMENT_DELETED);
-      }
+      await validateDepartment(input.departmentId, recruiter.companyId!);
       updateData.departmentId = input.departmentId;
     }
 
@@ -291,32 +300,11 @@ export const recruiterService = {
       throw new ForbiddenError(RECRUITERS_MESSAGES.FORBIDDEN_MODIFICATION);
     }
 
-    const recruiter = await recruiterRepository.findById(id);
-    if (!recruiter) {
-      throw new NotFoundError(RECRUITERS_MESSAGES.RECRUITER_NOT_FOUND);
-    }
+    const recruiter = await validateRecruiterExists(id);
 
-    // Tenant Isolation
-    if (currentUser.role === Role.COMPANY_ADMIN) {
-      if (!currentUser.companyId || currentUser.companyId !== recruiter.companyId) {
-        throw new ForbiddenError(RECRUITERS_MESSAGES.CROSS_COMPANY_ACCESS_FORBIDDEN);
-      }
-    }
+    validateRecruiterOwnership(recruiter.companyId, currentUser);
 
-    // Validate department
-    const department = await departmentsRepository.findById(departmentId);
-    if (!department) {
-      throw new UnprocessableEntityError(RECRUITERS_MESSAGES.DEPARTMENT_NOT_FOUND);
-    }
-    if (department.companyId !== recruiter.companyId) {
-      throw new UnprocessableEntityError(RECRUITERS_MESSAGES.DEPARTMENT_COMPANY_MISMATCH);
-    }
-    if (!department.isActive) {
-      throw new UnprocessableEntityError(RECRUITERS_MESSAGES.DEPARTMENT_INACTIVE);
-    }
-    if (department.deletedAt) {
-      throw new UnprocessableEntityError(RECRUITERS_MESSAGES.DEPARTMENT_DELETED);
-    }
+    await validateDepartment(departmentId, recruiter.companyId!);
 
     return await recruiterRepository.update(id, { departmentId });
   },
@@ -326,17 +314,9 @@ export const recruiterService = {
       throw new ForbiddenError(RECRUITERS_MESSAGES.FORBIDDEN_MODIFICATION);
     }
 
-    const recruiter = await recruiterRepository.findById(id, true);
-    if (!recruiter) {
-      throw new NotFoundError(RECRUITERS_MESSAGES.RECRUITER_NOT_FOUND);
-    }
+    const recruiter = await validateRecruiterExists(id, true);
 
-    // Tenant Isolation
-    if (currentUser.role === Role.COMPANY_ADMIN) {
-      if (!currentUser.companyId || currentUser.companyId !== recruiter.companyId) {
-        throw new ForbiddenError(RECRUITERS_MESSAGES.CROSS_COMPANY_ACCESS_FORBIDDEN);
-      }
-    }
+    validateRecruiterOwnership(recruiter.companyId, currentUser);
 
     if (recruiter.deletedAt) {
       throw new UnprocessableEntityError(RECRUITERS_MESSAGES.ACTIVATE_DELETED_REJECTED);
@@ -364,17 +344,9 @@ export const recruiterService = {
       throw new ForbiddenError(RECRUITERS_MESSAGES.FORBIDDEN_MODIFICATION);
     }
 
-    const recruiter = await recruiterRepository.findById(id);
-    if (!recruiter) {
-      throw new NotFoundError(RECRUITERS_MESSAGES.RECRUITER_NOT_FOUND);
-    }
+    const recruiter = await validateRecruiterExists(id);
 
-    // Tenant Isolation
-    if (currentUser.role === Role.COMPANY_ADMIN) {
-      if (!currentUser.companyId || currentUser.companyId !== recruiter.companyId) {
-        throw new ForbiddenError(RECRUITERS_MESSAGES.CROSS_COMPANY_ACCESS_FORBIDDEN);
-      }
-    }
+    validateRecruiterOwnership(recruiter.companyId, currentUser);
 
     return await recruiterRepository.updateStatus(id, false);
   },
@@ -384,20 +356,11 @@ export const recruiterService = {
       throw new ForbiddenError(RECRUITERS_MESSAGES.FORBIDDEN_MODIFICATION);
     }
 
-    const recruiter = await recruiterRepository.findById(id);
-    if (!recruiter) {
-      throw new NotFoundError(RECRUITERS_MESSAGES.RECRUITER_NOT_FOUND);
-    }
+    const recruiter = await validateRecruiterExists(id);
 
-    // Tenant Isolation
-    if (currentUser.role === Role.COMPANY_ADMIN) {
-      if (!currentUser.companyId || currentUser.companyId !== recruiter.companyId) {
-        throw new ForbiddenError(RECRUITERS_MESSAGES.CROSS_COMPANY_ACCESS_FORBIDDEN);
-      }
-    }
+    validateRecruiterOwnership(recruiter.companyId, currentUser);
 
-    const uniqueDeletedEmail = `${recruiter.email} (Deleted-${id})`;
-    return await recruiterRepository.softDelete(id, uniqueDeletedEmail);
+    return await recruiterRepository.softDelete(id);
   },
 
   restoreRecruiter: async (id: string, currentUser: AuthenticatedUser): Promise<SafeUser> => {
@@ -405,31 +368,14 @@ export const recruiterService = {
       throw new ForbiddenError(RECRUITERS_MESSAGES.FORBIDDEN_MODIFICATION);
     }
 
-    const recruiter = await recruiterRepository.findById(id, true);
-    if (!recruiter) {
-      throw new NotFoundError(RECRUITERS_MESSAGES.RECRUITER_NOT_FOUND);
-    }
+    const recruiter = await validateRecruiterExists(id, true);
 
-    // Tenant Isolation
-    if (currentUser.role === Role.COMPANY_ADMIN) {
-      if (!currentUser.companyId || currentUser.companyId !== recruiter.companyId) {
-        throw new ForbiddenError(RECRUITERS_MESSAGES.CROSS_COMPANY_ACCESS_FORBIDDEN);
-      }
-    }
+    validateRecruiterOwnership(recruiter.companyId, currentUser);
 
     if (!recruiter.deletedAt) {
       return recruiter;
     }
 
-    // Parse the original email
-    const originalEmail = recruiter.email.replace(` (Deleted-${id})`, "");
-
-    // Verify email uniqueness before restoring
-    const existing = await recruiterRepository.findUserByEmail(originalEmail, true);
-    if (existing && existing.id !== id) {
-      throw new ConflictError(RECRUITERS_MESSAGES.EMAIL_ALREADY_EXISTS);
-    }
-
-    return await recruiterRepository.restore(id, originalEmail);
+    return await recruiterRepository.restore(id);
   },
 };

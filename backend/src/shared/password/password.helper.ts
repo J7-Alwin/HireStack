@@ -1,6 +1,39 @@
 import { REGEX_PATTERNS } from "../constants/regex.constants";
+import { randomBytes } from "crypto";
 
 export const passwordHelper = {
+  generateTemporaryPassword: (length = 12): string => {
+    const uppercase = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    const lowercase = "abcdefghijklmnopqrstuvwxyz";
+    const numbers = "0123456789";
+    const special = "@$!%*?&";
+    const all = uppercase + lowercase + numbers + special;
+
+    const getSecureChar = (charSet: string) => {
+      const randomIdx = randomBytes(1)[0] % charSet.length;
+      return charSet[randomIdx];
+    };
+
+    let password = "";
+    password += getSecureChar(uppercase);
+    password += getSecureChar(lowercase);
+    password += getSecureChar(numbers);
+    password += getSecureChar(special);
+
+    for (let i = 4; i < length; i++) {
+      password += getSecureChar(all);
+    }
+
+    const arr = password.split("");
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = randomBytes(1)[0] % (i + 1);
+      const temp = arr[i];
+      arr[i] = arr[j];
+      arr[j] = temp;
+    }
+
+    return arr.join("");
+  },
   isValidStrength: (password: string): boolean => {
     return REGEX_PATTERNS.STRONG_PASSWORD.test(password);
   },
