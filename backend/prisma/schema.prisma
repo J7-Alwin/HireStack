@@ -27,6 +27,13 @@ model User {
   password  String
 
   name      String?
+  firstName String?
+  lastName  String?
+  phone     String?
+  avatar    String?
+  designation String?
+  experience  Int?
+  isActive  Boolean @default(true)
   role      Role
   status    AccountStatus @default(ACTIVE)
 
