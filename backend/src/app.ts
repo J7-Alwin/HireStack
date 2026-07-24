@@ -12,6 +12,7 @@ import {
 } from "./middleware";
 import { authRouter } from "./modules/auth";
 import { usersRouter } from "./modules/users";
+import { companiesRouter } from "./modules/companies";
 
 const app = express();
 
@@ -37,6 +38,7 @@ app.use(maintenanceMiddleware);
 // 6. Application Routes
 app.use("/api/auth", authRouter);
 app.use("/api/users", usersRouter);
+app.use("/api/companies", companiesRouter);
 
 app.get("/", (_req, res) => {
   res.status(200).json({
