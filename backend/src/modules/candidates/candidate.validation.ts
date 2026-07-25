@@ -37,71 +37,14 @@ const documentTypeSchema = z.nativeEnum(DocumentType, {
 const nameSchema = z.string().trim().min(1, "Name cannot be empty").max(100);
 const emailSchema = z.string().trim().email("Invalid email address").toLowerCase().max(255);
 const phoneSchema = z.string().trim().min(3, "Phone number too short").max(20);
-
-// Candidate Creation
-export const createCandidateSchema = z
-  .object({
-    firstName: nameSchema,
-    lastName: nameSchema,
-    email: emailSchema.optional().nullable(),
-    phone: phoneSchema.optional().nullable(),
-    alternatePhone: phoneSchema.optional().nullable(),
-    gender: genderSchema.optional().nullable(),
-    address: z.string().trim().max(500).optional().nullable(),
-    city: z.string().trim().max(100).optional().nullable(),
-    state: z.string().trim().max(100).optional().nullable(),
-    country: z.string().trim().max(100).optional().nullable(),
-    zipCode: z.string().trim().max(20).optional().nullable(),
-    currentCompany: z.string().trim().max(200).optional().nullable(),
-    currentDesignation: z.string().trim().max(200).optional().nullable(),
-    experienceYears: z.number().int().nonnegative().optional().nullable(),
-    experienceMonths: z.number().int().min(0).max(11).optional().nullable(),
-    expectedSalary: z.number().nonnegative().optional().nullable(),
-    currentSalary: z.number().nonnegative().optional().nullable(),
-    currency: z.string().trim().max(10).optional().nullable(),
-    noticePeriod: z.number().int().nonnegative().optional().nullable(),
-    employmentStatus: employmentStatusSchema.optional().nullable(),
-    source: candidateSourceSchema.optional().nullable(),
-    primaryRecruiterId: z.string().cuid("Invalid recruiter ID format"),
-  })
-  .refine((data) => data.email || data.phone, {
-    message: "At least email or phone number is required to register a candidate",
-    path: ["email"],
-  });
-
-// Candidate Update
-export const updateCandidateSchema = z.object({
-  firstName: nameSchema.optional(),
-  lastName: nameSchema.optional(),
-  email: emailSchema.optional().nullable(),
-  phone: phoneSchema.optional().nullable(),
-  alternatePhone: phoneSchema.optional().nullable(),
-  gender: genderSchema.optional().nullable(),
-  address: z.string().trim().max(500).optional().nullable(),
-  city: z.string().trim().max(100).optional().nullable(),
-  state: z.string().trim().max(100).optional().nullable(),
-  country: z.string().trim().max(100).optional().nullable(),
-  zipCode: z.string().trim().max(20).optional().nullable(),
-  currentCompany: z.string().trim().max(200).optional().nullable(),
-  currentDesignation: z.string().trim().max(200).optional().nullable(),
-  experienceYears: z.number().int().nonnegative().optional().nullable(),
-  experienceMonths: z.number().int().min(0).max(11).optional().nullable(),
-  expectedSalary: z.number().nonnegative().optional().nullable(),
-  currentSalary: z.number().nonnegative().optional().nullable(),
-  currency: z.string().trim().max(10).optional().nullable(),
-  noticePeriod: z.number().int().nonnegative().optional().nullable(),
-  employmentStatus: employmentStatusSchema.optional().nullable(),
-  source: candidateSourceSchema.optional().nullable(),
-  primaryRecruiterId: z.string().cuid("Invalid recruiter ID format").optional(),
-  status: candidateStatusSchema.optional(),
-});
+const urlSchema = z.string().trim().url("Invalid URL format");
 
 // Candidate Skill
 export const candidateSkillSchema = z.object({
   skillId: z.string().cuid("Invalid skill ID"),
   proficiency: skillProficiencySchema.optional(),
-  experienceYears: z.number().int().nonnegative().optional().nullable(),
-  experienceMonths: z.number().int().min(0).max(11).optional().nullable(),
+  experienceYears: z.number().int().nonnegative("Experience years cannot be negative").optional().nullable(),
+  experienceMonths: z.number().int().min(0, "Months must be at least 0").max(11, "Months cannot exceed 11").optional().nullable(),
   isPrimary: z.boolean().optional(),
 });
 
@@ -111,6 +54,32 @@ export const candidateEducationSchema = z
     degree: z.string().trim().min(1, "Degree cannot be empty").max(200),
     specialization: z.string().trim().max(200).optional().nullable(),
     institution: z.string().trim().min(1, "Institution cannot be empty").max(200),
+    university: z.string().trim().max(200).optional().nullable(),
+    startDate: z.string().datetime({ message: "Invalid ISO datetime string" }).optional().nullable(),
+    endDate: z.string().datetime({ message: "Invalid ISO datetime string" }).optional().nullable(),
+    graduationYear: z.number().int().min(1900).max(2100).optional().nullable(),
+    grade: z.string().trim().max(50).optional().nullable(),
+    isHighest: z.boolean().optional(),
+  })
+  .refine(
+    (data) => {
+      if (data.startDate && data.endDate) {
+        return new Date(data.startDate) <= new Date(data.endDate);
+      }
+      return true;
+    },
+    {
+      message: "Start date must be before or equal to end date",
+      path: ["endDate"],
+    }
+  );
+
+// Candidate Education Update
+export const candidateEducationUpdateSchema = z
+  .object({
+    degree: z.string().trim().min(1, "Degree cannot be empty").max(200).optional(),
+    specialization: z.string().trim().max(200).optional().nullable(),
+    institution: z.string().trim().min(1, "Institution cannot be empty").max(200).optional(),
     university: z.string().trim().max(200).optional().nullable(),
     startDate: z.string().datetime({ message: "Invalid ISO datetime string" }).optional().nullable(),
     endDate: z.string().datetime({ message: "Invalid ISO datetime string" }).optional().nullable(),
@@ -155,12 +124,36 @@ export const candidateExperienceSchema = z
     }
   );
 
+// Candidate Experience Update
+export const candidateExperienceUpdateSchema = z
+  .object({
+    company: z.string().trim().min(1, "Company name cannot be empty").max(200).optional(),
+    designation: z.string().trim().min(1, "Designation cannot be empty").max(200).optional(),
+    employmentType: z.string().trim().max(100).optional().nullable(),
+    startDate: z.string().datetime({ message: "Invalid ISO datetime string" }).optional(),
+    endDate: z.string().datetime({ message: "Invalid ISO datetime string" }).optional().nullable(),
+    isCurrent: z.boolean().optional(),
+    description: z.string().trim().max(2000).optional().nullable(),
+  })
+  .refine(
+    (data) => {
+      if (data.startDate && data.endDate) {
+        return new Date(data.startDate) <= new Date(data.endDate);
+      }
+      return true;
+    },
+    {
+      message: "Start date must be before or equal to end date",
+      path: ["endDate"],
+    }
+  );
+
 // Candidate Document
 export const candidateDocumentSchema = z.object({
   fileName: z.string().trim().min(1, "File name cannot be empty").max(255),
   fileUrl: z.string().trim().url("Invalid file URL"),
   fileKey: z.string().trim().min(1, "File key cannot be empty"),
-  fileSize: z.number().int().nonnegative().optional().nullable(),
+  fileSize: z.number().int().nonnegative("File size cannot be negative").optional().nullable(),
   mimeType: z.string().trim().max(100).optional().nullable(),
   documentType: documentTypeSchema.optional(),
   isActive: z.boolean().optional(),
@@ -174,6 +167,76 @@ export const candidateNoteSchema = z.object({
 // Tag Assignment
 export const candidateTagSchema = z.object({
   name: z.string().trim().min(1, "Tag name cannot be empty").max(50).toLowerCase(),
+});
+
+// Candidate Creation
+export const createCandidateSchema = z
+  .object({
+    firstName: nameSchema,
+    lastName: nameSchema,
+    email: emailSchema.optional().nullable(),
+    phone: phoneSchema.optional().nullable(),
+    alternatePhone: phoneSchema.optional().nullable(),
+    gender: genderSchema.optional().nullable(),
+    address: z.string().trim().max(500).optional().nullable(),
+    city: z.string().trim().max(100).optional().nullable(),
+    state: z.string().trim().max(100).optional().nullable(),
+    country: z.string().trim().max(100).optional().nullable(),
+    zipCode: z.string().trim().max(20).optional().nullable(),
+    currentCompany: z.string().trim().max(200).optional().nullable(),
+    currentDesignation: z.string().trim().max(200).optional().nullable(),
+    experienceYears: z.number().int().nonnegative("Experience years cannot be negative").optional().nullable(),
+    experienceMonths: z.number().int().min(0, "Months must be at least 0").max(11, "Months cannot exceed 11").optional().nullable(),
+    expectedSalary: z.number().nonnegative("Expected salary cannot be negative").optional().nullable(),
+    currentSalary: z.number().nonnegative("Current salary cannot be negative").optional().nullable(),
+    currency: z.string().trim().max(10).optional().nullable(),
+    noticePeriod: z.number().int().nonnegative("Notice period cannot be negative").optional().nullable(),
+    employmentStatus: employmentStatusSchema.optional().nullable(),
+    source: candidateSourceSchema.optional().nullable(),
+    linkedInUrl: urlSchema.optional().nullable(),
+    githubUrl: urlSchema.optional().nullable(),
+    portfolioUrl: urlSchema.optional().nullable(),
+    primaryRecruiterId: z.string().cuid("Invalid recruiter ID format"),
+    skills: z.array(candidateSkillSchema).optional(),
+    education: z.array(candidateEducationSchema).optional(),
+    experience: z.array(candidateExperienceSchema).optional(),
+    documents: z.array(candidateDocumentSchema).optional(),
+    notes: z.array(candidateNoteSchema).optional(),
+    tags: z.array(z.string().trim().min(1).max(50)).optional(),
+  })
+  .refine((data) => data.email || data.phone, {
+    message: "At least email or phone number is required to register a candidate",
+    path: ["email"],
+  });
+
+// Candidate Update
+export const updateCandidateSchema = z.object({
+  firstName: nameSchema.optional(),
+  lastName: nameSchema.optional(),
+  email: emailSchema.optional().nullable(),
+  phone: phoneSchema.optional().nullable(),
+  alternatePhone: phoneSchema.optional().nullable(),
+  gender: genderSchema.optional().nullable(),
+  address: z.string().trim().max(500).optional().nullable(),
+  city: z.string().trim().max(100).optional().nullable(),
+  state: z.string().trim().max(100).optional().nullable(),
+  country: z.string().trim().max(100).optional().nullable(),
+  zipCode: z.string().trim().max(20).optional().nullable(),
+  currentCompany: z.string().trim().max(200).optional().nullable(),
+  currentDesignation: z.string().trim().max(200).optional().nullable(),
+  experienceYears: z.number().int().nonnegative("Experience years cannot be negative").optional().nullable(),
+  experienceMonths: z.number().int().min(0, "Months must be at least 0").max(11, "Months cannot exceed 11").optional().nullable(),
+  expectedSalary: z.number().nonnegative("Expected salary cannot be negative").optional().nullable(),
+  currentSalary: z.number().nonnegative("Current salary cannot be negative").optional().nullable(),
+  currency: z.string().trim().max(10).optional().nullable(),
+  noticePeriod: z.number().int().nonnegative("Notice period cannot be negative").optional().nullable(),
+  employmentStatus: employmentStatusSchema.optional().nullable(),
+  source: candidateSourceSchema.optional().nullable(),
+  linkedInUrl: urlSchema.optional().nullable(),
+  githubUrl: urlSchema.optional().nullable(),
+  portfolioUrl: urlSchema.optional().nullable(),
+  primaryRecruiterId: z.string().cuid("Invalid recruiter ID format").optional(),
+  status: candidateStatusSchema.optional(),
 });
 
 // Query Parameter validation (Filters/Search/Sorting)

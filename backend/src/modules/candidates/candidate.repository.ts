@@ -1,5 +1,5 @@
 import { prisma } from "../../config/prisma";
-import { CandidateStatus, Prisma } from "@prisma/client";
+import { CandidateStatus, Prisma, Role } from "@prisma/client";
 import {
   CandidateCreateInput,
   CandidateUpdateInput,
@@ -51,8 +51,25 @@ const candidateInclude = {
 };
 
 export const candidateRepository = {
-  create: async (companyId: string, createdBy: string, candidateCode: string, input: CandidateCreateInput) => {
-    return prisma.candidate.create({
+  findRecruiterById: async (id: string, companyId: string, tx?: Prisma.TransactionClient) => {
+    const client = tx || prisma;
+    return client.user.findFirst({
+      where: { id, companyId, role: Role.RECRUITER },
+    });
+  },
+
+  incrementCandidateCounter: async (companyId: string, tx: Prisma.TransactionClient) => {
+    const counter = await tx.companyCandidateCounter.upsert({
+      where: { companyId },
+      update: { count: { increment: 1 } },
+      create: { companyId, count: 1 },
+    });
+    return counter.count;
+  },
+
+  create: async (companyId: string, createdBy: string, candidateCode: string, input: CandidateCreateInput, tx?: Prisma.TransactionClient) => {
+    const client = tx || prisma;
+    return client.candidate.create({
       data: {
         ...input,
         candidateCode,
@@ -64,28 +81,31 @@ export const candidateRepository = {
     });
   },
 
-  findById: async (id: string) => {
-    return prisma.candidate.findFirst({
+  findById: async (id: string, tx?: Prisma.TransactionClient) => {
+    const client = tx || prisma;
+    return client.candidate.findFirst({
       where: { id, isActive: true },
       include: candidateInclude,
     });
   },
 
-  findByIdIncludeDeleted: async (id: string) => {
-    return prisma.candidate.findFirst({
+  findByIdIncludeDeleted: async (id: string, tx?: Prisma.TransactionClient) => {
+    const client = tx || prisma;
+    return client.candidate.findFirst({
       where: { id },
       include: candidateInclude,
     });
   },
 
-  findByEmailOrPhone: async (companyId: string, email?: string | null, phone?: string | null) => {
+  findByEmailOrPhone: async (companyId: string, email?: string | null, phone?: string | null, tx?: Prisma.TransactionClient) => {
     if (!email && !phone) return null;
 
+    const client = tx || prisma;
     const conditions: Prisma.CandidateWhereInput[] = [];
     if (email) conditions.push({ email });
     if (phone) conditions.push({ phone });
 
-    return prisma.candidate.findFirst({
+    return client.candidate.findFirst({
       where: {
         companyId,
         isActive: true,
@@ -94,14 +114,16 @@ export const candidateRepository = {
     });
   },
 
-  findCountByCompany: async (companyId: string) => {
-    return prisma.candidate.count({
+  findCountByCompany: async (companyId: string, tx?: Prisma.TransactionClient) => {
+    const client = tx || prisma;
+    return client.candidate.count({
       where: { companyId },
     });
   },
 
-  update: async (id: string, companyId: string, updatedBy: string, input: CandidateUpdateInput) => {
-    return prisma.candidate.update({
+  update: async (id: string, companyId: string, updatedBy: string, input: CandidateUpdateInput, tx?: Prisma.TransactionClient) => {
+    const client = tx || prisma;
+    return client.candidate.update({
       where: { id },
       data: {
         ...input,
@@ -111,8 +133,9 @@ export const candidateRepository = {
     });
   },
 
-  softDelete: async (id: string, _companyId: string) => {
-    return prisma.candidate.update({
+  softDelete: async (id: string, _companyId: string, tx?: Prisma.TransactionClient) => {
+    const client = tx || prisma;
+    return client.candidate.update({
       where: { id },
       data: {
         isActive: false,
@@ -122,8 +145,9 @@ export const candidateRepository = {
     });
   },
 
-  restore: async (id: string, _companyId: string) => {
-    return prisma.candidate.update({
+  restore: async (id: string, _companyId: string, tx?: Prisma.TransactionClient) => {
+    const client = tx || prisma;
+    return client.candidate.update({
       where: { id },
       data: {
         isActive: true,
@@ -133,7 +157,8 @@ export const candidateRepository = {
     });
   },
 
-  list: async (companyId: string, filters: CandidateQueryFilters) => {
+  list: async (companyId: string, filters: CandidateQueryFilters, tx?: Prisma.TransactionClient) => {
+    const client = tx || prisma;
     const page = filters.page || 1;
     const limit = filters.limit || 10;
     const skip = (page - 1) * limit;
@@ -194,7 +219,7 @@ export const candidateRepository = {
       };
     }
 
-    // Created Date filter (e.g. "2026-07-25" -> filter by exact day start/end)
+    // Created Date filter
     if (filters.createdDate) {
       const date = new Date(filters.createdDate);
       if (!isNaN(date.getTime())) {
@@ -207,10 +232,23 @@ export const candidateRepository = {
       }
     }
 
-    // Search query mapping (Candidate Code, First Name, Last Name, Email, Phone, Current Company, Current Designation, Skills, Tags)
+    // Search query mapping optimized by performing pre-lookups to avoid large OR joins
     if (filters.search) {
       const searchLower = filters.search.toLowerCase();
-      where.OR = [
+      
+      // Perform quick pre-lookups on related tables
+      const [matchingSkills, matchingTags] = await Promise.all([
+        client.skill.findMany({
+          where: { name: { contains: searchLower, mode: "insensitive" } },
+          select: { id: true },
+        }),
+        client.tag.findMany({
+          where: { companyId, name: { contains: searchLower, mode: "insensitive" } },
+          select: { id: true },
+        }),
+      ]);
+
+      const conditions: Prisma.CandidateWhereInput[] = [
         { candidateCode: { contains: filters.search, mode: "insensitive" } },
         { firstName: { contains: filters.search, mode: "insensitive" } },
         { lastName: { contains: filters.search, mode: "insensitive" } },
@@ -218,25 +256,29 @@ export const candidateRepository = {
         { phone: { contains: filters.search, mode: "insensitive" } },
         { currentCompany: { contains: filters.search, mode: "insensitive" } },
         { currentDesignation: { contains: filters.search, mode: "insensitive" } },
-        {
+      ];
+
+      if (matchingSkills.length > 0) {
+        conditions.push({
           skills: {
             some: {
-              skill: {
-                name: { contains: searchLower, mode: "insensitive" },
-              },
+              skillId: { in: matchingSkills.map((s) => s.id) },
             },
           },
-        },
-        {
+        });
+      }
+
+      if (matchingTags.length > 0) {
+        conditions.push({
           tags: {
             some: {
-              tag: {
-                name: { contains: searchLower, mode: "insensitive" },
-              },
+              tagId: { in: matchingTags.map((t) => t.id) },
             },
           },
-        },
-      ];
+        });
+      }
+
+      where.OR = conditions;
     }
 
     // Sorting
@@ -247,28 +289,30 @@ export const candidateRepository = {
     orderBy[sortBy] = sortOrder;
 
     const [items, total] = await Promise.all([
-      prisma.candidate.findMany({
+      client.candidate.findMany({
         where,
         include: candidateInclude,
         orderBy,
         skip,
         take: limit,
       }),
-      prisma.candidate.count({ where }),
+      client.candidate.count({ where }),
     ]);
 
     return { items, total };
   },
 
   // Skills
-  findSkillInCatalogue: async (skillId: string) => {
-    return prisma.skill.findUnique({
+  findSkillInCatalogue: async (skillId: string, tx?: Prisma.TransactionClient) => {
+    const client = tx || prisma;
+    return client.skill.findUnique({
       where: { id: skillId },
     });
   },
 
-  addSkill: async (candidateId: string, input: CandidateSkillInput) => {
-    return prisma.candidateSkill.create({
+  addSkill: async (candidateId: string, input: CandidateSkillInput, tx?: Prisma.TransactionClient) => {
+    const client = tx || prisma;
+    return client.candidateSkill.create({
       data: {
         candidateId,
         skillId: input.skillId,
@@ -280,8 +324,9 @@ export const candidateRepository = {
     });
   },
 
-  updateSkill: async (candidateId: string, skillId: string, input: Omit<CandidateSkillInput, "skillId">) => {
-    return prisma.candidateSkill.update({
+  updateSkill: async (candidateId: string, skillId: string, input: Omit<CandidateSkillInput, "skillId">, tx?: Prisma.TransactionClient) => {
+    const client = tx || prisma;
+    return client.candidateSkill.update({
       where: {
         candidateId_skillId: { candidateId, skillId },
       },
@@ -289,8 +334,9 @@ export const candidateRepository = {
     });
   },
 
-  removeSkill: async (candidateId: string, skillId: string) => {
-    return prisma.candidateSkill.delete({
+  removeSkill: async (candidateId: string, skillId: string, tx?: Prisma.TransactionClient) => {
+    const client = tx || prisma;
+    return client.candidateSkill.delete({
       where: {
         candidateId_skillId: { candidateId, skillId },
       },
@@ -298,8 +344,9 @@ export const candidateRepository = {
   },
 
   // Education
-  addEducation: async (candidateId: string, input: CandidateEducationInput) => {
-    return prisma.candidateEducation.create({
+  addEducation: async (candidateId: string, input: CandidateEducationInput, tx?: Prisma.TransactionClient) => {
+    const client = tx || prisma;
+    return client.candidateEducation.create({
       data: {
         candidateId,
         degree: input.degree,
@@ -315,8 +362,9 @@ export const candidateRepository = {
     });
   },
 
-  updateEducation: async (id: string, input: Partial<CandidateEducationInput>) => {
-    return prisma.candidateEducation.update({
+  updateEducation: async (id: string, input: Partial<CandidateEducationInput>, tx?: Prisma.TransactionClient) => {
+    const client = tx || prisma;
+    return client.candidateEducation.update({
       where: { id },
       data: {
         degree: input.degree,
@@ -332,15 +380,17 @@ export const candidateRepository = {
     });
   },
 
-  deleteEducation: async (id: string) => {
-    return prisma.candidateEducation.delete({
+  deleteEducation: async (id: string, tx?: Prisma.TransactionClient) => {
+    const client = tx || prisma;
+    return client.candidateEducation.delete({
       where: { id },
     });
   },
 
   // Experience
-  addExperience: async (candidateId: string, input: CandidateExperienceInput) => {
-    return prisma.candidateExperience.create({
+  addExperience: async (candidateId: string, input: CandidateExperienceInput, tx?: Prisma.TransactionClient) => {
+    const client = tx || prisma;
+    return client.candidateExperience.create({
       data: {
         candidateId,
         company: input.company,
@@ -354,8 +404,9 @@ export const candidateRepository = {
     });
   },
 
-  updateExperience: async (id: string, input: Partial<CandidateExperienceInput>) => {
-    return prisma.candidateExperience.update({
+  updateExperience: async (id: string, input: Partial<CandidateExperienceInput>, tx?: Prisma.TransactionClient) => {
+    const client = tx || prisma;
+    return client.candidateExperience.update({
       where: { id },
       data: {
         company: input.company,
@@ -369,48 +420,50 @@ export const candidateRepository = {
     });
   },
 
-  deleteExperience: async (id: string) => {
-    return prisma.candidateExperience.delete({
+  deleteExperience: async (id: string, tx?: Prisma.TransactionClient) => {
+    const client = tx || prisma;
+    return client.candidateExperience.delete({
       where: { id },
     });
   },
 
   // Documents
-  addDocument: async (candidateId: string, uploadedBy: string, input: CandidateDocumentInput) => {
-    return prisma.$transaction(async (tx) => {
-      // If uploading a resume and marking active, update previous active resumes to inactive
-      if (input.documentType === "RESUME" && input.isActive !== false) {
-        await tx.candidateDocument.updateMany({
-          where: { candidateId, documentType: "RESUME", isActive: true },
-          data: { isActive: false },
-        });
-      }
-
-      return tx.candidateDocument.create({
-        data: {
-          candidateId,
-          fileName: input.fileName,
-          fileUrl: input.fileUrl,
-          fileKey: input.fileKey,
-          fileSize: input.fileSize,
-          mimeType: input.mimeType,
-          documentType: input.documentType,
-          isActive: input.isActive,
-          uploadedBy,
-        },
+  addDocument: async (candidateId: string, uploadedBy: string, input: CandidateDocumentInput, tx?: Prisma.TransactionClient) => {
+    const client = tx || prisma;
+    // If uploading a resume and marking active, update previous active resumes to inactive
+    if (input.documentType === "RESUME" && input.isActive !== false) {
+      await client.candidateDocument.updateMany({
+        where: { candidateId, documentType: "RESUME", isActive: true },
+        data: { isActive: false },
       });
+    }
+
+    return client.candidateDocument.create({
+      data: {
+        candidateId,
+        fileName: input.fileName,
+        fileUrl: input.fileUrl,
+        fileKey: input.fileKey,
+        fileSize: input.fileSize,
+        mimeType: input.mimeType,
+        documentType: input.documentType,
+        isActive: input.isActive,
+        uploadedBy,
+      },
     });
   },
 
-  deleteDocument: async (id: string) => {
-    return prisma.candidateDocument.delete({
+  deleteDocument: async (id: string, tx?: Prisma.TransactionClient) => {
+    const client = tx || prisma;
+    return client.candidateDocument.delete({
       where: { id },
     });
   },
 
   // Notes
-  addNote: async (candidateId: string, authorId: string, input: CandidateNoteInput) => {
-    return prisma.candidateNote.create({
+  addNote: async (candidateId: string, authorId: string, input: CandidateNoteInput, tx?: Prisma.TransactionClient) => {
+    const client = tx || prisma;
+    return client.candidateNote.create({
       data: {
         candidateId,
         authorId,
@@ -424,8 +477,9 @@ export const candidateRepository = {
     });
   },
 
-  updateNote: async (id: string, input: CandidateNoteInput) => {
-    return prisma.candidateNote.update({
+  updateNote: async (id: string, input: CandidateNoteInput, tx?: Prisma.TransactionClient) => {
+    const client = tx || prisma;
+    return client.candidateNote.update({
       where: { id },
       data: {
         content: input.content,
@@ -438,29 +492,33 @@ export const candidateRepository = {
     });
   },
 
-  deleteNote: async (id: string) => {
-    return prisma.candidateNote.delete({
+  deleteNote: async (id: string, tx?: Prisma.TransactionClient) => {
+    const client = tx || prisma;
+    return client.candidateNote.delete({
       where: { id },
     });
   },
 
-  findNoteById: async (id: string) => {
-    return prisma.candidateNote.findUnique({
+  findNoteById: async (id: string, tx?: Prisma.TransactionClient) => {
+    const client = tx || prisma;
+    return client.candidateNote.findUnique({
       where: { id },
     });
   },
 
   // Tags
-  findTagByName: async (companyId: string, name: string) => {
-    return prisma.tag.findUnique({
+  findTagByName: async (companyId: string, name: string, tx?: Prisma.TransactionClient) => {
+    const client = tx || prisma;
+    return client.tag.findUnique({
       where: {
         companyId_name: { companyId, name: name.toLowerCase() },
       },
     });
   },
 
-  createTag: async (companyId: string, name: string) => {
-    return prisma.tag.create({
+  createTag: async (companyId: string, name: string, tx?: Prisma.TransactionClient) => {
+    const client = tx || prisma;
+    return client.tag.create({
       data: {
         companyId,
         name: name.toLowerCase(),
@@ -468,8 +526,9 @@ export const candidateRepository = {
     });
   },
 
-  assignTag: async (candidateId: string, tagId: string) => {
-    return prisma.candidateTag.create({
+  assignTag: async (candidateId: string, tagId: string, tx?: Prisma.TransactionClient) => {
+    const client = tx || prisma;
+    return client.candidateTag.create({
       data: {
         candidateId,
         tagId,
@@ -477,16 +536,18 @@ export const candidateRepository = {
     });
   },
 
-  removeTag: async (candidateId: string, tagId: string) => {
-    return prisma.candidateTag.delete({
+  removeTag: async (candidateId: string, tagId: string, tx?: Prisma.TransactionClient) => {
+    const client = tx || prisma;
+    return client.candidateTag.delete({
       where: {
         candidateId_tagId: { candidateId, tagId },
       },
     });
   },
 
-  findCandidateTag: async (candidateId: string, tagId: string) => {
-    return prisma.candidateTag.findUnique({
+  findCandidateTag: async (candidateId: string, tagId: string, tx?: Prisma.TransactionClient) => {
+    const client = tx || prisma;
+    return client.candidateTag.findUnique({
       where: {
         candidateId_tagId: { candidateId, tagId },
       },

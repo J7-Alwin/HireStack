@@ -107,8 +107,9 @@ model Company {
   users        User[]
   departments  Department[]
   jobs         Job[]
-  candidates   Candidate[]
-  tags         Tag[]
+  candidates       Candidate[]
+  tags             Tag[]
+  candidateCounter CompanyCandidateCounter?
 
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
@@ -322,6 +323,9 @@ model Candidate {
   noticePeriod       Int?
   employmentStatus   EmploymentStatus?
   source             CandidateSource?
+  linkedInUrl        String?
+  githubUrl          String?
+  portfolioUrl       String?
   status             CandidateStatus      @default(ACTIVE)
   isActive           Boolean              @default(true)
   deletedAt          DateTime?
@@ -455,4 +459,10 @@ model CandidateTag {
   @@id([candidateId, tagId])
   @@index([candidateId])
   @@index([tagId])
+}
+
+model CompanyCandidateCounter {
+  companyId String  @id
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  count     Int     @default(0)
 }

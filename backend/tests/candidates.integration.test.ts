@@ -503,6 +503,113 @@ async function runTests() {
     assert(restored.status === CandidateStatus.ACTIVE, "Re-activated status set to ACTIVE on restore");
     console.log("   -> Success!");
 
+    // ----------------------------------------------------
+    // TEST 15: Nested Transaction Rollback
+    // ----------------------------------------------------
+    console.log("🧪 Test 15: Verifying creation transaction rolls back on nested error...");
+    
+    const randomEmail = `failed-${Date.now()}@rollback.com`;
+    
+    await assertThrows(
+      async () =>
+        await candidateService.createCandidate(
+          {
+            firstName: "Rollback",
+            lastName: "Candidate",
+            email: randomEmail,
+            primaryRecruiterId: recruiterA1User.id,
+            skills: [
+              {
+                skillId: "cl00000000000000000000000", // Fails here!
+                proficiency: SkillProficiency.ADVANCED,
+              },
+            ],
+          },
+          contextAdminA
+        ),
+      Error,
+      "Skill does not exist"
+    );
+
+    // Candidate should NOT exist in database
+    const queryNonExistent = await prisma.candidate.findFirst({
+      where: { email: randomEmail, companyId: companyA.id },
+    });
+    assert(queryNonExistent === null, "Candidate must not exist in the database after transaction rollback");
+    console.log("   -> Success!");
+
+    // ----------------------------------------------------
+    // TEST 16: Concurrency Candidate Code Generation
+    // ----------------------------------------------------
+    console.log("🧪 Test 16: Verifying concurrency-safe candidate code generation...");
+    
+    // Execute two creates concurrently
+    const [c1, c2] = await Promise.all([
+      candidateService.createCandidate(
+        {
+          firstName: "Concurrent1",
+          lastName: "Doe",
+          email: `concur1-${Date.now()}@concurrent.com`,
+          primaryRecruiterId: recruiterA1User.id,
+        },
+        contextAdminA
+      ),
+      candidateService.createCandidate(
+        {
+          firstName: "Concurrent2",
+          lastName: "Doe",
+          email: `concur2-${Date.now()}@concurrent.com`,
+          primaryRecruiterId: recruiterA1User.id,
+        },
+        contextAdminA
+      ),
+    ]);
+
+    assert(c1.candidateCode !== c2.candidateCode, "Concurrent code generations must result in unique candidate codes");
+    
+    // Verify sequence incremental codes (e.g. CAN-00003 and CAN-00004 or similar sequence numbers)
+    const code1Num = parseInt(c1.candidateCode.split("-")[1], 10);
+    const code2Num = parseInt(c2.candidateCode.split("-")[1], 10);
+    assert(Math.abs(code1Num - code2Num) === 1, "Candidate code numbers should be sequentially consecutive");
+    console.log("   -> Success!");
+
+    // ----------------------------------------------------
+    // TEST 17: Social URLs & Expected Validation Limits
+    // ----------------------------------------------------
+    console.log("🧪 Test 17: Verifying URL and salary validation...");
+    
+    await assertThrows(
+      async () =>
+        await candidateService.createCandidate(
+          {
+            firstName: "Invalid",
+            lastName: "Urls",
+            email: `invalid-urls-${Date.now()}@gmail.com`,
+            primaryRecruiterId: recruiterA1User.id,
+            linkedInUrl: "invalid-url-string", // Violates z.string().url()
+          },
+          contextAdminA
+        ),
+      Error
+    );
+
+    await assertThrows(
+      async () =>
+        await candidateService.createCandidate(
+          {
+            firstName: "Negative",
+            lastName: "Salary",
+            email: `neg-salary-${Date.now()}@gmail.com`,
+            primaryRecruiterId: recruiterA1User.id,
+            expectedSalary: -1000, // Violates nonnegative
+          },
+          contextAdminA
+        ),
+      Error
+    );
+
+    console.log("   -> Success!");
+
     console.log("\n🎉 All Candidate Module integration tests passed successfully!\n");
   } finally {
     console.log("🧹 Cleaning up seeded test database records...");
@@ -542,6 +649,11 @@ async function runTests() {
 
     // Delete Tags
     await prisma.tag.deleteMany({
+      where: { companyId: { in: [companyA.id, companyB.id] } },
+    });
+
+    // Delete counters
+    await prisma.companyCandidateCounter.deleteMany({
       where: { companyId: { in: [companyA.id, companyB.id] } },
     });
 

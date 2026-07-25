@@ -1,9 +1,9 @@
 import {
-  CandidateStatus,
   Gender,
   EmploymentStatus,
   CandidateSource,
   SkillProficiency,
+  CandidateStatus,
   DocumentType,
 } from "@prisma/client";
 
@@ -27,50 +27,56 @@ export interface CandidateQueryFilters {
 export interface CandidateCreateInput {
   firstName: string;
   lastName: string;
-  email?: string;
-  phone?: string;
-  alternatePhone?: string;
-  gender?: Gender;
-  address?: string;
-  city?: string;
-  state?: string;
-  country?: string;
-  zipCode?: string;
-  currentCompany?: string;
-  currentDesignation?: string;
-  experienceYears?: number;
-  experienceMonths?: number;
-  expectedSalary?: number;
-  currentSalary?: number;
-  currency?: string;
-  noticePeriod?: number;
-  employmentStatus?: EmploymentStatus;
-  source?: CandidateSource;
+  email?: string | null;
+  phone?: string | null;
+  alternatePhone?: string | null;
+  gender?: Gender | null;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  country?: string | null;
+  zipCode?: string | null;
+  currentCompany?: string | null;
+  currentDesignation?: string | null;
+  experienceYears?: number | null;
+  experienceMonths?: number | null;
+  expectedSalary?: number | null;
+  currentSalary?: number | null;
+  currency?: string | null;
+  noticePeriod?: number | null;
+  employmentStatus?: EmploymentStatus | null;
+  source?: CandidateSource | null;
+  linkedInUrl?: string | null;
+  githubUrl?: string | null;
+  portfolioUrl?: string | null;
   primaryRecruiterId: string;
 }
 
 export interface CandidateUpdateInput {
   firstName?: string;
   lastName?: string;
-  email?: string;
-  phone?: string;
-  alternatePhone?: string;
-  gender?: Gender;
-  address?: string;
-  city?: string;
-  state?: string;
-  country?: string;
-  zipCode?: string;
-  currentCompany?: string;
-  currentDesignation?: string;
-  experienceYears?: number;
-  experienceMonths?: number;
-  expectedSalary?: number;
-  currentSalary?: number;
-  currency?: string;
-  noticePeriod?: number;
-  employmentStatus?: EmploymentStatus;
-  source?: CandidateSource;
+  email?: string | null;
+  phone?: string | null;
+  alternatePhone?: string | null;
+  gender?: Gender | null;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  country?: string | null;
+  zipCode?: string | null;
+  currentCompany?: string | null;
+  currentDesignation?: string | null;
+  experienceYears?: number | null;
+  experienceMonths?: number | null;
+  expectedSalary?: number | null;
+  currentSalary?: number | null;
+  currency?: string | null;
+  noticePeriod?: number | null;
+  employmentStatus?: EmploymentStatus | null;
+  source?: CandidateSource | null;
+  linkedInUrl?: string | null;
+  githubUrl?: string | null;
+  portfolioUrl?: string | null;
   primaryRecruiterId?: string;
   status?: CandidateStatus;
 }
@@ -78,39 +84,39 @@ export interface CandidateUpdateInput {
 export interface CandidateSkillInput {
   skillId: string;
   proficiency?: SkillProficiency;
-  experienceYears?: number;
-  experienceMonths?: number;
+  experienceYears?: number | null;
+  experienceMonths?: number | null;
   isPrimary?: boolean;
 }
 
 export interface CandidateEducationInput {
   degree: string;
-  specialization?: string;
+  specialization?: string | null;
   institution: string;
-  university?: string;
-  startDate?: string;
-  endDate?: string;
-  graduationYear?: number;
-  grade?: string;
+  university?: string | null;
+  startDate?: string | null;
+  endDate?: string | null;
+  graduationYear?: number | null;
+  grade?: string | null;
   isHighest?: boolean;
 }
 
 export interface CandidateExperienceInput {
   company: string;
   designation: string;
-  employmentType?: string;
+  employmentType?: string | null;
   startDate: string;
-  endDate?: string;
+  endDate?: string | null;
   isCurrent?: boolean;
-  description?: string;
+  description?: string | null;
 }
 
 export interface CandidateDocumentInput {
   fileName: string;
   fileUrl: string;
   fileKey: string;
-  fileSize?: number;
-  mimeType?: string;
+  fileSize?: number | null;
+  mimeType?: string | null;
   documentType?: DocumentType;
   isActive?: boolean;
 }
@@ -144,6 +150,9 @@ export interface SafeCandidate {
   noticePeriod: number | null;
   employmentStatus: EmploymentStatus | null;
   source: CandidateSource | null;
+  linkedInUrl: string | null;
+  githubUrl: string | null;
+  portfolioUrl: string | null;
   status: CandidateStatus;
   isActive: boolean;
   deletedAt: Date | null;
@@ -166,8 +175,12 @@ export interface SafeCandidate {
     name: string | null;
     email: string;
   } | null;
+  createdAt: Date;
+  updatedAt: Date;
   skills: Array<{
-    proficiency: SkillProficiency;
+    candidateId: string;
+    skillId: string;
+    proficiency: SkillProficiency | null;
     experienceYears: number | null;
     experienceMonths: number | null;
     isPrimary: boolean;
@@ -179,6 +192,7 @@ export interface SafeCandidate {
   }>;
   education: Array<{
     id: string;
+    candidateId: string;
     degree: string;
     specialization: string | null;
     institution: string;
@@ -193,6 +207,7 @@ export interface SafeCandidate {
   }>;
   experience: Array<{
     id: string;
+    candidateId: string;
     company: string;
     designation: string;
     employmentType: string | null;
@@ -205,6 +220,7 @@ export interface SafeCandidate {
   }>;
   documents: Array<{
     id: string;
+    candidateId: string;
     fileName: string;
     fileUrl: string;
     fileKey: string;
@@ -214,24 +230,27 @@ export interface SafeCandidate {
     isActive: boolean;
     uploadedBy: string;
     createdAt: Date;
+    updatedAt: Date;
   }>;
   notes: Array<{
     id: string;
-    content: string;
-    createdAt: Date;
-    updatedAt: Date;
+    candidateId: string;
+    authorId: string;
     author: {
       id: string;
       name: string | null;
     };
+    content: string;
+    createdAt: Date;
+    updatedAt: Date;
   }>;
   tags: Array<{
+    candidateId: string;
+    tagId: string;
     createdAt: Date;
     tag: {
       id: string;
       name: string;
     };
   }>;
-  createdAt: Date;
-  updatedAt: Date;
 }
