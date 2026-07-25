@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { prisma } from "../src/config/prisma";
 import { applicationService } from "../src/modules/applications/application.service";
+import { ApplicationUpdateInput } from "../src/modules/applications/application.types";
 import { Role, ApplicationStage, ApplicationStatus, CandidateSource, JobStatus, CandidateStatus } from "@prisma/client";
 import { AuthenticatedUser } from "../src/shared/types";
 import { ConflictError, ForbiddenError, UnprocessableEntityError, ValidationError } from "../src/shared/errors";
@@ -30,13 +31,13 @@ async function assertThrows(
     throw new Error(`Expected function to throw ${errorClass.name} but it succeeded`);
   }
 
-  const err = caughtError as Error;
+  const err = caughtError as Error & { constructor: { name: string } };
 
   if (err.constructor.name !== errorClass.name && !(err instanceof errorClass)) {
-    throw new Error(`Expected error of type ${errorClass.name}, but got ${err.constructor.name}: ${err.message}`, { cause: err });
+    throw new Error(`Expected error of type ${errorClass.name}, but got ${err.constructor.name}: ${err.message}`);
   }
   if (expectedMessage && !err.message.includes(expectedMessage)) {
-    throw new Error(`Expected error message to contain "${expectedMessage}", but got "${err.message}"`, { cause: err });
+    throw new Error(`Expected error message to contain "${expectedMessage}", but got "${err.message}"`);
   }
 }
 
@@ -222,40 +223,40 @@ async function runTests() {
   console.log("✔ Seed completed successfully.\n");
 
   // Create mock auth contexts
-  const authAdminA: AuthenticatedUser = {
+  const authAdminA = {
     id: adminAUser.id,
     email: adminAUser.email,
     role: Role.COMPANY_ADMIN,
     companyId: companyA.id,
-  };
+  } as unknown as AuthenticatedUser;
 
-  const authRecruiterA1: AuthenticatedUser = {
+  const authRecruiterA1 = {
     id: recruiterA1User.id,
     email: recruiterA1User.email,
     role: Role.RECRUITER,
     companyId: companyA.id,
-  };
+  } as unknown as AuthenticatedUser;
 
-  const authRecruiterA2: AuthenticatedUser = {
+  const authRecruiterA2 = {
     id: recruiterA2User.id,
     email: recruiterA2User.email,
     role: Role.RECRUITER,
     companyId: companyA.id,
-  };
+  } as unknown as AuthenticatedUser;
 
-  const _authAdminB: AuthenticatedUser = {
+  const _authAdminB = {
     id: adminBUser.id,
     email: adminBUser.email,
     role: Role.COMPANY_ADMIN,
     companyId: companyB.id,
-  };
+  } as unknown as AuthenticatedUser;
 
-  const _authSuperAdmin: AuthenticatedUser = {
+  const _authSuperAdmin = {
     id: superAdminUser.id,
     email: superAdminUser.email,
     role: Role.SUPER_ADMIN,
     companyId: undefined,
-  };
+  } as unknown as AuthenticatedUser;
 
   let application1Id = "";
 
@@ -616,7 +617,7 @@ async function runTests() {
     async () => {
       await applicationService.updateApplication(
         application1Id,
-        { jobId: jobOpenB.id } as any,
+        { jobId: jobOpenB.id } as unknown as ApplicationUpdateInput,
         authAdminA
       );
     },
@@ -629,7 +630,7 @@ async function runTests() {
     async () => {
       await applicationService.updateApplication(
         application1Id,
-        { candidateId: candidateB.id } as any,
+        { candidateId: candidateB.id } as unknown as ApplicationUpdateInput,
         authAdminA
       );
     },
@@ -642,7 +643,7 @@ async function runTests() {
     async () => {
       await applicationService.updateApplication(
         application1Id,
-        { applicationCode: "APP-999999" } as any,
+        { applicationCode: "APP-999999" } as unknown as ApplicationUpdateInput,
         authAdminA
       );
     },

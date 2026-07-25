@@ -1,4 +1,4 @@
-import { Role, ApplicationStage, ApplicationStatus, CandidateStatus } from "@prisma/client";
+import { Role, ApplicationStage, ApplicationStatus, Prisma } from "@prisma/client";
 import { prisma } from "../../config/prisma";
 import { ForbiddenError, NotFoundError, ConflictError, UnprocessableEntityError, ValidationError } from "../../shared/errors";
 import { AuthenticatedUser } from "../../shared/types";
@@ -42,7 +42,7 @@ function enforceWriterRole(currentUser: AuthenticatedUser) {
   }
 }
 
-async function getApplicationAndValidateAccess(id: string, currentUser: AuthenticatedUser, tx?: any) {
+async function getApplicationAndValidateAccess(id: string, currentUser: AuthenticatedUser, tx?: Prisma.TransactionClient) {
   const application = await applicationRepository.findById(id, false, tx);
   if (!application) {
     throw new NotFoundError(APPLICATIONS_MESSAGES.APPLICATION_NOT_FOUND);
@@ -57,7 +57,7 @@ async function getApplicationAndValidateAccess(id: string, currentUser: Authenti
   return application;
 }
 
-function verifyNoImmutableFields(body: any) {
+function verifyNoImmutableFields(body: unknown) {
   const immutableFields = ["applicationCode", "companyId", "candidateId", "jobId", "appliedAt", "createdAt"];
   for (const field of immutableFields) {
     if (body && typeof body === "object" && field in body) {
