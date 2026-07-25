@@ -2,6 +2,7 @@ import { Role, InterviewStatus, InterviewMode, Prisma } from "@prisma/client";
 import { prisma } from "../../../config/prisma";
 import { ForbiddenError, NotFoundError, ConflictError, UnprocessableEntityError, ValidationError } from "../../../shared/errors";
 import { AuthenticatedUser } from "../../../shared/types";
+import { logger } from "../../../shared/logger/logger";
 import { INTERVIEW_MESSAGES, STATUS_TRANSITION_RULES } from "../constants/interview.constants";
 import { interviewRepository } from "../repository/interview.repository";
 import {
@@ -23,7 +24,7 @@ import {
   cancelSchema,
   assignInterviewersSchema,
   queryInterviewsSchema,
-} from "../validation/interview.validation";
+} from "../validation";
 import { paginationHelper } from "../../../shared/pagination/pagination.helper";
 
 // Scoping company validations
@@ -66,14 +67,9 @@ function verifyNoImmutableFields(body: unknown) {
   }
 }
 
-function validateTimeRange(startTimeStr: string, endTimeStr: string) {
+function validateTimeInFuture(startTimeStr: string) {
   const start = new Date(startTimeStr);
-  const end = new Date(endTimeStr);
   const now = new Date();
-
-  if (start >= end) {
-    throw new ValidationError(INTERVIEW_MESSAGES.TIME_VALIDATION_ERROR);
-  }
 
   // Prevent scheduling in the past
   if (start < now) {
@@ -87,9 +83,9 @@ export const interviewService = {
     const companyId = currentUser.companyId!;
 
     const parsedInput = createInterviewSchema.parse(input);
-    validateTimeRange(parsedInput.startTime, parsedInput.endTime);
+    validateTimeInFuture(parsedInput.startTime);
 
-    return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // 1. Verify parent Application exists, belongs to company, and is ACTIVE
       const application = await interviewRepository.findActiveApplication(parsedInput.applicationId, tx);
       if (!application) {
@@ -153,6 +149,18 @@ export const interviewService = {
     }, {
       timeout: 20000,
     });
+
+    logger.info("Interview Scheduled", {
+      interviewId: result.id,
+      interviewCode: result.interviewCode,
+      companyId: result.companyId,
+      applicationId: result.applicationId,
+      userId: currentUser.id,
+      operation: "Interview Scheduled",
+      timestamp: new Date().toISOString(),
+    });
+
+    return result;
   },
 
   listInterviews: async (query: InterviewQueryFilters, currentUser: AuthenticatedUser) => {
@@ -197,7 +205,7 @@ export const interviewService = {
 
     const parsedInput = updateInterviewSchema.parse(input);
 
-    return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const interview = await getInterviewAndValidateAccess(id, currentUser, tx);
 
       if (
@@ -210,11 +218,11 @@ export const interviewService = {
 
       // If mode is updated to ONLINE, require meetingLink
       if (parsedInput.mode === InterviewMode.ONLINE && !interview.meetingLink) {
-        throw new ValidationError("Meeting link is required for online interviews");
+        throw new ValidationError("ONLINE interview requires meetingLink");
       }
       // If mode is updated to ONSITE, require location
       if (parsedInput.mode === InterviewMode.ONSITE && !interview.location) {
-        throw new ValidationError("Location is required for onsite interviews");
+        throw new ValidationError("ONSITE interview requires location");
       }
 
       return await interviewRepository.update(
@@ -229,6 +237,18 @@ export const interviewService = {
     }, {
       timeout: 20000,
     });
+
+    logger.info("Interview Updated", {
+      interviewId: result.id,
+      interviewCode: result.interviewCode,
+      companyId: result.companyId,
+      applicationId: result.applicationId,
+      userId: currentUser.id,
+      operation: "Interview Updated",
+      timestamp: new Date().toISOString(),
+    });
+
+    return result;
   },
 
   rescheduleInterview: async (id: string, input: RescheduleInterviewInput, currentUser: AuthenticatedUser) => {
@@ -236,9 +256,9 @@ export const interviewService = {
     enforceWriterRole(currentUser);
 
     const parsedInput = rescheduleSchema.parse(input);
-    validateTimeRange(parsedInput.startTime, parsedInput.endTime);
+    validateTimeInFuture(parsedInput.startTime);
 
-    return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const interview = await getInterviewAndValidateAccess(id, currentUser, tx);
 
       if (
@@ -251,10 +271,10 @@ export const interviewService = {
 
       // Check conditional validations based on current mode
       if (interview.mode === InterviewMode.ONLINE && !parsedInput.meetingLink) {
-        throw new ValidationError("Meeting link is required for online interviews");
+        throw new ValidationError("ONLINE interview requires meetingLink");
       }
       if (interview.mode === InterviewMode.ONSITE && !parsedInput.location) {
-        throw new ValidationError("Location is required for onsite interviews");
+        throw new ValidationError("ONSITE interview requires location");
       }
 
       // Check interviewer availability conflicts (excluding this interview)
@@ -288,6 +308,18 @@ export const interviewService = {
     }, {
       timeout: 20000,
     });
+
+    logger.info("Interview Rescheduled", {
+      interviewId: result.id,
+      interviewCode: result.interviewCode,
+      companyId: result.companyId,
+      applicationId: result.applicationId,
+      userId: currentUser.id,
+      operation: "Interview Rescheduled",
+      timestamp: new Date().toISOString(),
+    });
+
+    return result;
   },
 
   cancelInterview: async (id: string, input: CancelInterviewInput, currentUser: AuthenticatedUser) => {
@@ -296,7 +328,7 @@ export const interviewService = {
 
     const parsedInput = cancelSchema.parse(input);
 
-    return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const interview = await getInterviewAndValidateAccess(id, currentUser, tx);
 
       const currentStatus = interview.status;
@@ -319,6 +351,18 @@ export const interviewService = {
     }, {
       timeout: 20000,
     });
+
+    logger.info("Interview Cancelled", {
+      interviewId: result.id,
+      interviewCode: result.interviewCode,
+      companyId: result.companyId,
+      applicationId: result.applicationId,
+      userId: currentUser.id,
+      operation: "Interview Cancelled",
+      timestamp: new Date().toISOString(),
+    });
+
+    return result;
   },
 
   updateStatus: async (id: string, input: UpdateStatusInput, currentUser: AuthenticatedUser) => {
@@ -362,7 +406,7 @@ export const interviewService = {
 
     const parsedInput = outcomeSchema.parse(input);
 
-    return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const interview = await getInterviewAndValidateAccess(id, currentUser, tx);
 
       if (interview.status !== InterviewStatus.COMPLETED) {
@@ -381,6 +425,18 @@ export const interviewService = {
     }, {
       timeout: 20000,
     });
+
+    logger.info("Interview Outcome Recorded", {
+      interviewId: result.id,
+      interviewCode: result.interviewCode,
+      companyId: result.companyId,
+      applicationId: result.applicationId,
+      userId: currentUser.id,
+      operation: "Interview Outcome Recorded",
+      timestamp: new Date().toISOString(),
+    });
+
+    return result;
   },
 
   assignInterviewers: async (id: string, input: AssignInterviewersInput, currentUser: AuthenticatedUser) => {
@@ -390,7 +446,7 @@ export const interviewService = {
     const parsedInput = assignInterviewersSchema.parse(input);
     const companyId = currentUser.companyId!;
 
-    return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const interview = await getInterviewAndValidateAccess(id, currentUser, tx);
 
       if (
@@ -432,6 +488,32 @@ export const interviewService = {
     }, {
       timeout: 20000,
     });
+
+    if (!result) {
+      throw new NotFoundError(INTERVIEW_MESSAGES.INTERVIEW_NOT_FOUND);
+    }
+
+    logger.info("Interviewers Assigned", {
+      interviewId: result.id,
+      interviewCode: result.interviewCode,
+      companyId: result.companyId,
+      applicationId: result.applicationId,
+      userId: currentUser.id,
+      operation: "Interviewers Assigned",
+      timestamp: new Date().toISOString(),
+    });
+
+    logger.info("Interviewers Updated", {
+      interviewId: result.id,
+      interviewCode: result.interviewCode,
+      companyId: result.companyId,
+      applicationId: result.applicationId,
+      userId: currentUser.id,
+      operation: "Interviewers Updated",
+      timestamp: new Date().toISOString(),
+    });
+
+    return result;
   },
 
   softDeleteInterview: async (id: string, currentUser: AuthenticatedUser) => {

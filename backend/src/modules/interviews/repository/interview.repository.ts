@@ -2,7 +2,56 @@ import { Prisma, InterviewRound } from "@prisma/client";
 import { prisma } from "../../../config/prisma";
 import { CreateInterviewInput, InterviewQueryFilters } from "../types/interview.types";
 
-const interviewSelect = {
+export const RecruiterSelect = {
+  id: true,
+  name: true,
+  firstName: true,
+  lastName: true,
+  email: true,
+} as const;
+
+export const CandidateSelect = {
+  id: true,
+  candidateCode: true,
+  firstName: true,
+  lastName: true,
+  email: true,
+  phone: true,
+} as const;
+
+export const JobSelect = {
+  id: true,
+  jobCode: true,
+  title: true,
+} as const;
+
+export const ApplicationSelect = {
+  id: true,
+  applicationCode: true,
+  stage: true,
+  status: true,
+  assignedRecruiterId: true,
+  assignedRecruiter: {
+    select: RecruiterSelect,
+  },
+  candidate: {
+    select: CandidateSelect,
+  },
+  job: {
+    select: JobSelect,
+  },
+} as const;
+
+export const InterviewerSelect = {
+  id: true,
+  name: true,
+  firstName: true,
+  lastName: true,
+  email: true,
+  designation: true,
+} as const;
+
+export const InterviewSelect = {
   id: true,
   interviewCode: true,
   companyId: true,
@@ -30,56 +79,29 @@ const interviewSelect = {
   updatedAt: true,
   deletedAt: true,
   application: {
-    select: {
-      id: true,
-      applicationCode: true,
-      stage: true,
-      status: true,
-      assignedRecruiterId: true,
-      assignedRecruiter: {
-        select: {
-          id: true,
-          name: true,
-          firstName: true,
-          lastName: true,
-          email: true,
-        },
-      },
-      candidate: {
-        select: {
-          id: true,
-          candidateCode: true,
-          firstName: true,
-          lastName: true,
-          email: true,
-          phone: true,
-        },
-      },
-      job: {
-        select: {
-          id: true,
-          jobCode: true,
-          title: true,
-        },
-      },
-    },
+    select: ApplicationSelect,
   },
   interviewers: {
     select: {
       id: true,
       interviewerId: true,
       interviewer: {
-        select: {
-          id: true,
-          name: true,
-          firstName: true,
-          lastName: true,
-          email: true,
-          designation: true,
-        },
+        select: InterviewerSelect,
       },
     },
   },
+} as const;
+
+const buildDateRange = (dateStr: string) => {
+  const date = new Date(dateStr);
+  const startOfDay = new Date(date);
+  startOfDay.setUTCHours(0, 0, 0, 0);
+  const endOfDay = new Date(date);
+  endOfDay.setUTCHours(23, 59, 59, 999);
+  return {
+    gte: startOfDay,
+    lte: endOfDay,
+  };
 };
 
 export const interviewRepository = {
@@ -113,7 +135,7 @@ export const interviewRepository = {
           })),
         },
       },
-      select: interviewSelect,
+      select: InterviewSelect,
     });
   },
 
@@ -124,7 +146,7 @@ export const interviewRepository = {
         id,
         ...(includeDeleted ? {} : { deletedAt: null }),
       },
-      select: interviewSelect,
+      select: InterviewSelect,
     });
   },
 
@@ -136,7 +158,7 @@ export const interviewRepository = {
         interviewCode,
         deletedAt: null,
       },
-      select: interviewSelect,
+      select: InterviewSelect,
     });
   },
 
@@ -175,9 +197,6 @@ export const interviewRepository = {
     tx?: Prisma.TransactionClient
   ) => {
     const client = tx || prisma;
-    
-    // Find any active (not cancelled, not soft-deleted) interview that overlaps the proposed slot
-    // and has at least one matching interviewer
     return await client.interview.findFirst({
       where: {
         ...(skipInterviewId ? { id: { not: skipInterviewId } } : {}),
@@ -226,28 +245,24 @@ export const interviewRepository = {
     return await client.interview.update({
       where: { id },
       data,
-      select: interviewSelect,
+      select: InterviewSelect,
     });
   },
 
   updateInterviewers: async (id: string, interviewerIds: string[], tx?: Prisma.TransactionClient) => {
     const client = tx || prisma;
-    
-    // Within transaction, clear old interviewers and link new ones
     await client.interviewInterviewer.deleteMany({
       where: { interviewId: id },
     });
-
     await client.interviewInterviewer.createMany({
       data: interviewerIds.map((interviewerId) => ({
         interviewId: id,
         interviewerId,
       })),
     });
-
     return await client.interview.findFirst({
       where: { id },
-      select: interviewSelect,
+      select: InterviewSelect,
     });
   },
 
@@ -256,7 +271,7 @@ export const interviewRepository = {
     return await client.interview.update({
       where: { id },
       data: { deletedAt: new Date() },
-      select: interviewSelect,
+      select: InterviewSelect,
     });
   },
 
@@ -289,29 +304,11 @@ export const interviewRepository = {
     }
 
     if (filters.scheduledDate) {
-      const date = new Date(filters.scheduledDate);
-      const startOfDay = new Date(date);
-      startOfDay.setUTCHours(0, 0, 0, 0);
-      const endOfDay = new Date(date);
-      endOfDay.setUTCHours(23, 59, 59, 999);
-
-      where.scheduledDate = {
-        gte: startOfDay,
-        lte: endOfDay,
-      };
+      where.scheduledDate = buildDateRange(filters.scheduledDate);
     }
 
     if (filters.createdAt) {
-      const date = new Date(filters.createdAt);
-      const startOfDay = new Date(date);
-      startOfDay.setUTCHours(0, 0, 0, 0);
-      const endOfDay = new Date(date);
-      endOfDay.setUTCHours(23, 59, 59, 999);
-
-      where.createdAt = {
-        gte: startOfDay,
-        lte: endOfDay,
-      };
+      where.createdAt = buildDateRange(filters.createdAt);
     }
 
     if (filters.search) {
@@ -364,7 +361,6 @@ export const interviewRepository = {
       ];
     }
 
-    // Determine ordering
     let orderBy: Prisma.InterviewOrderByWithRelationInput | Prisma.InterviewOrderByWithRelationInput[] = {
       scheduledDate: "asc",
     };
@@ -387,14 +383,13 @@ export const interviewRepository = {
         orderBy = { status: order };
       }
     } else {
-      // Default: Upcoming interviews first (scheduledDate asc, startTime asc)
       orderBy = [{ scheduledDate: "asc" }, { startTime: "asc" }];
     }
 
     const [data, total] = await Promise.all([
       client.interview.findMany({
         where,
-        select: interviewSelect,
+        select: InterviewSelect,
         orderBy,
         skip,
         take,
@@ -410,7 +405,6 @@ export const interviewRepository = {
     };
   },
 
-  // Helper check user company matching
   findUsersCompany: async (userIds: string[], tx?: Prisma.TransactionClient) => {
     const client = tx || prisma;
     return await client.user.findMany({

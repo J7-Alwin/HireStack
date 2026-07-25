@@ -221,7 +221,7 @@ async function runTests() {
   const endTime = new Date(baseScheduledDate);
   endTime.setHours(11, 0, 0, 0);
 
-  // Online creation - missing meetingLink -> Throws ValidationError
+  // Online creation - missing meetingLink -> Throws ZodError
   await assertThrows(
     async () => {
       await interviewService.scheduleInterview(
@@ -240,7 +240,7 @@ async function runTests() {
       );
     },
     z.ZodError,
-    "Meeting link is required"
+    "ONLINE interview requires meetingLink"
   );
 
   // Onsite creation - missing location -> Throws ValidationError
@@ -262,7 +262,35 @@ async function runTests() {
       );
     },
     z.ZodError,
-    "Location is required"
+    "ONSITE interview requires location"
+  );
+
+  // Time range validation check: startTime >= endTime -> Throws ZodError
+  const invalidTimeStart = new Date(baseScheduledDate);
+  invalidTimeStart.setHours(12, 0, 0, 0);
+  const invalidTimeEnd = new Date(baseScheduledDate);
+  invalidTimeEnd.setHours(11, 0, 0, 0);
+
+  await assertThrows(
+    async () => {
+      await interviewService.scheduleInterview(
+        {
+          applicationId: application1.id,
+          interviewType: InterviewType.INTERNAL,
+          round: InterviewRound.TECHNICAL,
+          mode: InterviewMode.ONLINE,
+          scheduledDate: baseScheduledDateStr,
+          startTime: invalidTimeStart.toISOString(),
+          endTime: invalidTimeEnd.toISOString(),
+          timeZone: "Asia/Kolkata",
+          meetingLink: "https://zoom.us/j/123",
+          interviewers: [recruiterA1User.id],
+        },
+        authAdminA
+      );
+    },
+    z.ZodError,
+    "End time must be later than start time"
   );
 
   // Create Online Interview successfully
