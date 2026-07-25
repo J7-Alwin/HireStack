@@ -65,6 +65,10 @@ model User {
   applicationsAssigned         Application[]  @relation("ApplicationAssignedRecruiter")
   applicationsCreated          Application[]  @relation("ApplicationCreator")
   applicationsUpdated          Application[]  @relation("ApplicationUpdater")
+  interviewsInterviewer        InterviewInterviewer[] @relation("InterviewInterviewerUser")
+  interviewsCreated            Interview[]            @relation("InterviewCreator")
+  interviewsUpdated            Interview[]            @relation("InterviewUpdater")
+  interviewsCancelled          Interview[]            @relation("InterviewCanceller")
 
 
   createdAt DateTime @default(now())
@@ -115,6 +119,8 @@ model Company {
   candidateCounter CompanyCandidateCounter?
   applications     Application[]
   applicationCounter CompanyApplicationCounter?
+  interviews       Interview[]
+  interviewCounter CompanyInterviewCounter?
 
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
@@ -517,6 +523,7 @@ model Application {
   createdAt            DateTime          @default(now())
   updatedAt            DateTime          @updatedAt
   deletedAt            DateTime?
+  interviews           Interview[]
 
   @@unique([companyId, applicationCode])
   @@index([companyId])
@@ -529,6 +536,110 @@ model Application {
 }
 
 model CompanyApplicationCounter {
+  companyId String  @id
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  count     Int     @default(0)
+}
+
+enum InterviewType {
+  INTERNAL
+  CLIENT
+  CAMPUS
+  WALK_IN
+  OTHER
+}
+
+enum InterviewRound {
+  SCREENING
+  TECHNICAL
+  MANAGERIAL
+  HR
+  FINAL
+}
+
+enum InterviewStatus {
+  SCHEDULED
+  CONFIRMED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum InterviewOutcome {
+  PASS
+  FAIL
+  ON_HOLD
+  RECOMMENDED
+  STRONG_RECOMMEND
+  NOT_RECOMMENDED
+}
+
+enum InterviewMode {
+  ONLINE
+  ONSITE
+  PHONE
+}
+
+model Interview {
+  id                 String             @id @default(cuid())
+  interviewCode      String
+  companyId          String
+  company            Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  applicationId      String
+  application        Application        @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  interviewType      InterviewType
+  round              InterviewRound
+  status             InterviewStatus    @default(SCHEDULED)
+  outcome            InterviewOutcome?
+  mode               InterviewMode
+  scheduledDate      DateTime
+  startTime          DateTime
+  endTime            DateTime
+  timeZone           String
+  meetingLink        String?            @db.VarChar(2048)
+  location           String?            @db.VarChar(500)
+  notes              String?            @db.VarChar(3000)
+  resultNotes        String?            @db.VarChar(3000)
+  cancellationReason String?            @db.VarChar(1000)
+  cancelledAt        DateTime?
+  cancelledById      String?
+  cancelledBy        User?              @relation("InterviewCanceller", fields: [cancelledById], references: [id], onDelete: SetNull)
+  completedAt        DateTime?
+  createdBy          String
+  creator            User               @relation("InterviewCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+  updatedBy          String?
+  updater            User?              @relation("InterviewUpdater", fields: [updatedBy], references: [id], onDelete: SetNull)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  deletedAt          DateTime?
+  interviewers       InterviewInterviewer[]
+
+  @@unique([companyId, interviewCode])
+  @@index([companyId])
+  @@index([applicationId])
+  @@index([status])
+  @@index([round])
+  @@index([interviewType])
+  @@index([scheduledDate])
+  @@index([createdAt])
+  @@index([deletedAt])
+}
+
+model InterviewInterviewer {
+  id            String    @id @default(cuid())
+  interviewId   String
+  interview     Interview @relation(fields: [interviewId], references: [id], onDelete: Cascade)
+  interviewerId String
+  interviewer   User      @relation("InterviewInterviewerUser", fields: [interviewerId], references: [id], onDelete: Cascade)
+  createdAt     DateTime  @default(now())
+
+  @@unique([interviewId, interviewerId])
+  @@index([interviewId])
+  @@index([interviewerId])
+}
+
+model CompanyInterviewCounter {
   companyId String  @id
   company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
   count     Int     @default(0)

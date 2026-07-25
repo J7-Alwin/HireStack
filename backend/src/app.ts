@@ -18,6 +18,7 @@ import { recruitersRouter } from "./modules/recruiters";
 import { jobsRouter } from "./modules/jobs";
 import { candidateRouter } from "./modules/candidates";
 import { applicationRouter } from "./modules/applications";
+import { interviewRouter } from "./modules/interviews";
 
 
 const app = express();
@@ -51,6 +52,7 @@ app.use("/api/recruiters", recruitersRouter);
 app.use("/api/jobs", jobsRouter);
 app.use("/api/candidates", candidateRouter);
 app.use("/api/applications", applicationRouter);
+app.use("/api/interviews", interviewRouter);
 
 
 app.get("/", (_req, res) => {
