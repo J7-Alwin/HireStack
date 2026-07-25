@@ -3,7 +3,7 @@ import { prisma } from "../src/config/prisma";
 import { applicationService } from "../src/modules/applications/application.service";
 import { Role, ApplicationStage, ApplicationStatus, CandidateSource, JobStatus, CandidateStatus } from "@prisma/client";
 import { AuthenticatedUser } from "../src/shared/types";
-import { ConflictError, ForbiddenError, UnprocessableEntityError } from "../src/shared/errors";
+import { ConflictError, ForbiddenError, UnprocessableEntityError, ValidationError } from "../src/shared/errors";
 
 // Standard assertion helpers
 function assert(condition: boolean, message: string) {
@@ -607,11 +607,120 @@ async function runTests() {
   console.log("   -> Success!");
 
   // ----------------------------------------------------
+  // TEST CASE 7: Immutable Fields Validation
+  // ----------------------------------------------------
+  console.log("🧪 Test Case 7: Immutable Fields Validation...");
+  
+  // Try to update jobId -> Throws ValidationError
+  await assertThrows(
+    async () => {
+      await applicationService.updateApplication(
+        application1Id,
+        { jobId: jobOpenB.id } as any,
+        authAdminA
+      );
+    },
+    ValidationError,
+    "Immutable fields cannot be modified"
+  );
+
+  // Try to update candidateId -> Throws ValidationError
+  await assertThrows(
+    async () => {
+      await applicationService.updateApplication(
+        application1Id,
+        { candidateId: candidateB.id } as any,
+        authAdminA
+      );
+    },
+    ValidationError,
+    "Immutable fields cannot be modified"
+  );
+
+  // Try to update applicationCode -> Throws ValidationError
+  await assertThrows(
+    async () => {
+      await applicationService.updateApplication(
+        application1Id,
+        { applicationCode: "APP-999999" } as any,
+        authAdminA
+      );
+    },
+    ValidationError,
+    "Immutable fields cannot be modified"
+  );
+
+  console.log("   -> Success!");
+
+  // ----------------------------------------------------
+  // TEST CASE 8: Restore Validations
+  // ----------------------------------------------------
+  console.log("🧪 Test Case 8: Restore Validations...");
+
+  // Soft delete application 2 (which is ACTIVE)
+  await applicationService.softDeleteApplication(app2.id, authAdminA);
+
+  // Create another active application for Candidate E & Job A (allowed since app2 is soft-deleted)
+  const app3 = await applicationService.createApplication(
+    {
+      candidateId: candidateE.id,
+      jobId: jobOpenA.id,
+      assignedRecruiterId: recruiterA2User.id,
+    },
+    authAdminA
+  );
+
+  // Attempt to restore application 2 (which is ACTIVE and would violate duplicate active prevention since app3 is active) -> Throws ConflictError
+  await assertThrows(
+    async () => {
+      await applicationService.restoreApplication(app2.id, authAdminA);
+    },
+    ConflictError,
+    "active Application for this Job"
+  );
+
+  // Clean up app3 so we can restore app2
+  await prisma.application.delete({ where: { id: app3.id } });
+
+  // Restore application 2
+  await applicationService.restoreApplication(app2.id, authAdminA);
+
+  // Now, test candidate eligibility on restore of an ACTIVE application
+  // Let's soft-delete app2 again
+  await applicationService.softDeleteApplication(app2.id, authAdminA);
+
+  // Make candidateE blacklisted
+  await prisma.candidate.update({
+    where: { id: candidateE.id },
+    data: { status: CandidateStatus.BLACKLISTED },
+  });
+
+  // Attempt to restore app2 (blacklisted candidate) -> Throws UnprocessableEntityError
+  await assertThrows(
+    async () => {
+      await applicationService.restoreApplication(app2.id, authAdminA);
+    },
+    UnprocessableEntityError,
+    "blacklisted candidate"
+  );
+
+  // Reset candidateE to ACTIVE
+  await prisma.candidate.update({
+    where: { id: candidateE.id },
+    data: { status: CandidateStatus.ACTIVE },
+  });
+
+  // Restore app2
+  await applicationService.restoreApplication(app2.id, authAdminA);
+
+  console.log("   -> Success!");
+
+  // ----------------------------------------------------
   // CLEANUP
   // ----------------------------------------------------
   console.log("\n🧹 Cleaning up seeded test database records...");
 
-  const testAppIds = [application1Id, app2.id];
+  const testAppIds = [application1Id, app2.id, app3.id];
   await prisma.application.deleteMany({
     where: { id: { in: testAppIds } },
   });

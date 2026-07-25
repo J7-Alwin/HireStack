@@ -1,6 +1,6 @@
-import { Role, ApplicationStage, ApplicationStatus } from "@prisma/client";
+import { Role, ApplicationStage, ApplicationStatus, CandidateStatus } from "@prisma/client";
 import { prisma } from "../../config/prisma";
-import { ForbiddenError, NotFoundError, ConflictError, UnprocessableEntityError } from "../../shared/errors";
+import { ForbiddenError, NotFoundError, ConflictError, UnprocessableEntityError, ValidationError } from "../../shared/errors";
 import { AuthenticatedUser } from "../../shared/types";
 import { APPLICATIONS_MESSAGES, STAGE_TRANSITION_RULES, STATUS_TRANSITION_RULES } from "./application.constants";
 import { applicationRepository } from "./application.repository";
@@ -42,8 +42,8 @@ function enforceWriterRole(currentUser: AuthenticatedUser) {
   }
 }
 
-async function getApplicationAndValidateAccess(id: string, currentUser: AuthenticatedUser) {
-  const application = await applicationRepository.findById(id);
+async function getApplicationAndValidateAccess(id: string, currentUser: AuthenticatedUser, tx?: any) {
+  const application = await applicationRepository.findById(id, false, tx);
   if (!application) {
     throw new NotFoundError(APPLICATIONS_MESSAGES.APPLICATION_NOT_FOUND);
   }
@@ -55,6 +55,15 @@ async function getApplicationAndValidateAccess(id: string, currentUser: Authenti
   }
 
   return application;
+}
+
+function verifyNoImmutableFields(body: any) {
+  const immutableFields = ["applicationCode", "companyId", "candidateId", "jobId", "appliedAt", "createdAt"];
+  for (const field of immutableFields) {
+    if (body && typeof body === "object" && field in body) {
+      throw new ValidationError(APPLICATIONS_MESSAGES.IMMUTABLE_FIELD_UPDATE);
+    }
+  }
 }
 
 export const applicationService = {
@@ -176,37 +185,42 @@ export const applicationService = {
   },
 
   updateApplication: async (id: string, input: ApplicationUpdateInput, currentUser: AuthenticatedUser) => {
+    verifyNoImmutableFields(input);
     enforceWriterRole(currentUser);
-    const application = await getApplicationAndValidateAccess(id, currentUser);
 
-    if (application.status !== ApplicationStatus.ACTIVE) {
-      throw new UnprocessableEntityError(APPLICATIONS_MESSAGES.TERMINAL_STATE_READONLY);
-    }
+    return await prisma.$transaction(async (tx) => {
+      const application = await getApplicationAndValidateAccess(id, currentUser, tx);
 
-    const parsedInput = updateApplicationSchema.parse(input);
+      if (application.status !== ApplicationStatus.ACTIVE) {
+        throw new UnprocessableEntityError(APPLICATIONS_MESSAGES.TERMINAL_STATE_READONLY);
+      }
 
-    return await applicationRepository.update(id, {
-      remarks: parsedInput.remarks,
-      updatedBy: currentUser.id,
+      const parsedInput = updateApplicationSchema.parse(input);
+
+      return await applicationRepository.update(id, {
+        remarks: parsedInput.remarks,
+        updatedBy: currentUser.id,
+      }, tx);
     });
   },
 
   assignRecruiter: async (id: string, input: ApplicationAssignRecruiterInput, currentUser: AuthenticatedUser) => {
+    verifyNoImmutableFields(input);
     // Only Company Admin can assign/reassign recruiters
     if (currentUser.role !== Role.COMPANY_ADMIN) {
       throw new ForbiddenError(APPLICATIONS_MESSAGES.FORBIDDEN_ACCESS);
     }
     const companyId = currentUser.companyId!;
 
-    const application = await getApplicationAndValidateAccess(id, currentUser);
-
-    if (application.status !== ApplicationStatus.ACTIVE) {
-      throw new UnprocessableEntityError(APPLICATIONS_MESSAGES.TERMINAL_STATE_READONLY);
-    }
-
-    const parsedInput = assignRecruiterSchema.parse(input);
-
     return await prisma.$transaction(async (tx) => {
+      const application = await getApplicationAndValidateAccess(id, currentUser, tx);
+
+      if (application.status !== ApplicationStatus.ACTIVE) {
+        throw new UnprocessableEntityError(APPLICATIONS_MESSAGES.TERMINAL_STATE_READONLY);
+      }
+
+      const parsedInput = assignRecruiterSchema.parse(input);
+
       const recruiter = await applicationRepository.findUserById(parsedInput.assignedRecruiterId, tx);
       if (!recruiter || recruiter.deletedAt !== null) {
         throw new UnprocessableEntityError(APPLICATIONS_MESSAGES.RECRUITER_NOT_FOUND);
@@ -230,90 +244,124 @@ export const applicationService = {
   },
 
   updateStage: async (id: string, input: ApplicationUpdateStageInput, currentUser: AuthenticatedUser) => {
+    verifyNoImmutableFields(input);
     enforceWriterRole(currentUser);
-    const application = await getApplicationAndValidateAccess(id, currentUser);
 
-    if (application.status !== ApplicationStatus.ACTIVE) {
-      throw new UnprocessableEntityError(APPLICATIONS_MESSAGES.TERMINAL_STATE_READONLY);
-    }
+    return await prisma.$transaction(async (tx) => {
+      const application = await getApplicationAndValidateAccess(id, currentUser, tx);
 
-    const parsedInput = updateStageSchema.parse(input);
-    const currentStage = application.stage;
-    const nextStage = parsedInput.stage;
+      if (application.status !== ApplicationStatus.ACTIVE) {
+        throw new UnprocessableEntityError(APPLICATIONS_MESSAGES.TERMINAL_STATE_READONLY);
+      }
 
-    // Validate transition matrix
-    const allowed = STAGE_TRANSITION_RULES[currentStage] || [];
-    if (!allowed.includes(nextStage)) {
-      throw new UnprocessableEntityError(APPLICATIONS_MESSAGES.INVALID_STAGE_TRANSITION);
-    }
+      const parsedInput = updateStageSchema.parse(input);
+      const currentStage = application.stage;
+      const nextStage = parsedInput.stage;
 
-    return await applicationRepository.update(id, {
-      stage: nextStage,
-      updatedBy: currentUser.id,
+      // Validate transition matrix
+      const allowed = STAGE_TRANSITION_RULES[currentStage] || [];
+      if (!allowed.includes(nextStage)) {
+        throw new UnprocessableEntityError(APPLICATIONS_MESSAGES.INVALID_STAGE_TRANSITION);
+      }
+
+      return await applicationRepository.update(id, {
+        stage: nextStage,
+        updatedBy: currentUser.id,
+      }, tx);
     });
   },
 
   updateStatus: async (id: string, input: ApplicationUpdateStatusInput, currentUser: AuthenticatedUser) => {
+    verifyNoImmutableFields(input);
     enforceWriterRole(currentUser);
-    const application = await getApplicationAndValidateAccess(id, currentUser);
 
-    const parsedInput = updateStatusSchema.parse(input);
-    const currentStatus = application.status;
-    const nextStatus = parsedInput.status;
+    return await prisma.$transaction(async (tx) => {
+      const application = await getApplicationAndValidateAccess(id, currentUser, tx);
 
-    if (currentStatus === nextStatus) {
-      return application;
-    }
+      const parsedInput = updateStatusSchema.parse(input);
+      const currentStatus = application.status;
+      const nextStatus = parsedInput.status;
 
-    // Terminal states cannot transition back to ACTIVE
-    if (currentStatus !== ApplicationStatus.ACTIVE) {
-      throw new UnprocessableEntityError(APPLICATIONS_MESSAGES.TERMINAL_STATE_READONLY);
-    }
+      if (currentStatus === nextStatus) {
+        return application;
+      }
 
-    const allowed = STATUS_TRANSITION_RULES[currentStatus] || [];
-    if (!allowed.includes(nextStatus)) {
-      throw new UnprocessableEntityError(APPLICATIONS_MESSAGES.INVALID_STATUS_TRANSITION);
-    }
+      // Terminal states cannot transition back to ACTIVE
+      if (currentStatus !== ApplicationStatus.ACTIVE) {
+        throw new UnprocessableEntityError(APPLICATIONS_MESSAGES.TERMINAL_STATE_READONLY);
+      }
 
-    return await applicationRepository.update(id, {
-      status: nextStatus,
-      updatedBy: currentUser.id,
+      const allowed = STATUS_TRANSITION_RULES[currentStatus] || [];
+      if (!allowed.includes(nextStatus)) {
+        throw new UnprocessableEntityError(APPLICATIONS_MESSAGES.INVALID_STATUS_TRANSITION);
+      }
+
+      // Transition matrix constraint linking status change to stage
+      if (nextStatus === ApplicationStatus.REJECTED) {
+        if (application.stage === ApplicationStage.APPLIED) {
+          throw new UnprocessableEntityError(APPLICATIONS_MESSAGES.INVALID_STAGE_TRANSITION);
+        }
+      }
+
+      if (nextStatus === ApplicationStatus.HIRED) {
+        if (application.stage !== ApplicationStage.OFFER) {
+          throw new UnprocessableEntityError(APPLICATIONS_MESSAGES.INVALID_STAGE_TRANSITION);
+        }
+      }
+
+      return await applicationRepository.update(id, {
+        status: nextStatus,
+        updatedBy: currentUser.id,
+      }, tx);
     });
   },
 
   rejectApplication: async (id: string, input: ApplicationRejectInput, currentUser: AuthenticatedUser) => {
+    verifyNoImmutableFields(input);
     enforceWriterRole(currentUser);
-    const application = await getApplicationAndValidateAccess(id, currentUser);
 
-    if (application.status !== ApplicationStatus.ACTIVE) {
-      throw new UnprocessableEntityError(APPLICATIONS_MESSAGES.TERMINAL_STATE_READONLY);
-    }
+    return await prisma.$transaction(async (tx) => {
+      const application = await getApplicationAndValidateAccess(id, currentUser, tx);
 
-    const parsedInput = rejectApplicationSchema.parse(input);
+      if (application.status !== ApplicationStatus.ACTIVE) {
+        throw new UnprocessableEntityError(APPLICATIONS_MESSAGES.TERMINAL_STATE_READONLY);
+      }
 
-    return await applicationRepository.update(id, {
-      status: ApplicationStatus.REJECTED,
-      rejectionReasonCode: parsedInput.rejectionReasonCode,
-      rejectionReasonNote: parsedInput.rejectionReasonNote,
-      updatedBy: currentUser.id,
+      // Transition to REJECTED is not allowed if current stage is APPLIED
+      if (application.stage === ApplicationStage.APPLIED) {
+        throw new UnprocessableEntityError(APPLICATIONS_MESSAGES.INVALID_STAGE_TRANSITION);
+      }
+
+      const parsedInput = rejectApplicationSchema.parse(input);
+
+      return await applicationRepository.update(id, {
+        status: ApplicationStatus.REJECTED,
+        rejectionReasonCode: parsedInput.rejectionReasonCode,
+        rejectionReasonNote: parsedInput.rejectionReasonNote,
+        updatedBy: currentUser.id,
+      }, tx);
     });
   },
 
   withdrawApplication: async (id: string, input: ApplicationWithdrawInput, currentUser: AuthenticatedUser) => {
+    verifyNoImmutableFields(input);
     enforceWriterRole(currentUser);
-    const application = await getApplicationAndValidateAccess(id, currentUser);
 
-    if (application.status !== ApplicationStatus.ACTIVE) {
-      throw new UnprocessableEntityError(APPLICATIONS_MESSAGES.TERMINAL_STATE_READONLY);
-    }
+    return await prisma.$transaction(async (tx) => {
+      const application = await getApplicationAndValidateAccess(id, currentUser, tx);
 
-    const parsedInput = withdrawApplicationSchema.parse(input);
+      if (application.status !== ApplicationStatus.ACTIVE) {
+        throw new UnprocessableEntityError(APPLICATIONS_MESSAGES.TERMINAL_STATE_READONLY);
+      }
 
-    return await applicationRepository.update(id, {
-      status: ApplicationStatus.WITHDRAWN,
-      withdrawalReasonCode: parsedInput.withdrawalReasonCode,
-      withdrawalReasonNote: parsedInput.withdrawalReasonNote,
-      updatedBy: currentUser.id,
+      const parsedInput = withdrawApplicationSchema.parse(input);
+
+      return await applicationRepository.update(id, {
+        status: ApplicationStatus.WITHDRAWN,
+        withdrawalReasonCode: parsedInput.withdrawalReasonCode,
+        withdrawalReasonNote: parsedInput.withdrawalReasonNote,
+        updatedBy: currentUser.id,
+      }, tx);
     });
   },
 
@@ -321,29 +369,68 @@ export const applicationService = {
     if (currentUser.role !== Role.COMPANY_ADMIN) {
       throw new ForbiddenError(APPLICATIONS_MESSAGES.FORBIDDEN_ACCESS);
     }
-    const application = await applicationRepository.findById(id);
-    if (!application) {
-      throw new NotFoundError(APPLICATIONS_MESSAGES.APPLICATION_NOT_FOUND);
-    }
-    validateCompanyAccess(application.companyId, currentUser);
+    return await prisma.$transaction(async (tx) => {
+      const application = await applicationRepository.findById(id, false, tx);
+      if (!application) {
+        throw new NotFoundError(APPLICATIONS_MESSAGES.APPLICATION_NOT_FOUND);
+      }
+      validateCompanyAccess(application.companyId, currentUser);
 
-    return await applicationRepository.softDelete(id);
+      return await applicationRepository.softDelete(id, tx);
+    });
   },
 
   restoreApplication: async (id: string, currentUser: AuthenticatedUser) => {
     if (currentUser.role !== Role.COMPANY_ADMIN) {
       throw new ForbiddenError(APPLICATIONS_MESSAGES.FORBIDDEN_ACCESS);
     }
-    const application = await applicationRepository.findById(id, true);
-    if (!application) {
-      throw new NotFoundError(APPLICATIONS_MESSAGES.APPLICATION_NOT_FOUND);
-    }
-    validateCompanyAccess(application.companyId, currentUser);
 
-    if (application.deletedAt === null) {
-      throw new UnprocessableEntityError(APPLICATIONS_MESSAGES.CANNOT_RESTORE_ACTIVE);
-    }
+    return await prisma.$transaction(async (tx) => {
+      const application = await applicationRepository.findById(id, true, tx);
+      if (!application) {
+        throw new NotFoundError(APPLICATIONS_MESSAGES.APPLICATION_NOT_FOUND);
+      }
+      validateCompanyAccess(application.companyId, currentUser);
 
-    return await applicationRepository.restore(id);
+      if (application.deletedAt === null) {
+        throw new UnprocessableEntityError(APPLICATIONS_MESSAGES.CANNOT_RESTORE_ACTIVE);
+      }
+
+      // Restore validation: duplicate active application prevention
+      if (application.status === ApplicationStatus.ACTIVE) {
+        const duplicate = await applicationRepository.findActiveApplication(
+          application.companyId,
+          application.candidateId,
+          application.jobId,
+          tx
+        );
+        if (duplicate) {
+          throw new ConflictError(APPLICATIONS_MESSAGES.DUPLICATE_APPLICATION);
+        }
+
+        // Verify candidate eligibility
+        const candidate = await applicationRepository.findCandidateById(application.candidateId, tx);
+        if (!candidate || candidate.deletedAt !== null) {
+          throw new NotFoundError(APPLICATIONS_MESSAGES.CANDIDATE_NOT_FOUND);
+        }
+        if ((candidate.status as string) === "BLACKLISTED") {
+          throw new UnprocessableEntityError(APPLICATIONS_MESSAGES.CANDIDATE_BLACKLISTED);
+        }
+        if ((candidate.status as string) === "ARCHIVED") {
+          throw new UnprocessableEntityError(APPLICATIONS_MESSAGES.CANDIDATE_ARCHIVED);
+        }
+
+        // Verify job eligibility
+        const job = await applicationRepository.findJobById(application.jobId, tx);
+        if (!job || job.deletedAt !== null) {
+          throw new NotFoundError(APPLICATIONS_MESSAGES.JOB_NOT_FOUND);
+        }
+        if (job.status !== "OPEN") {
+          throw new UnprocessableEntityError(APPLICATIONS_MESSAGES.JOB_NOT_OPEN);
+        }
+      }
+
+      return await applicationRepository.restore(id, tx);
+    });
   },
 };
