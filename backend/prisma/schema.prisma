@@ -54,6 +54,10 @@ model User {
   emailVerificationExpiresAt   DateTime?
 
   sessions                     Session[]
+  jobsCreated                  Job[]          @relation("JobCreator")
+  jobsRecruited                JobRecruiter[] @relation("JobRecruiterUser")
+  assignmentsMade              JobRecruiter[] @relation("JobRecruiterAssignedBy")
+
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -97,6 +101,7 @@ model Company {
 
   users        User[]
   departments  Department[]
+  jobs         Job[]
 
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
@@ -122,10 +127,109 @@ model Department {
   @@index([isActive])
 }
 
+enum EmploymentType {
+  FULL_TIME
+  PART_TIME
+  CONTRACT
+  INTERNSHIP
+  TEMPORARY
+  FREELANCE
+}
+
+enum WorkplaceType {
+  ONSITE
+  REMOTE
+  HYBRID
+}
+
+enum JobStatus {
+  DRAFT
+  PUBLISHED
+  OPEN
+  PAUSED
+  CLOSED
+  ARCHIVED
+}
+
+enum Visibility {
+  INTERNAL
+  PUBLIC
+  PRIVATE
+}
+
 model Job {
-  id           String      @id @default(cuid())
-  departmentId String?
-  department   Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
+  id              String         @id @default(cuid())
+  companyId       String
+  company         Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  departmentId    String
+  department      Department     @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  jobCode         String         @unique
+  title           String
+  description     String
+  responsibilities String?
+  requirements    String?
+  benefits        String?
+  employmentType  EmploymentType
+  workplaceType   WorkplaceType
+  experienceMin   Int?
+  experienceMax   Int?
+  salaryMin       Float?
+  salaryMax       Float?
+  currency        String?
+  location        String?
+  openings        Int
+  visibility      Visibility     @default(PUBLIC)
+  status          JobStatus      @default(DRAFT)
+  closingDate     DateTime?
+  publishedAt     DateTime?
+  archivedAt      DateTime?
+  deletedAt       DateTime?
+  isActive        Boolean        @default(true)
+  createdBy       String
+  creator         User           @relation("JobCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+  recruiters      JobRecruiter[]
+  skills          JobSkill[]
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@index([companyId])
+  @@index([departmentId])
+  @@index([status])
+  @@index([jobCode])
+  @@index([createdBy])
+  @@index([deletedAt])
+}
+
+model JobRecruiter {
+  jobId        String
+  job          Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  recruiterId  String
+  recruiter    User     @relation("JobRecruiterUser", fields: [recruiterId], references: [id], onDelete: Cascade)
+  assignedById String
+  assignedBy   User     @relation("JobRecruiterAssignedBy", fields: [assignedById], references: [id], onDelete: Cascade)
+  assignedAt   DateTime @default(now())
+
+  @@id([jobId, recruiterId])
+  @@index([recruiterId])
+  @@index([jobId])
+}
+
+model Skill {
+  id        String     @id @default(cuid())
+  name      String     @unique
+  jobs      JobSkill[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+model JobSkill {
+  jobId     String
+  job       Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  skillId   String
+  skill     Skill    @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([jobId, skillId])
+  @@index([jobId])
+  @@index([skillId])
 }
