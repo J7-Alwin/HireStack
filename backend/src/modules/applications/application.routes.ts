@@ -1,0 +1,90 @@
+import { Router } from "express";
+import { asyncHandler } from "../../middleware/async.middleware";
+import { authMiddleware } from "../../middleware/auth.middleware";
+import { authorizeRoles } from "../../middleware/role.middleware";
+import { Role } from "../../shared/enums/role.enum";
+import { applicationController } from "./application.controller";
+
+const router = Router();
+
+// Enforce authentication on all application routes
+router.use(authMiddleware);
+
+// Create Application
+router.post(
+  "/",
+  authorizeRoles(Role.COMPANY_ADMIN, Role.RECRUITER),
+  asyncHandler(applicationController.createApplication)
+);
+
+// List Applications (paginated, filtered, sorted, searchable)
+router.get(
+  "/",
+  authorizeRoles(Role.COMPANY_ADMIN, Role.RECRUITER),
+  asyncHandler(applicationController.listApplications)
+);
+
+// Get Application Details
+router.get(
+  "/:id",
+  authorizeRoles(Role.COMPANY_ADMIN, Role.RECRUITER),
+  asyncHandler(applicationController.getApplicationById)
+);
+
+// Update Editable Details (remarks)
+router.patch(
+  "/:id",
+  authorizeRoles(Role.COMPANY_ADMIN, Role.RECRUITER),
+  asyncHandler(applicationController.updateApplication)
+);
+
+// Assign or Reassign Recruiter (Company Admin only)
+router.patch(
+  "/:id/assign",
+  authorizeRoles(Role.COMPANY_ADMIN),
+  asyncHandler(applicationController.assignRecruiter)
+);
+
+// Update Application Stage
+router.patch(
+  "/:id/stage",
+  authorizeRoles(Role.COMPANY_ADMIN, Role.RECRUITER),
+  asyncHandler(applicationController.updateStage)
+);
+
+// Update Application Status
+router.patch(
+  "/:id/status",
+  authorizeRoles(Role.COMPANY_ADMIN, Role.RECRUITER),
+  asyncHandler(applicationController.updateStatus)
+);
+
+// Reject Application
+router.patch(
+  "/:id/reject",
+  authorizeRoles(Role.COMPANY_ADMIN, Role.RECRUITER),
+  asyncHandler(applicationController.rejectApplication)
+);
+
+// Record Candidate Withdrawal
+router.patch(
+  "/:id/withdraw",
+  authorizeRoles(Role.COMPANY_ADMIN, Role.RECRUITER),
+  asyncHandler(applicationController.withdrawApplication)
+);
+
+// Soft Delete Application (Company Admin only)
+router.delete(
+  "/:id",
+  authorizeRoles(Role.COMPANY_ADMIN),
+  asyncHandler(applicationController.softDeleteApplication)
+);
+
+// Restore Application (Company Admin only)
+router.patch(
+  "/:id/restore",
+  authorizeRoles(Role.COMPANY_ADMIN),
+  asyncHandler(applicationController.restoreApplication)
+);
+
+export default router;

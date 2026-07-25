@@ -17,9 +17,11 @@ import { departmentsRouter } from "./modules/departments";
 import { recruitersRouter } from "./modules/recruiters";
 import { jobsRouter } from "./modules/jobs";
 import { candidateRouter } from "./modules/candidates";
+import { applicationRouter } from "./modules/applications";
 
 
 const app = express();
+
 
 // 1. Request ID and Timing Metadata
 app.use(requestIdMiddleware);
@@ -48,6 +50,8 @@ app.use("/api/departments", departmentsRouter);
 app.use("/api/recruiters", recruitersRouter);
 app.use("/api/jobs", jobsRouter);
 app.use("/api/candidates", candidateRouter);
+app.use("/api/applications", applicationRouter);
+
 
 app.get("/", (_req, res) => {
   res.status(200).json({
