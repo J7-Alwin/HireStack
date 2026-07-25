@@ -1,0 +1,43 @@
+import { OfferStatus } from "@prisma/client";
+
+export const OFFER_MESSAGES = {
+  OFFER_NOT_FOUND: "Offer not found",
+  OFFER_CREATED: "Offer created successfully",
+  OFFERS_RETRIEVED: "Offers retrieved successfully",
+  OFFER_RETRIEVED: "Offer retrieved successfully",
+  OFFER_UPDATED: "Offer updated successfully",
+  OFFER_SUBMITTED: "Offer submitted for approval successfully",
+  OFFER_APPROVED: "Offer approved successfully",
+  OFFER_SENT: "Offer sent to candidate successfully",
+  OFFER_VIEWED: "Offer marked as viewed",
+  OFFER_ACCEPTED: "Offer accepted successfully",
+  OFFER_DECLINED: "Offer declined successfully",
+  OFFER_WITHDRAWN: "Offer withdrawn successfully",
+  OFFER_REVISED: "Offer revision created successfully",
+  OFFER_DELETED: "Offer soft-deleted successfully",
+  APPLICATION_NOT_ELIGIBLE: "Application is not eligible for offer scheduling. It must be ACTIVE and have completed the interview process",
+  DUPLICATE_ACTIVE_OFFER: "An active offer already exists for this application",
+  INVALID_STATUS_TRANSITION: "Invalid offer status transition",
+  IMMUTABLE_FIELD_UPDATE: "Immutable fields cannot be updated",
+  FORBIDDEN_ACCESS: "You do not have permission to perform this action",
+  CROSS_COMPANY_ACCESS_FORBIDDEN: "Cross-company access is not permitted",
+  FORBIDDEN_MODIFICATION: "You do not have permission to modify this offer",
+  ONLY_DRAFT_EDITABLE: "Only draft offers are editable",
+  OFFER_IMMUTABLE: "This offer has reached a terminal state and is immutable",
+  JOINING_DATE_PAST: "Joining date cannot be in the past",
+  EXPIRY_DATE_PAST: "Expiry date must be in the future",
+  EXPIRY_BEFORE_JOINING: "Expiry date must be before joining date",
+  SALARY_POSITIVE: "Salary must be a positive number greater than zero",
+};
+
+export const STATUS_TRANSITION_RULES: Record<OfferStatus, OfferStatus[]> = {
+  [OfferStatus.DRAFT]: [OfferStatus.PENDING_APPROVAL],
+  [OfferStatus.PENDING_APPROVAL]: [OfferStatus.APPROVED],
+  [OfferStatus.APPROVED]: [OfferStatus.SENT, OfferStatus.WITHDRAWN],
+  [OfferStatus.SENT]: [OfferStatus.VIEWED, OfferStatus.EXPIRED],
+  [OfferStatus.VIEWED]: [OfferStatus.ACCEPTED, OfferStatus.DECLINED],
+  [OfferStatus.ACCEPTED]: [],
+  [OfferStatus.DECLINED]: [],
+  [OfferStatus.EXPIRED]: [],
+  [OfferStatus.WITHDRAWN]: [],
+};
