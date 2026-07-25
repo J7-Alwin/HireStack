@@ -16,6 +16,7 @@ import { companiesRouter } from "./modules/companies";
 import { departmentsRouter } from "./modules/departments";
 import { recruitersRouter } from "./modules/recruiters";
 import { jobsRouter } from "./modules/jobs";
+import { candidateRouter } from "./modules/candidates";
 
 
 const app = express();
@@ -46,6 +47,7 @@ app.use("/api/companies", companiesRouter);
 app.use("/api/departments", departmentsRouter);
 app.use("/api/recruiters", recruitersRouter);
 app.use("/api/jobs", jobsRouter);
+app.use("/api/candidates", candidateRouter);
 
 app.get("/", (_req, res) => {
   res.status(200).json({

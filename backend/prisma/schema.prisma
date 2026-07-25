@@ -57,6 +57,11 @@ model User {
   jobsCreated                  Job[]          @relation("JobCreator")
   jobsRecruited                JobRecruiter[] @relation("JobRecruiterUser")
   assignmentsMade              JobRecruiter[] @relation("JobRecruiterAssignedBy")
+  candidatesAssigned           Candidate[]    @relation("PrimaryRecruiter")
+  candidatesCreated            Candidate[]    @relation("CandidateCreator")
+  candidatesUpdated            Candidate[]    @relation("CandidateUpdater")
+  candidateNotes               CandidateNote[]
+  uploadedDocuments            CandidateDocument[]
 
 
   createdAt DateTime @default(now())
@@ -102,6 +107,8 @@ model Company {
   users        User[]
   departments  Department[]
   jobs         Job[]
+  candidates   Candidate[]
+  tags         Tag[]
 
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
@@ -215,11 +222,12 @@ model JobRecruiter {
 }
 
 model Skill {
-  id        String     @id @default(cuid())
-  name      String     @unique
-  jobs      JobSkill[]
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
+  id         String           @id @default(cuid())
+  name       String           @unique
+  jobs       JobSkill[]
+  candidates CandidateSkill[]
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
 }
 
 model JobSkill {
@@ -232,4 +240,219 @@ model JobSkill {
   @@id([jobId, skillId])
   @@index([jobId])
   @@index([skillId])
+}
+
+enum CandidateStatus {
+  ACTIVE
+  PASSIVE
+  ON_HOLD
+  BLACKLISTED
+  ARCHIVED
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+  PREFER_NOT_TO_SAY
+}
+
+enum EmploymentStatus {
+  EMPLOYED
+  UNEMPLOYED
+  STUDENT
+  FREELANCER
+  SELF_EMPLOYED
+  CONTRACT
+}
+
+enum CandidateSource {
+  REFERRAL
+  LINKEDIN
+  NAUKRI
+  INDEED
+  CAREER_PAGE
+  CONSULTANCY
+  CAMPUS
+  WALK_IN
+  IMPORT
+  OTHER
+}
+
+enum SkillProficiency {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+  EXPERT
+}
+
+enum DocumentType {
+  RESUME
+  COVER_LETTER
+  CERTIFICATE
+  PORTFOLIO
+  OTHER
+}
+
+model Candidate {
+  id                 String               @id @default(cuid())
+  companyId          String
+  company            Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  primaryRecruiterId String
+  primaryRecruiter   User                 @relation("PrimaryRecruiter", fields: [primaryRecruiterId], references: [id], onDelete: Cascade)
+  candidateCode      String
+  firstName          String
+  lastName           String
+  email              String?
+  phone              String?
+  alternatePhone     String?
+  gender             Gender?
+  address            String?
+  city               String?
+  state              String?
+  country            String?
+  zipCode            String?
+  currentCompany     String?
+  currentDesignation String?
+  experienceYears    Int?
+  experienceMonths   Int?
+  expectedSalary     Float?
+  currentSalary      Float?
+  currency           String?
+  noticePeriod       Int?
+  employmentStatus   EmploymentStatus?
+  source             CandidateSource?
+  status             CandidateStatus      @default(ACTIVE)
+  isActive           Boolean              @default(true)
+  deletedAt          DateTime?
+  createdBy          String
+  creator            User                 @relation("CandidateCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+  updatedBy          String?
+  updater            User?                @relation("CandidateUpdater", fields: [updatedBy], references: [id], onDelete: SetNull)
+  skills             CandidateSkill[]
+  education          CandidateEducation[]
+  experience         CandidateExperience[]
+  documents          CandidateDocument[]
+  notes              CandidateNote[]
+  tags               CandidateTag[]
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+
+  @@unique([companyId, candidateCode])
+  @@index([companyId])
+  @@index([primaryRecruiterId])
+  @@index([status])
+  @@index([deletedAt])
+  @@index([email])
+  @@index([phone])
+}
+
+model CandidateSkill {
+  candidateId      String
+  candidate        Candidate        @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  skillId          String
+  skill            Skill            @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  proficiency      SkillProficiency @default(INTERMEDIATE)
+  experienceYears  Int?
+  experienceMonths Int?
+  isPrimary        Boolean          @default(false)
+  createdAt        DateTime         @default(now())
+
+  @@id([candidateId, skillId])
+  @@index([candidateId])
+  @@index([skillId])
+}
+
+model CandidateEducation {
+  id            String    @id @default(cuid())
+  candidateId   String
+  candidate     Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  degree        String
+  specialization String?
+  institution   String
+  university    String?
+  startDate     DateTime?
+  endDate       DateTime?
+  graduationYear Int?
+  grade         String?
+  isHighest     Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([candidateId])
+}
+
+model CandidateExperience {
+  id             String    @id @default(cuid())
+  candidateId    String
+  candidate      Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  company        String
+  designation    String
+  employmentType String?
+  startDate      DateTime
+  endDate        DateTime?
+  isCurrent      Boolean   @default(false)
+  description    String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([candidateId])
+}
+
+model CandidateDocument {
+  id           String       @id @default(cuid())
+  candidateId  String
+  candidate    Candidate    @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  fileName     String
+  fileUrl      String
+  fileKey      String
+  fileSize     Int?
+  mimeType     String?
+  documentType DocumentType @default(RESUME)
+  isActive     Boolean      @default(true)
+  uploadedBy   String
+  uploader     User         @relation(fields: [uploadedBy], references: [id], onDelete: Cascade)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@index([candidateId])
+}
+
+model CandidateNote {
+  id          String    @id @default(cuid())
+  candidateId String
+  candidate   Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  authorId    String
+  author      User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  content     String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([candidateId])
+  @@index([authorId])
+}
+
+model Tag {
+  id         String         @id @default(cuid())
+  companyId  String
+  company    Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  name       String
+  candidates CandidateTag[]
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  @@unique([companyId, name])
+  @@index([companyId])
+}
+
+model CandidateTag {
+  candidateId String
+  candidate   Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  tagId       String
+  tag         Tag       @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+
+  @@id([candidateId, tagId])
+  @@index([candidateId])
+  @@index([tagId])
 }
