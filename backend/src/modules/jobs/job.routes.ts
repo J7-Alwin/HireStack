@@ -10,17 +10,17 @@ const router = Router();
 // Enforce authentication on all routes
 router.use(authMiddleware);
 
-// GET /jobs - Search and list jobs (SUPER_ADMIN, COMPANY_ADMIN, RECRUITER)
+// GET /jobs - Search and list jobs (COMPANY_ADMIN, RECRUITER)
 router.get(
   "/",
-  authorizeRoles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.RECRUITER),
+  authorizeRoles(Role.COMPANY_ADMIN, Role.RECRUITER),
   asyncHandler(jobController.listJobs)
 );
 
-// GET /jobs/:id - Get complete job details (SUPER_ADMIN, COMPANY_ADMIN, RECRUITER)
+// GET /jobs/:id - Get complete job details (COMPANY_ADMIN, RECRUITER)
 router.get(
   "/:id",
-  authorizeRoles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.RECRUITER),
+  authorizeRoles(Role.COMPANY_ADMIN, Role.RECRUITER),
   asyncHandler(jobController.getJobById)
 );
 

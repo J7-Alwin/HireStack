@@ -336,7 +336,10 @@ export const jobService = {
     }
 
     if (job.status !== JobStatus.DRAFT) {
-      throw new UnprocessableEntityError(JOBS_MESSAGES.INVALID_LIFECYCLE_TRANSITION);
+      throw new UnprocessableEntityError(JOBS_MESSAGES.INVALID_LIFECYCLE_TRANSITION, {
+        currentStatus: job.status,
+        targetStatus: JobStatus.PUBLISHED,
+      });
     }
 
     // Publish validation
@@ -376,7 +379,10 @@ export const jobService = {
     const allowed = ALLOWED_TRANSITIONS[currentStatus];
 
     if (!allowed.includes(JobStatus.OPEN)) {
-      throw new UnprocessableEntityError(JOBS_MESSAGES.INVALID_LIFECYCLE_TRANSITION);
+      throw new UnprocessableEntityError(JOBS_MESSAGES.INVALID_LIFECYCLE_TRANSITION, {
+        currentStatus,
+        targetStatus: JobStatus.OPEN,
+      });
     }
 
     const updatedJob = await jobRepository.update(id, {
@@ -402,7 +408,10 @@ export const jobService = {
     const allowed = ALLOWED_TRANSITIONS[currentStatus];
 
     if (!allowed.includes(JobStatus.PAUSED)) {
-      throw new UnprocessableEntityError(JOBS_MESSAGES.INVALID_LIFECYCLE_TRANSITION);
+      throw new UnprocessableEntityError(JOBS_MESSAGES.INVALID_LIFECYCLE_TRANSITION, {
+        currentStatus,
+        targetStatus: JobStatus.PAUSED,
+      });
     }
 
     const updatedJob = await jobRepository.update(id, {
@@ -426,7 +435,10 @@ export const jobService = {
     }
 
     if (job.status !== JobStatus.PAUSED) {
-      throw new UnprocessableEntityError(JOBS_MESSAGES.INVALID_LIFECYCLE_TRANSITION);
+      throw new UnprocessableEntityError(JOBS_MESSAGES.INVALID_LIFECYCLE_TRANSITION, {
+        currentStatus: job.status,
+        targetStatus: JobStatus.OPEN,
+      });
     }
 
     const updatedJob = await jobRepository.update(id, {
@@ -452,7 +464,10 @@ export const jobService = {
     const allowed = ALLOWED_TRANSITIONS[currentStatus];
 
     if (!allowed.includes(JobStatus.CLOSED)) {
-      throw new UnprocessableEntityError(JOBS_MESSAGES.INVALID_LIFECYCLE_TRANSITION);
+      throw new UnprocessableEntityError(JOBS_MESSAGES.INVALID_LIFECYCLE_TRANSITION, {
+        currentStatus,
+        targetStatus: JobStatus.CLOSED,
+      });
     }
 
     const updatedJob = await jobRepository.update(id, {
@@ -478,7 +493,10 @@ export const jobService = {
     const allowed = ALLOWED_TRANSITIONS[currentStatus];
 
     if (!allowed.includes(JobStatus.ARCHIVED)) {
-      throw new UnprocessableEntityError(JOBS_MESSAGES.INVALID_LIFECYCLE_TRANSITION);
+      throw new UnprocessableEntityError(JOBS_MESSAGES.INVALID_LIFECYCLE_TRANSITION, {
+        currentStatus,
+        targetStatus: JobStatus.ARCHIVED,
+      });
     }
 
     const updatedJob = await jobRepository.update(id, {
