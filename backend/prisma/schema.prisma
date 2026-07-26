@@ -711,6 +711,9 @@ model Offer {
   @@index([recruiterId])
   @@index([status])
   @@index([deletedAt])
+  @@index([offerCode])
+  @@index([createdAt])
+  @@index([updatedAt])
 }
 
 model CompanyOfferCounter {

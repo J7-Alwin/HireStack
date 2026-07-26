@@ -1,6 +1,6 @@
-import { Role, OfferStatus, Prisma, ApplicationStatus } from "@prisma/client";
+import { Role, OfferStatus, Prisma } from "@prisma/client";
 import { prisma } from "../../../config/prisma";
-import { ForbiddenError, NotFoundError, ConflictError, ValidationError } from "../../../shared/errors";
+import { ForbiddenError, ConflictError } from "../../../shared/errors";
 import { AuthenticatedUser } from "../../../shared/types";
 import { logger } from "../../../shared/logger/logger";
 import { OFFER_MESSAGES } from "../constants/offer.constants";
@@ -9,120 +9,19 @@ import { CreateOfferInput, UpdateOfferInput, OfferQueryFilters } from "../types/
 import { createOfferSchema, updateOfferSchema, queryOffersSchema } from "../validation";
 import { paginationHelper } from "../../../shared/pagination/pagination.helper";
 import { OfferStateMachine } from "./offer.state-machine";
-import { OfferDto } from "../types/offer.dto";
-
-// Company and user access scopes
-function validateCompanyAccess(entityCompanyId: string, currentUser: AuthenticatedUser) {
-  if (currentUser.role === Role.SUPER_ADMIN) {
-    throw new ForbiddenError(OFFER_MESSAGES.FORBIDDEN_ACCESS);
-  }
-  if (entityCompanyId !== currentUser.companyId) {
-    throw new ForbiddenError(OFFER_MESSAGES.CROSS_COMPANY_ACCESS_FORBIDDEN);
-  }
-}
-
-function enforceWriterRole(currentUser: AuthenticatedUser) {
-  if (currentUser.role !== Role.COMPANY_ADMIN && currentUser.role !== Role.RECRUITER) {
-    throw new ForbiddenError(OFFER_MESSAGES.FORBIDDEN_ACCESS);
-  }
-}
-
-// Business rule helpers
-async function ensureOfferExists(id: string, includeDeleted = false, tx?: Prisma.TransactionClient): Promise<OfferDto> {
-  const offer = await offerRepository.findById(id, includeDeleted, tx);
-  if (!offer) {
-    throw new NotFoundError(OFFER_MESSAGES.OFFER_NOT_FOUND);
-  }
-  return offer;
-}
-
-function ensureOfferNotDeleted(offer: OfferDto) {
-  if (offer.deletedAt) {
-    throw new NotFoundError(OFFER_MESSAGES.OFFER_NOT_FOUND);
-  }
-}
-
-function ensureOfferBelongsToCompany(offer: OfferDto, companyId: string) {
-  if (offer.companyId !== companyId) {
-    throw new ForbiddenError(OFFER_MESSAGES.CROSS_COMPANY_ACCESS_FORBIDDEN);
-  }
-}
-
-function validateOfferAccess(offer: OfferDto, currentUser: AuthenticatedUser) {
-  if (currentUser.role === Role.SUPER_ADMIN) {
-    throw new ForbiddenError(OFFER_MESSAGES.FORBIDDEN_ACCESS);
-  }
-  ensureOfferBelongsToCompany(offer, currentUser.companyId!);
-
-  // Recruiter rule: Recruiters can only modify offers they created or if they are assigned to the application
-  if (currentUser.role === Role.RECRUITER) {
-    const isOwner = offer.recruiterId === currentUser.id;
-    const isAssigned = offer.application?.assignedRecruiterId === currentUser.id;
-    if (!isOwner && !isAssigned) {
-      throw new ForbiddenError(OFFER_MESSAGES.FORBIDDEN_MODIFICATION);
-    }
-  }
-}
-
-async function getOfferAndValidateAccess(id: string, currentUser: AuthenticatedUser, tx?: Prisma.TransactionClient): Promise<OfferDto> {
-  const offer = await ensureOfferExists(id, false, tx);
-  validateOfferAccess(offer, currentUser);
-  return offer;
-}
-
-function ensureOfferEditable(offer: OfferDto) {
-  if (offer.status !== OfferStatus.DRAFT) {
-    throw new ConflictError(OFFER_MESSAGES.ONLY_DRAFT_EDITABLE);
-  }
-}
-
-function ensureApplicationEligible(
-  application: { companyId: string; status: string } | null,
-  companyId: string
-) {
-  if (!application) {
-    throw new NotFoundError("Application not found");
-  }
-  if (application.companyId !== companyId) {
-    throw new ForbiddenError(OFFER_MESSAGES.CROSS_COMPANY_ACCESS_FORBIDDEN);
-  }
-  if (application.status !== ApplicationStatus.ACTIVE) {
-    throw new ConflictError(OFFER_MESSAGES.APPLICATION_NOT_ELIGIBLE);
-  }
-}
-
-function verifyNoImmutableFields(body: unknown) {
-  const immutableFields = ["offerCode", "companyId", "applicationId", "candidateId", "version", "createdAt"];
-  for (const field of immutableFields) {
-    if (body && typeof body === "object" && field in body) {
-      throw new ValidationError(OFFER_MESSAGES.IMMUTABLE_FIELD_UPDATE);
-    }
-  }
-}
-
-function validateDateBounds(joiningDateStr: string, expiryDateStr: string) {
-  const join = new Date(joiningDateStr);
-  const expiry = new Date(expiryDateStr);
-  const now = new Date();
-
-  // Joining Date not in past (date component only)
-  const todayStart = new Date(now.setHours(0, 0, 0, 0));
-  if (join < todayStart) {
-    throw new ValidationError(OFFER_MESSAGES.JOINING_DATE_PAST);
-  }
-
-  // Expiry Date after today (strictly > end of today)
-  const todayEnd = new Date();
-  todayEnd.setHours(23, 59, 59, 999);
-  if (expiry <= todayEnd) {
-    throw new ValidationError(OFFER_MESSAGES.EXPIRY_DATE_PAST);
-  }
-
-  // Expiry Date before joining date
-  if (expiry >= join) {
-    throw new ValidationError(OFFER_MESSAGES.EXPIRY_BEFORE_JOINING);
-  }
-}
+import {
+  enforceWriterRole,
+  getOfferAndValidateAccess,
+  ensureOfferExists,
+  ensureOfferNotDeleted,
+  ensureOfferEditable,
+  ensureApplicationEligible,
+  validateOfferAccess,
+  verifyNoImmutableFields,
+  validateDateBounds,
+  validateCompanyAccess,
+} from "./business-rules/offer-rules";
+import { offerHooks } from "./offer.hooks";
 
 export const offerService = {
   createOffer: async (input: CreateOfferInput, currentUser: AuthenticatedUser) => {
@@ -152,7 +51,7 @@ export const offerService = {
       const counter = await offerRepository.incrementOfferCounter(companyId, tx);
       const offerCode = `OFF-${String(counter).padStart(6, "0")}`;
 
-      return await offerRepository.create(
+      return await offerRepository.createOffer(
         companyId,
         offerCode,
         1,
@@ -165,16 +64,18 @@ export const offerService = {
       timeout: 20000,
     });
 
-    logger.info("Offer Scheduled", {
-      interviewId: undefined, // Matches structured log fields schema
+    logger.info("Offer Created", {
+      action: "Offer Created",
       offerId: result.id,
       offerCode: result.offerCode,
       companyId: result.companyId,
       applicationId: result.applicationId,
       userId: currentUser.id,
-      operation: "Offer Created",
+      status: result.status,
       timestamp: new Date().toISOString(),
     });
+
+    await offerHooks.onOfferCreated(result, currentUser.id);
 
     return result;
   },
@@ -197,7 +98,7 @@ export const offerService = {
         validateDateBounds(updatedJoin, updatedExpiry);
       }
 
-      return await offerRepository.update(
+      return await offerRepository.updateOffer(
         id,
         {
           salary: parsedInput.salary,
@@ -217,12 +118,13 @@ export const offerService = {
     });
 
     logger.info("Offer Updated", {
+      action: "Offer Updated",
       offerId: result.id,
       offerCode: result.offerCode,
       companyId: result.companyId,
       applicationId: result.applicationId,
       userId: currentUser.id,
-      operation: "Offer Updated",
+      status: result.status,
       timestamp: new Date().toISOString(),
     });
 
@@ -239,7 +141,7 @@ export const offerService = {
       const nextStatus = OfferStatus.PENDING_APPROVAL;
       OfferStateMachine.throwIfInvalidTransition(currentStatus, nextStatus);
 
-      return await offerRepository.update(
+      return await offerRepository.updateOffer(
         id,
         { status: nextStatus },
         tx
@@ -248,13 +150,14 @@ export const offerService = {
       timeout: 20000,
     });
 
-    logger.info("Offer Submitted", {
+    logger.info("Offer Submitted for Approval", {
+      action: "Offer Submitted for Approval",
       offerId: result.id,
       offerCode: result.offerCode,
       companyId: result.companyId,
       applicationId: result.applicationId,
       userId: currentUser.id,
-      operation: "Offer Submitted",
+      status: result.status,
       timestamp: new Date().toISOString(),
     });
 
@@ -273,13 +176,10 @@ export const offerService = {
       const nextStatus = OfferStatus.APPROVED;
       OfferStateMachine.throwIfInvalidTransition(currentStatus, nextStatus);
 
-      return await offerRepository.update(
+      return await offerRepository.approveOffer(
         id,
-        {
-          status: nextStatus,
-          approvedBy: currentUser.id,
-          approvedAt: new Date(),
-        },
+        currentUser.id,
+        new Date(),
         tx
       );
     }, {
@@ -287,14 +187,17 @@ export const offerService = {
     });
 
     logger.info("Offer Approved", {
+      action: "Offer Approved",
       offerId: result.id,
       offerCode: result.offerCode,
       companyId: result.companyId,
       applicationId: result.applicationId,
       userId: currentUser.id,
-      operation: "Offer Approved",
+      status: result.status,
       timestamp: new Date().toISOString(),
     });
+
+    await offerHooks.onOfferApproved(result, currentUser.id);
 
     return result;
   },
@@ -311,12 +214,9 @@ export const offerService = {
       const nextStatus = OfferStatus.SENT;
       OfferStateMachine.throwIfInvalidTransition(currentStatus, nextStatus);
 
-      return await offerRepository.update(
+      return await offerRepository.sendOffer(
         id,
-        {
-          status: nextStatus,
-          sentAt: new Date(),
-        },
+        new Date(),
         tx
       );
     }, {
@@ -324,20 +224,22 @@ export const offerService = {
     });
 
     logger.info("Offer Sent", {
+      action: "Offer Sent",
       offerId: result.id,
       offerCode: result.offerCode,
       companyId: result.companyId,
       applicationId: result.applicationId,
       userId: currentUser.id,
-      operation: "Offer Sent",
+      status: result.status,
       timestamp: new Date().toISOString(),
     });
+
+    await offerHooks.onOfferSent(result, currentUser.id);
 
     return result;
   },
 
   markViewed: async (id: string, currentUser: AuthenticatedUser) => {
-    // Both Candidate, Recruiter or Admin can trigger this (e.g. tracking opens)
     const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const offer = await ensureOfferExists(id, false, tx);
       ensureOfferNotDeleted(offer);
@@ -351,7 +253,7 @@ export const offerService = {
 
       OfferStateMachine.throwIfInvalidTransition(currentStatus, nextStatus);
 
-      return await offerRepository.update(
+      return await offerRepository.updateOffer(
         id,
         {
           status: nextStatus,
@@ -364,14 +266,17 @@ export const offerService = {
     });
 
     logger.info("Offer Viewed", {
+      action: "Offer Viewed",
       offerId: result.id,
       offerCode: result.offerCode,
       companyId: result.companyId,
       applicationId: result.applicationId,
       userId: currentUser.id,
-      operation: "Offer Viewed",
+      status: result.status,
       timestamp: new Date().toISOString(),
     });
+
+    await offerHooks.onOfferViewed(result, currentUser.id);
 
     return result;
   },
@@ -388,11 +293,12 @@ export const offerService = {
 
       // Check for expiry bounds dynamically
       if (new Date() > new Date(offer.expiryDate)) {
-        await offerRepository.update(id, { status: OfferStatus.EXPIRED }, tx);
+        const expiredOffer = await offerRepository.updateOffer(id, { status: OfferStatus.EXPIRED }, tx);
+        await offerHooks.onOfferExpired(expiredOffer, currentUser.id);
         throw new ConflictError("Offer has expired and cannot be accepted");
       }
 
-      return await offerRepository.update(
+      return await offerRepository.updateOffer(
         id,
         {
           status: nextStatus,
@@ -405,14 +311,17 @@ export const offerService = {
     });
 
     logger.info("Offer Accepted", {
+      action: "Offer Accepted",
       offerId: result.id,
       offerCode: result.offerCode,
       companyId: result.companyId,
       applicationId: result.applicationId,
       userId: currentUser.id,
-      operation: "Offer Accepted",
+      status: result.status,
       timestamp: new Date().toISOString(),
     });
+
+    await offerHooks.onOfferAccepted(result, currentUser.id);
 
     return result;
   },
@@ -427,7 +336,7 @@ export const offerService = {
       const nextStatus = OfferStatus.DECLINED;
       OfferStateMachine.throwIfInvalidTransition(currentStatus, nextStatus);
 
-      return await offerRepository.update(
+      return await offerRepository.updateOffer(
         id,
         {
           status: nextStatus,
@@ -440,14 +349,17 @@ export const offerService = {
     });
 
     logger.info("Offer Declined", {
+      action: "Offer Declined",
       offerId: result.id,
       offerCode: result.offerCode,
       companyId: result.companyId,
       applicationId: result.applicationId,
       userId: currentUser.id,
-      operation: "Offer Declined",
+      status: result.status,
       timestamp: new Date().toISOString(),
     });
+
+    await offerHooks.onOfferDeclined(result, currentUser.id);
 
     return result;
   },
@@ -464,24 +376,23 @@ export const offerService = {
       const nextStatus = OfferStatus.WITHDRAWN;
       OfferStateMachine.throwIfInvalidTransition(currentStatus, nextStatus);
 
-      return await offerRepository.update(
-        id,
-        { status: nextStatus },
-        tx
-      );
+      return await offerRepository.withdrawOffer(id, tx);
     }, {
       timeout: 20000,
     });
 
     logger.info("Offer Withdrawn", {
+      action: "Offer Withdrawn",
       offerId: result.id,
       offerCode: result.offerCode,
       companyId: result.companyId,
       applicationId: result.applicationId,
       userId: currentUser.id,
-      operation: "Offer Withdrawn",
+      status: result.status,
       timestamp: new Date().toISOString(),
     });
+
+    await offerHooks.onOfferWithdrawn(result, currentUser.id);
 
     return result;
   },
@@ -495,7 +406,7 @@ export const offerService = {
 
     const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // 1. Lock current active version row in database (Row-level lock)
-      await offerRepository.lock(id, tx);
+      await offerRepository.lockOfferRow(id, tx);
 
       // 2. Fetch current offer in transaction context
       const oldOffer = await getOfferAndValidateAccess(id, currentUser, tx);
@@ -525,7 +436,7 @@ export const offerService = {
       }
 
       // 3. Create new version record under the SAME offerCode
-      const newOffer = await offerRepository.create(
+      const newOffer = await offerRepository.createRevision(
         companyId,
         oldOffer.offerCode,
         oldOffer.version + 1,
@@ -543,7 +454,7 @@ export const offerService = {
         oldOffer.status === OfferStatus.SENT ||
         oldOffer.status === OfferStatus.VIEWED
       ) {
-        await offerRepository.update(id, { status: OfferStatus.WITHDRAWN }, tx);
+        await offerRepository.withdrawOffer(id, tx);
       }
 
       return newOffer;
@@ -552,14 +463,17 @@ export const offerService = {
     });
 
     logger.info("Offer Revised", {
+      action: "Offer Revised",
       offerId: result.id,
       offerCode: result.offerCode,
       companyId: result.companyId,
       applicationId: result.applicationId,
       userId: currentUser.id,
-      operation: "Offer Revised",
+      status: result.status,
       timestamp: new Date().toISOString(),
     });
+
+    await offerHooks.onOfferCreated(result, currentUser.id);
 
     return result;
   },
@@ -586,7 +500,7 @@ export const offerService = {
       limit: parsedQuery.limit,
     });
 
-    const result = await offerRepository.findMany(companyId, parsedQuery, skip, take);
+    const result = await offerRepository.findOffersMany(companyId, parsedQuery, skip, take);
     const meta = paginationHelper.createMeta(result.total, {
       page: parsedQuery.page,
       limit: parsedQuery.limit,
@@ -603,7 +517,7 @@ export const offerService = {
       throw new ForbiddenError(OFFER_MESSAGES.FORBIDDEN_ACCESS);
     }
 
-    return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const offer = await ensureOfferExists(id, false, tx);
       ensureOfferNotDeleted(offer);
       validateCompanyAccess(offer.companyId, currentUser);
@@ -613,9 +527,22 @@ export const offerService = {
         throw new ConflictError("Accepted offers are immutable and cannot be deleted");
       }
 
-      return await offerRepository.softDelete(id, tx);
+      return await offerRepository.softDeleteOffer(id, tx);
     }, {
       timeout: 20000,
     });
+
+    logger.info("Offer Deleted", {
+      action: "Offer Deleted",
+      offerId: result.id,
+      offerCode: result.offerCode,
+      companyId: result.companyId,
+      applicationId: result.applicationId,
+      userId: currentUser.id,
+      status: result.status,
+      timestamp: new Date().toISOString(),
+    });
+
+    return result;
   },
 };
