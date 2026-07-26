@@ -7,6 +7,7 @@ import {
   PipelineTimelineEventType,
 } from "@prisma/client";
 import { prisma } from "../../../config/prisma";
+import { TimelineFactory } from "../../pipeline/services/timeline.factory";
 import {
   ForbiddenError,
   NotFoundError,
@@ -242,12 +243,18 @@ export const interviewService = {
           });
 
           // Add to timeline
+          const timelineEvent = TimelineFactory.createEvent(
+            PipelineTimelineEventType.INTERVIEW_SCHEDULED,
+            {
+              round: parsedInput.round,
+            }
+          );
           await tx.pipelineTimeline.create({
             data: {
               pipelineId: pipeline.id,
-              eventType: PipelineTimelineEventType.INTERVIEW_SCHEDULED,
-              title: `Interview Scheduled (${parsedInput.round})`,
-              description: `A ${parsedInput.round} interview has been scheduled.`,
+              eventType: timelineEvent.eventType,
+              title: timelineEvent.title,
+              description: timelineEvent.description,
               createdById: currentUser.id,
             },
           });
@@ -536,12 +543,18 @@ export const interviewService = {
             where: { applicationId: interview.applicationId, deletedAt: null },
           });
           if (pipeline && !pipeline.isCompleted) {
+            const timelineEvent = TimelineFactory.createEvent(
+              PipelineTimelineEventType.INTERVIEW_COMPLETED,
+              {
+                round: interview.round,
+              }
+            );
             await tx.pipelineTimeline.create({
               data: {
                 pipelineId: pipeline.id,
-                eventType: PipelineTimelineEventType.INTERVIEW_COMPLETED,
-                title: `Interview Completed (${interview.round})`,
-                description: `The scheduled ${interview.round} interview round has been marked completed.`,
+                eventType: timelineEvent.eventType,
+                title: timelineEvent.title,
+                description: timelineEvent.description,
                 createdById: currentUser.id,
               },
             });

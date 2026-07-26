@@ -1,29 +1,24 @@
 import { Role, PipelineStage } from "@prisma/client";
-import {
-  ForbiddenError,
-  NotFoundError,
-  ConflictError,
-  UnprocessableEntityError,
-} from "../../../../shared/errors";
+import { ForbiddenError, NotFoundError, ConflictError } from "../../../../shared/errors";
 import { AuthenticatedUser } from "../../../../shared/types";
-import {
-  PIPELINE_MESSAGES,
-  ALLOWED_SEQUENTIAL_TRANSITIONS,
-} from "../../constants/pipeline.constants";
+import { PIPELINE_MESSAGES } from "../../constants/pipeline.constants";
 import { pipelineRepository } from "../../repositories/pipeline.repository";
 import { PipelineDto } from "../../dto/pipeline.dto";
+import { PipelineStateMachine } from "../pipeline.state-machine";
 
-export function validateCompanyAccess(
-  entityCompanyId: string,
+export function ensurePipelineBelongsToCompany(
+  pipelineCompanyId: string,
   currentUser: AuthenticatedUser
 ): void {
   if (currentUser.role === Role.SUPER_ADMIN) {
     throw new ForbiddenError(PIPELINE_MESSAGES.FORBIDDEN_ACCESS);
   }
-  if (entityCompanyId !== currentUser.companyId) {
+  if (pipelineCompanyId !== currentUser.companyId) {
     throw new ForbiddenError(PIPELINE_MESSAGES.CROSS_COMPANY_ACCESS);
   }
 }
+
+export const validateCompanyAccess = ensurePipelineBelongsToCompany;
 
 export function enforceWriterRole(currentUser: AuthenticatedUser): void {
   if (currentUser.role !== Role.COMPANY_ADMIN && currentUser.role !== Role.RECRUITER) {
@@ -48,19 +43,21 @@ export async function ensurePipelineExists(
   return pipeline;
 }
 
+export function ensureRecruiterOwnership(
+  pipeline: PipelineDto,
+  currentUser: AuthenticatedUser
+): void {
+  if (currentUser.role === Role.RECRUITER && pipeline.recruiterId !== currentUser.id) {
+    throw new ForbiddenError(PIPELINE_MESSAGES.RECRUITER_OWNERSHIP);
+  }
+}
+
 export function validatePipelineAccess(
   pipeline: PipelineDto,
   currentUser: AuthenticatedUser
 ): void {
-  if (currentUser.role === Role.SUPER_ADMIN) {
-    throw new ForbiddenError(PIPELINE_MESSAGES.FORBIDDEN_ACCESS);
-  }
-  validateCompanyAccess(pipeline.companyId, currentUser);
-
-  // Recruiter rule: Recruiters can only access and move their assigned candidates
-  if (currentUser.role === Role.RECRUITER && pipeline.recruiterId !== currentUser.id) {
-    throw new ForbiddenError(PIPELINE_MESSAGES.RECRUITER_OWNERSHIP);
-  }
+  ensurePipelineBelongsToCompany(pipeline.companyId, currentUser);
+  ensureRecruiterOwnership(pipeline, currentUser);
 }
 
 export function ensurePipelineNotCompleted(pipeline: PipelineDto): void {
@@ -69,22 +66,25 @@ export function ensurePipelineNotCompleted(pipeline: PipelineDto): void {
   }
 }
 
-export function validateStageTransition(
+export function ensurePipelineActive(pipeline: PipelineDto): void {
+  ensurePipelineNotCompleted(pipeline);
+  if (pipeline.deletedAt) {
+    throw new NotFoundError(PIPELINE_MESSAGES.NOT_FOUND);
+  }
+}
+
+export function ensurePipelineEditable(
+  pipeline: PipelineDto,
+  currentUser: AuthenticatedUser
+): void {
+  validatePipelineAccess(pipeline, currentUser);
+  ensurePipelineActive(pipeline);
+}
+
+export function ensureStageMovable(
   currentStage: PipelineStage,
   toStage: PipelineStage,
   isOverride = false
 ): void {
-  if (currentStage === toStage) return;
-
-  if (isOverride) {
-    // Overrides can move to any stage
-    return;
-  }
-
-  const allowed = ALLOWED_SEQUENTIAL_TRANSITIONS[currentStage] || [];
-  if (!allowed.includes(toStage)) {
-    throw new UnprocessableEntityError(
-      `${PIPELINE_MESSAGES.INVALID_TRANSITION}: from ${currentStage} to ${toStage}`
-    );
-  }
+  PipelineStateMachine.throwIfInvalidTransition(currentStage, toStage, isOverride);
 }

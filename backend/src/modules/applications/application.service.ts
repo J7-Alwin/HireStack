@@ -7,6 +7,7 @@ import {
   PipelineTimelineEventType,
 } from "@prisma/client";
 import { prisma } from "../../config/prisma";
+import { TimelineFactory } from "../pipeline/services/timeline.factory";
 import {
   ForbiddenError,
   NotFoundError,
@@ -161,12 +162,16 @@ async function syncPipelineStage(
         break;
     }
 
+    const timelineEvent = TimelineFactory.createEvent(timelineEventType, {
+      comments: comments || undefined,
+    });
+
     await client.pipelineTimeline.create({
       data: {
         pipelineId: pipeline.id,
-        eventType: timelineEventType,
-        title: `Hiring Decision: ${targetStage}`,
-        description: comments || `Hiring state automatically synced to ${targetStage}.`,
+        eventType: timelineEvent.eventType,
+        title: timelineEvent.title,
+        description: timelineEvent.description,
         createdById: userId,
       },
     });
@@ -290,13 +295,15 @@ export const applicationService = {
       });
 
       // Create Pipeline Timeline Event
+      const timelineEvent = TimelineFactory.createEvent(
+        PipelineTimelineEventType.APPLICATION_SUBMITTED
+      );
       await tx.pipelineTimeline.create({
         data: {
           pipelineId: pipeline.id,
-          eventType: PipelineTimelineEventType.APPLICATION_SUBMITTED,
-          title: "Application Submitted",
-          description:
-            "The application has been successfully submitted and entered the hiring pipeline.",
+          eventType: timelineEvent.eventType,
+          title: timelineEvent.title,
+          description: timelineEvent.description,
           createdById: currentUser.id,
         },
       });

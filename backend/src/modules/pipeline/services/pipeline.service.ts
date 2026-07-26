@@ -3,7 +3,7 @@ import { prisma } from "../../../config/prisma";
 import { ConflictError, ForbiddenError, NotFoundError } from "../../../shared/errors";
 import { AuthenticatedUser } from "../../../shared/types";
 import { logger } from "../../../shared/logger/logger";
-import { PIPELINE_MESSAGES, STAGE_ORDER, TERMINAL_STAGES } from "../constants/pipeline.constants";
+import { PIPELINE_MESSAGES, STAGE_ORDER } from "../constants/pipeline.constants";
 import { pipelineRepository } from "../repositories/pipeline.repository";
 import {
   CreatePipelineInput,
@@ -24,10 +24,12 @@ import {
   ensurePipelineExists,
   ensurePipelineNotCompleted,
   validatePipelineAccess,
-  validateStageTransition,
+  ensureStageMovable,
   validateCompanyAccess,
 } from "./business-rules/pipeline-rules";
 import { pipelineHooks } from "./pipeline.hooks";
+import { TimelineFactory } from "./timeline.factory";
+import { PipelineStateMachine } from "./pipeline.state-machine";
 
 export const pipelineService = {
   createPipeline: async (input: CreatePipelineInput, currentUser: AuthenticatedUser) => {
@@ -69,11 +71,14 @@ export const pipelineService = {
         );
 
         // Create timeline event
+        const timelineEvent = TimelineFactory.createEvent(
+          PipelineTimelineEventType.APPLICATION_SUBMITTED
+        );
         await pipelineRepository.createTimelineEvent(
           pipeline.id,
-          PipelineTimelineEventType.APPLICATION_SUBMITTED,
-          "Application Submitted",
-          "The application has been successfully submitted and entered the hiring pipeline.",
+          timelineEvent.eventType,
+          timelineEvent.title,
+          timelineEvent.description,
           currentUser.id,
           tx
         );
@@ -119,10 +124,10 @@ export const pipelineService = {
           enforceCompanyAdmin(currentUser);
         }
 
-        validateStageTransition(pipeline.currentStage, parsedInput.toStage, parsedInput.isOverride);
+        ensureStageMovable(pipeline.currentStage, parsedInput.toStage, parsedInput.isOverride);
 
         const nextStage = parsedInput.toStage;
-        const isCompleted = TERMINAL_STAGES.includes(nextStage);
+        const isCompleted = PipelineStateMachine.isCompletedStage(nextStage);
         const completedReason = isCompleted ? nextStage : null;
 
         const updated = await pipelineRepository.updatePipelineStage(
@@ -151,71 +156,52 @@ export const pipelineService = {
 
         // Map timeline event type
         let timelineEventType: PipelineTimelineEventType = PipelineTimelineEventType.STAGE_OVERRIDE;
-        let title = `Moved to ${nextStage}`;
-        let description = parsedInput.comments || `Candidate progressed to stage ${nextStage}`;
-
         if (parsedInput.isOverride) {
           timelineEventType = PipelineTimelineEventType.STAGE_OVERRIDE;
-          title = `Stage Override to ${nextStage}`;
-          description = `Admin stage override: ${parsedInput.reason}`;
         } else {
           switch (nextStage) {
             case PipelineStage.SCREENING:
-              timelineEventType = PipelineTimelineEventType.CANDIDATE_SHORTLISTED;
-              title = "Screening Commenced";
-              description = "Candidate entered the screening stage.";
-              break;
             case PipelineStage.SHORTLISTED:
               timelineEventType = PipelineTimelineEventType.CANDIDATE_SHORTLISTED;
-              title = "Shortlisted";
-              description = "Candidate has been shortlisted for interviews.";
               break;
             case PipelineStage.HR_INTERVIEW:
             case PipelineStage.TECHNICAL_INTERVIEW:
             case PipelineStage.FINAL_INTERVIEW:
               timelineEventType = PipelineTimelineEventType.INTERVIEW_SCHEDULED;
-              title = "Interview Round Process";
-              description = `Candidate entered ${nextStage} round.`;
               break;
             case PipelineStage.OFFER_PENDING:
               timelineEventType = PipelineTimelineEventType.OFFER_PENDING;
-              title = "Offer Pending Approval";
-              description = "Offer generation initiated and pending approval.";
               break;
             case PipelineStage.OFFER_SENT:
               timelineEventType = PipelineTimelineEventType.OFFER_SENT;
-              title = "Offer Sent";
-              description = "Offer letter has been sent to the candidate.";
               break;
             case PipelineStage.OFFER_ACCEPTED:
               timelineEventType = PipelineTimelineEventType.OFFER_ACCEPTED;
-              title = "Offer Accepted";
-              description = "Candidate has accepted the employment offer.";
               break;
             case PipelineStage.HIRED:
               timelineEventType = PipelineTimelineEventType.CANDIDATE_HIRED;
-              title = "Candidate Hired";
-              description = "Hiring process completed successfully. Candidate is hired.";
               break;
             case PipelineStage.REJECTED:
               timelineEventType = PipelineTimelineEventType.CANDIDATE_REJECTED;
-              title = "Candidate Rejected";
-              description =
-                parsedInput.comments || "Candidate rejected during recruitment process.";
               break;
             case PipelineStage.WITHDRAWN:
               timelineEventType = PipelineTimelineEventType.CANDIDATE_WITHDRAWN;
-              title = "Application Withdrawn";
-              description = parsedInput.comments || "Candidate has withdrawn their application.";
               break;
           }
         }
 
+        const timelineEvent = TimelineFactory.createEvent(timelineEventType, {
+          notes: parsedInput.comments,
+          reason: parsedInput.reason,
+          comments: parsedInput.comments,
+          stage: nextStage,
+        });
+
         await pipelineRepository.createTimelineEvent(
           id,
-          timelineEventType,
-          title,
-          description,
+          timelineEvent.eventType,
+          timelineEvent.title,
+          timelineEvent.description,
           currentUser.id,
           tx
         );
@@ -270,11 +256,17 @@ export const pipelineService = {
         const updated = await pipelineRepository.addPipelineNotes(id, parsedInput.notes, tx);
 
         // Create timeline event
+        const timelineEvent = TimelineFactory.createEvent(
+          PipelineTimelineEventType.RECRUITER_ADDED_NOTE,
+          {
+            notes: parsedInput.notes,
+          }
+        );
         await pipelineRepository.createTimelineEvent(
           id,
-          PipelineTimelineEventType.RECRUITER_ADDED_NOTE,
-          "Recruiter Note Added",
-          parsedInput.notes,
+          timelineEvent.eventType,
+          timelineEvent.title,
+          timelineEvent.description,
           currentUser.id,
           tx
         );

@@ -70,6 +70,33 @@ export const PipelineDetailSelect = {
   },
 } as const;
 
+export const HistorySelect = {
+  id: true,
+  pipelineId: true,
+  fromStage: true,
+  toStage: true,
+  movedById: true,
+  reason: true,
+  comments: true,
+  movedAt: true,
+  movedBy: {
+    select: RecruiterSelect,
+  },
+} as const;
+
+export const TimelineSelect = {
+  id: true,
+  pipelineId: true,
+  eventType: true,
+  title: true,
+  description: true,
+  createdById: true,
+  createdAt: true,
+  createdBy: {
+    select: RecruiterSelect,
+  },
+} as const;
+
 const notDeleted = { deletedAt: null } as const;
 
 export const pipelineRepository = {
@@ -184,11 +211,7 @@ export const pipelineRepository = {
         reason: reason || null,
         comments: comments || null,
       },
-      include: {
-        movedBy: {
-          select: RecruiterSelect,
-        },
-      },
+      select: HistorySelect,
     });
     return toPipelineHistoryDto(raw);
   },
@@ -210,11 +233,7 @@ export const pipelineRepository = {
         description,
         createdById,
       },
-      include: {
-        createdBy: {
-          select: RecruiterSelect,
-        },
-      },
+      select: TimelineSelect,
     });
     return toPipelineTimelineDto(raw);
   },
@@ -226,11 +245,7 @@ export const pipelineRepository = {
     const client = tx || prisma;
     const rawList = await client.pipelineHistory.findMany({
       where: { pipelineId },
-      include: {
-        movedBy: {
-          select: RecruiterSelect,
-        },
-      },
+      select: HistorySelect,
       orderBy: { movedAt: "desc" },
     });
     return rawList.map(toPipelineHistoryDto);
@@ -243,11 +258,7 @@ export const pipelineRepository = {
     const client = tx || prisma;
     const rawList = await client.pipelineTimeline.findMany({
       where: { pipelineId },
-      include: {
-        createdBy: {
-          select: RecruiterSelect,
-        },
-      },
+      select: TimelineSelect,
       orderBy: { createdAt: "desc" },
     });
     return rawList.map(toPipelineTimelineDto);

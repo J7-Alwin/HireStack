@@ -6,6 +6,7 @@ import {
   PipelineTimelineEventType,
 } from "@prisma/client";
 import { prisma } from "../../../config/prisma";
+import { TimelineFactory } from "../../pipeline/services/timeline.factory";
 import { ForbiddenError, ConflictError } from "../../../shared/errors";
 import { AuthenticatedUser } from "../../../shared/types";
 import { logger } from "../../../shared/logger/logger";
@@ -223,12 +224,18 @@ export const offerService = {
               comments: `Offer code ${offer.offerCode} was approved by Company Admin.`,
             },
           });
+          const timelineEvent = TimelineFactory.createEvent(
+            PipelineTimelineEventType.OFFER_PENDING,
+            {
+              offerCode: offer.offerCode,
+            }
+          );
           await tx.pipelineTimeline.create({
             data: {
               pipelineId: pipeline.id,
-              eventType: PipelineTimelineEventType.OFFER_PENDING,
-              title: "Offer Approved (Pending Candidate Review)",
-              description: `The employment offer (${offer.offerCode}) has been approved and is pending release.`,
+              eventType: timelineEvent.eventType,
+              title: timelineEvent.title,
+              description: timelineEvent.description,
               createdById: currentUser.id,
             },
           });
@@ -296,12 +303,15 @@ export const offerService = {
               comments: `Offer code ${offer.offerCode} was officially released to candidate.`,
             },
           });
+          const timelineEvent = TimelineFactory.createEvent(PipelineTimelineEventType.OFFER_SENT, {
+            offerCode: offer.offerCode,
+          });
           await tx.pipelineTimeline.create({
             data: {
               pipelineId: pipeline.id,
-              eventType: PipelineTimelineEventType.OFFER_SENT,
-              title: "Offer Sent to Candidate",
-              description: `The offer letter (${offer.offerCode}) has been officially sent out to the candidate.`,
+              eventType: timelineEvent.eventType,
+              title: timelineEvent.title,
+              description: timelineEvent.description,
               createdById: currentUser.id,
             },
           });
@@ -430,12 +440,18 @@ export const offerService = {
               comments: `Offer code ${offer.offerCode} accepted by candidate.`,
             },
           });
+          const timelineEvent = TimelineFactory.createEvent(
+            PipelineTimelineEventType.OFFER_ACCEPTED,
+            {
+              offerCode: offer.offerCode,
+            }
+          );
           await tx.pipelineTimeline.create({
             data: {
               pipelineId: pipeline.id,
-              eventType: PipelineTimelineEventType.OFFER_ACCEPTED,
-              title: "Offer Accepted by Candidate",
-              description: `Candidate accepted offer letter (${offer.offerCode}).`,
+              eventType: timelineEvent.eventType,
+              title: timelineEvent.title,
+              description: timelineEvent.description,
               createdById: currentUser.id,
             },
           });
