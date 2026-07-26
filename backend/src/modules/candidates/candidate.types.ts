@@ -20,7 +20,14 @@ export interface CandidateQueryFilters {
   experienceMax?: number;
   tags?: string[]; // tag names or IDs
   createdDate?: string;
-  sortBy?: "createdAt" | "updatedAt" | "firstName" | "lastName" | "experienceYears" | "candidateCode" | "currentCompany";
+  sortBy?:
+    | "createdAt"
+    | "updatedAt"
+    | "firstName"
+    | "lastName"
+    | "experienceYears"
+    | "candidateCode"
+    | "currentCompany";
   sortOrder?: "asc" | "desc";
 }
 

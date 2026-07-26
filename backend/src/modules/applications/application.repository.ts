@@ -86,7 +86,12 @@ export const applicationRepository = {
     });
   },
 
-  findByCode: async (companyId: string, applicationCode: string, includeDeleted = false, tx?: Prisma.TransactionClient) => {
+  findByCode: async (
+    companyId: string,
+    applicationCode: string,
+    includeDeleted = false,
+    tx?: Prisma.TransactionClient
+  ) => {
     const client = tx || prisma;
     const where: Prisma.ApplicationWhereInput = { companyId, applicationCode };
     if (!includeDeleted) {
@@ -134,7 +139,11 @@ export const applicationRepository = {
     });
   },
 
-  update: async (id: string, data: Prisma.ApplicationUncheckedUpdateInput, tx?: Prisma.TransactionClient) => {
+  update: async (
+    id: string,
+    data: Prisma.ApplicationUncheckedUpdateInput,
+    tx?: Prisma.TransactionClient
+  ) => {
     const client = tx || prisma;
     return await client.application.update({
       where: { id },
@@ -257,7 +266,13 @@ export const applicationRepository = {
       orderBy.push({ job: { title: sortOrder } });
     } else if (filters.sortBy) {
       const sortBy = filters.sortBy;
-      if (sortBy === "appliedAt" || sortBy === "createdAt" || sortBy === "updatedAt" || sortBy === "stage" || sortBy === "status") {
+      if (
+        sortBy === "appliedAt" ||
+        sortBy === "createdAt" ||
+        sortBy === "updatedAt" ||
+        sortBy === "stage" ||
+        sortBy === "status"
+      ) {
         orderBy.push({ [sortBy]: sortOrder });
       }
     } else {

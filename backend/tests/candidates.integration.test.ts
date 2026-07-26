@@ -1,12 +1,7 @@
 import "dotenv/config";
 import { prisma } from "../src/config/prisma";
 import { candidateService } from "../src/modules/candidates/candidate.service";
-import {
-  Role,
-  CandidateStatus,
-  SkillProficiency,
-  DocumentType,
-} from "@prisma/client";
+import { Role, CandidateStatus, SkillProficiency, DocumentType } from "@prisma/client";
 import { AuthenticatedUser } from "../src/shared/types";
 import { AccountStatus } from "../src/shared/enums/status.enum";
 
@@ -39,10 +34,16 @@ async function assertThrows(
   const err = caughtError as Error & { details?: Record<string, unknown> };
 
   if (err.constructor.name !== errorClass.name && !(err instanceof errorClass)) {
-    throw new Error(`Expected error of type ${errorClass.name}, but got ${err.constructor.name}: ${err.message}`, { cause: err });
+    throw new Error(
+      `Expected error of type ${errorClass.name}, but got ${err.constructor.name}: ${err.message}`,
+      { cause: err }
+    );
   }
   if (expectedMessage && !err.message.includes(expectedMessage)) {
-    throw new Error(`Expected error message to contain "${expectedMessage}", but got "${err.message}"`, { cause: err });
+    throw new Error(
+      `Expected error message to contain "${expectedMessage}", but got "${err.message}"`,
+      { cause: err }
+    );
   }
   if (expectedDetails) {
     const details = err.details;
@@ -51,7 +52,10 @@ async function assertThrows(
     }
     for (const key of Object.keys(expectedDetails)) {
       if (details[key] !== expectedDetails[key]) {
-        throw new Error(`Expected detail key "${key}" to be "${expectedDetails[key]}", but got "${details[key]}"`, { cause: err });
+        throw new Error(
+          `Expected detail key "${key}" to be "${expectedDetails[key]}", but got "${details[key]}"`,
+          { cause: err }
+        );
       }
     }
   }
@@ -191,7 +195,7 @@ async function runTests() {
     // TEST 1: Create Candidate Profile
     // ----------------------------------------------------
     console.log("🧪 Test 1: Creating a candidate profile...");
-    
+
     // Required: firstName, lastName, primaryRecruiterId, and email or phone
     const candidate = await candidateService.createCandidate(
       {
@@ -205,7 +209,10 @@ async function runTests() {
     );
 
     assert(candidate.firstName === "John", "Candidate first name should match input");
-    assert(candidate.candidateCode.startsWith("CAN-"), "Candidate code should be auto-generated with prefix CAN-");
+    assert(
+      candidate.candidateCode.startsWith("CAN-"),
+      "Candidate code should be auto-generated with prefix CAN-"
+    );
     assert(candidate.status === CandidateStatus.ACTIVE, "Candidate should default to ACTIVE");
     console.log("   -> Success!");
 
@@ -284,12 +291,20 @@ async function runTests() {
     // TEST 6: Tag Assignment & Reusability
     // ----------------------------------------------------
     console.log("🧪 Test 6: Verifying Tag assignment...");
-    const candWithTag = await candidateService.assignTag(candidate.id, "Immediate-Joiner", contextRecruiterA1);
+    const candWithTag = await candidateService.assignTag(
+      candidate.id,
+      "Immediate-Joiner",
+      contextRecruiterA1
+    );
     assert(candWithTag.tags.length === 1, "Candidate should have 1 tag assigned");
     assert(candWithTag.tags[0].tag.name === "immediate-joiner", "Tag name should be lowercased");
-    
+
     console.log("🧪 Test 6b: Verifying Tag removal...");
-    const candRemovedTag = await candidateService.removeTag(candidate.id, candWithTag.tags[0].tag.id, contextRecruiterA1);
+    const candRemovedTag = await candidateService.removeTag(
+      candidate.id,
+      candWithTag.tags[0].tag.id,
+      contextRecruiterA1
+    );
     assert(candRemovedTag.tags.length === 0, "Candidate tag should be removed");
     console.log("   -> Success!");
 
@@ -308,7 +323,10 @@ async function runTests() {
       contextRecruiterA1
     );
     assert(candWithSkill.skills.length === 1, "Should have 1 assigned skill");
-    assert(candWithSkill.skills[0].proficiency === SkillProficiency.ADVANCED, "Skill proficiency should match input");
+    assert(
+      candWithSkill.skills[0].proficiency === SkillProficiency.ADVANCED,
+      "Skill proficiency should match input"
+    );
 
     // Update skill details
     const updatedSkillCand = await candidateService.updateSkill(
@@ -321,7 +339,10 @@ async function runTests() {
       },
       contextRecruiterA1
     );
-    assert(updatedSkillCand.skills[0].proficiency === SkillProficiency.EXPERT, "Skill proficiency should be updated");
+    assert(
+      updatedSkillCand.skills[0].proficiency === SkillProficiency.EXPERT,
+      "Skill proficiency should be updated"
+    );
     console.log("   -> Success!");
 
     // ----------------------------------------------------
@@ -350,7 +371,10 @@ async function runTests() {
       },
       contextRecruiterA1
     );
-    assert(candWithUpdatedEdu.education[0].university === "Main Campus University System", "Education university should be updated");
+    assert(
+      candWithUpdatedEdu.education[0].university === "Main Campus University System",
+      "Education university should be updated"
+    );
     console.log("   -> Success!");
 
     // ----------------------------------------------------
@@ -398,10 +422,13 @@ async function runTests() {
     );
 
     // Fetch refreshed list
-    const candidateRefreshed = await candidateService.getCandidateById(candidate.id, contextRecruiterA1);
+    const candidateRefreshed = await candidateService.getCandidateById(
+      candidate.id,
+      contextRecruiterA1
+    );
     const doc1 = candidateRefreshed.documents.find((d) => d.fileName === "resume_v1.pdf");
     const doc2 = candidateRefreshed.documents.find((d) => d.fileName === "resume_v2.pdf");
-    
+
     assert(doc1?.isActive === false, "First resume should have been marked inactive");
     assert(doc2?.isActive === true, "Second resume should be active");
     console.log("   -> Success!");
@@ -452,7 +479,7 @@ async function runTests() {
     // TEST 13: Blacklisted Candidates and Archival Guards
     // ----------------------------------------------------
     console.log("🧪 Test 13: Verifying transition rules for BLACKLISTED status...");
-    
+
     // Admin A blacklists the candidate
     const blacklisted = await candidateService.updateCandidate(
       candidate.id,
@@ -488,7 +515,10 @@ async function runTests() {
     console.log("🧪 Test 14: Verifying soft delete and restore...");
     const deleted = await candidateService.softDeleteCandidate(candidate.id, contextAdminA);
     assert(deleted.isActive === false, "Candidate isActive flag set to false on delete");
-    assert(deleted.status === CandidateStatus.ARCHIVED, "Soft deleted candidates status set to ARCHIVED");
+    assert(
+      deleted.status === CandidateStatus.ARCHIVED,
+      "Soft deleted candidates status set to ARCHIVED"
+    );
 
     // Cannot read candidate under standard findById
     await assertThrows(
@@ -500,16 +530,19 @@ async function runTests() {
     // Restore candidate
     const restored = await candidateService.restoreCandidate(candidate.id, contextAdminA);
     assert(restored.isActive === true, "Candidate isActive flag restored to true");
-    assert(restored.status === CandidateStatus.ACTIVE, "Re-activated status set to ACTIVE on restore");
+    assert(
+      restored.status === CandidateStatus.ACTIVE,
+      "Re-activated status set to ACTIVE on restore"
+    );
     console.log("   -> Success!");
 
     // ----------------------------------------------------
     // TEST 15: Nested Transaction Rollback
     // ----------------------------------------------------
     console.log("🧪 Test 15: Verifying creation transaction rolls back on nested error...");
-    
+
     const randomEmail = `failed-${Date.now()}@rollback.com`;
-    
+
     await assertThrows(
       async () =>
         await candidateService.createCandidate(
@@ -535,14 +568,17 @@ async function runTests() {
     const queryNonExistent = await prisma.candidate.findFirst({
       where: { email: randomEmail, companyId: companyA.id },
     });
-    assert(queryNonExistent === null, "Candidate must not exist in the database after transaction rollback");
+    assert(
+      queryNonExistent === null,
+      "Candidate must not exist in the database after transaction rollback"
+    );
     console.log("   -> Success!");
 
     // ----------------------------------------------------
     // TEST 16: Concurrency Candidate Code Generation
     // ----------------------------------------------------
     console.log("🧪 Test 16: Verifying concurrency-safe candidate code generation...");
-    
+
     // Execute two creates concurrently
     const [c1, c2] = await Promise.all([
       candidateService.createCandidate(
@@ -565,19 +601,25 @@ async function runTests() {
       ),
     ]);
 
-    assert(c1.candidateCode !== c2.candidateCode, "Concurrent code generations must result in unique candidate codes");
-    
+    assert(
+      c1.candidateCode !== c2.candidateCode,
+      "Concurrent code generations must result in unique candidate codes"
+    );
+
     // Verify sequence incremental codes (e.g. CAN-00003 and CAN-00004 or similar sequence numbers)
     const code1Num = parseInt(c1.candidateCode.split("-")[1], 10);
     const code2Num = parseInt(c2.candidateCode.split("-")[1], 10);
-    assert(Math.abs(code1Num - code2Num) === 1, "Candidate code numbers should be sequentially consecutive");
+    assert(
+      Math.abs(code1Num - code2Num) === 1,
+      "Candidate code numbers should be sequentially consecutive"
+    );
     console.log("   -> Success!");
 
     // ----------------------------------------------------
     // TEST 17: Social URLs & Expected Validation Limits
     // ----------------------------------------------------
     console.log("🧪 Test 17: Verifying URL and salary validation...");
-    
+
     await assertThrows(
       async () =>
         await candidateService.createCandidate(

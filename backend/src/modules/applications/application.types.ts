@@ -8,11 +8,12 @@ export interface ApplicationQueryFilters {
   status?: ApplicationStatus;
   recruiter?: string; // recruiter ID
   candidate?: string; // candidate ID
-  job?: string;       // job ID
+  job?: string; // job ID
   source?: CandidateSource;
   appliedDate?: string;
   createdDate?: string;
-  sortBy?: "appliedAt" | "createdAt" | "updatedAt" | "candidateName" | "jobTitle" | "stage" | "status";
+  sortBy?:
+    "appliedAt" | "createdAt" | "updatedAt" | "candidateName" | "jobTitle" | "stage" | "status";
   sortOrder?: "asc" | "desc";
 }
 

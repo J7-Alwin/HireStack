@@ -71,6 +71,9 @@ model User {
   interviewsCancelled          Interview[]            @relation("InterviewCanceller")
   offersCreated                Offer[]                @relation("OfferCreator")
   offersApproved               Offer[]                @relation("OfferApprover")
+  pipelinesAssigned            HiringPipeline[]       @relation("PipelineRecruiter")
+  pipelinesHistoryMoved        PipelineHistory[]      @relation("PipelineHistoryMovedBy")
+  pipelinesTimelineCreated     PipelineTimeline[]     @relation("PipelineTimelineCreatedBy")
 
 
   createdAt DateTime @default(now())
@@ -125,6 +128,7 @@ model Company {
   interviewCounter CompanyInterviewCounter?
   offers           Offer[]
   offerCounter     CompanyOfferCounter?
+  pipelines        HiringPipeline[]
 
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
@@ -213,6 +217,7 @@ model Job {
   recruiters      JobRecruiter[]
   skills          JobSkill[]
   applications    Application[]
+  pipelines       HiringPipeline[]
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
 
@@ -357,6 +362,7 @@ model Candidate {
   tags               CandidateTag[]
   applications       Application[]
   offers             Offer[]
+  pipelines          HiringPipeline[]
   createdAt          DateTime             @default(now())
   updatedAt          DateTime             @updatedAt
 
@@ -530,6 +536,7 @@ model Application {
   deletedAt            DateTime?
   interviews           Interview[]
   offers               Offer[]
+  pipeline             HiringPipeline?
 
   @@unique([companyId, applicationCode])
   @@index([companyId])
@@ -720,5 +727,105 @@ model CompanyOfferCounter {
   companyId String  @id
   company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
   count     Int     @default(0)
+}
+
+enum PipelineStage {
+  APPLIED
+  SCREENING
+  SHORTLISTED
+  HR_INTERVIEW
+  TECHNICAL_INTERVIEW
+  FINAL_INTERVIEW
+  OFFER_PENDING
+  OFFER_SENT
+  OFFER_ACCEPTED
+  HIRED
+  REJECTED
+  WITHDRAWN
+}
+
+model HiringPipeline {
+  id              String             @id @default(uuid())
+  companyId       String
+  company         Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  applicationId   String             @unique
+  application     Application        @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  candidateId     String
+  candidate       Candidate          @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  recruiterId     String
+  recruiter       User               @relation("PipelineRecruiter", fields: [recruiterId], references: [id], onDelete: Cascade)
+  jobId           String
+  job             Job                @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  
+  currentStage    PipelineStage      @default(APPLIED)
+  previousStage   PipelineStage?
+  stageChangedAt  DateTime           @default(now())
+  stageOrder      Int                @default(1)
+  notes           String?            @db.VarChar(2000)
+  isCompleted     Boolean            @default(false)
+  completedReason String?            // can be HIRED, REJECTED, WITHDRAWN
+  
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  deletedAt       DateTime?
+
+  history         PipelineHistory[]
+  timeline        PipelineTimeline[]
+
+  @@index([companyId])
+  @@index([applicationId])
+  @@index([candidateId])
+  @@index([recruiterId])
+  @@index([jobId])
+  @@index([currentStage])
+  @@index([deletedAt])
+  @@index([createdAt])
+  @@index([updatedAt])
+}
+
+model PipelineHistory {
+  id             String         @id @default(uuid())
+  pipelineId     String
+  pipeline       HiringPipeline @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  fromStage      PipelineStage?
+  toStage        PipelineStage
+  movedById      String
+  movedBy        User           @relation("PipelineHistoryMovedBy", fields: [movedById], references: [id], onDelete: Cascade)
+  reason         String?        @db.VarChar(500)
+  comments       String?        @db.VarChar(2000)
+  movedAt        DateTime       @default(now())
+
+  @@index([pipelineId])
+  @@index([movedById])
+}
+
+enum PipelineTimelineEventType {
+  APPLICATION_SUBMITTED
+  CANDIDATE_SHORTLISTED
+  INTERVIEW_SCHEDULED
+  INTERVIEW_COMPLETED
+  OFFER_PENDING
+  OFFER_SENT
+  OFFER_ACCEPTED
+  CANDIDATE_HIRED
+  CANDIDATE_REJECTED
+  CANDIDATE_WITHDRAWN
+  RECRUITER_ADDED_NOTE
+  STAGE_OVERRIDE
+}
+
+model PipelineTimeline {
+  id          String                    @id @default(uuid())
+  pipelineId  String
+  pipeline    HiringPipeline            @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  eventType   PipelineTimelineEventType
+  title       String                    @db.VarChar(255)
+  description String                    @db.VarChar(2000)
+  createdById String
+  createdBy   User                      @relation("PipelineTimelineCreatedBy", fields: [createdById], references: [id], onDelete: Cascade)
+  createdAt   DateTime                  @default(now())
+
+  @@index([pipelineId])
+  @@index([createdById])
 }
 

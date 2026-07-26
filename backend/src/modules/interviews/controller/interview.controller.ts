@@ -26,9 +26,9 @@ export const interviewController = {
       currentUser
     );
 
-    res.status(HTTP_STATUS.CREATED).json(
-      successResponse(INTERVIEW_MESSAGES.INTERVIEW_CREATED, result)
-    );
+    res
+      .status(HTTP_STATUS.CREATED)
+      .json(successResponse(INTERVIEW_MESSAGES.INTERVIEW_CREATED, result));
   },
 
   listInterviews: async (req: Request, res: Response): Promise<void> => {
@@ -40,9 +40,9 @@ export const interviewController = {
       currentUser
     );
 
-    res.status(HTTP_STATUS.OK).json(
-      paginationResponse(INTERVIEW_MESSAGES.INTERVIEWS_RETRIEVED, result.data, result.meta)
-    );
+    res
+      .status(HTTP_STATUS.OK)
+      .json(paginationResponse(INTERVIEW_MESSAGES.INTERVIEWS_RETRIEVED, result.data, result.meta));
   },
 
   getInterviewById: async (req: Request, res: Response): Promise<void> => {
@@ -52,9 +52,9 @@ export const interviewController = {
     const id = req.params.id as string;
     const result = await interviewService.getInterviewById(id, currentUser);
 
-    res.status(HTTP_STATUS.OK).json(
-      successResponse(INTERVIEW_MESSAGES.INTERVIEW_RETRIEVED, result)
-    );
+    res
+      .status(HTTP_STATUS.OK)
+      .json(successResponse(INTERVIEW_MESSAGES.INTERVIEW_RETRIEVED, result));
   },
 
   updateInterview: async (req: Request, res: Response): Promise<void> => {
@@ -68,9 +68,7 @@ export const interviewController = {
       currentUser
     );
 
-    res.status(HTTP_STATUS.OK).json(
-      successResponse(INTERVIEW_MESSAGES.INTERVIEW_UPDATED, result)
-    );
+    res.status(HTTP_STATUS.OK).json(successResponse(INTERVIEW_MESSAGES.INTERVIEW_UPDATED, result));
   },
 
   rescheduleInterview: async (req: Request, res: Response): Promise<void> => {
@@ -84,9 +82,9 @@ export const interviewController = {
       currentUser
     );
 
-    res.status(HTTP_STATUS.OK).json(
-      successResponse(INTERVIEW_MESSAGES.INTERVIEW_RESCHEDULED, result)
-    );
+    res
+      .status(HTTP_STATUS.OK)
+      .json(successResponse(INTERVIEW_MESSAGES.INTERVIEW_RESCHEDULED, result));
   },
 
   cancelInterview: async (req: Request, res: Response): Promise<void> => {
@@ -100,9 +98,9 @@ export const interviewController = {
       currentUser
     );
 
-    res.status(HTTP_STATUS.OK).json(
-      successResponse(INTERVIEW_MESSAGES.INTERVIEW_CANCELLED, result)
-    );
+    res
+      .status(HTTP_STATUS.OK)
+      .json(successResponse(INTERVIEW_MESSAGES.INTERVIEW_CANCELLED, result));
   },
 
   updateStatus: async (req: Request, res: Response): Promise<void> => {
@@ -116,9 +114,9 @@ export const interviewController = {
       currentUser
     );
 
-    res.status(HTTP_STATUS.OK).json(
-      successResponse(INTERVIEW_MESSAGES.INTERVIEW_STATUS_UPDATED, result)
-    );
+    res
+      .status(HTTP_STATUS.OK)
+      .json(successResponse(INTERVIEW_MESSAGES.INTERVIEW_STATUS_UPDATED, result));
   },
 
   recordOutcome: async (req: Request, res: Response): Promise<void> => {
@@ -126,15 +124,11 @@ export const interviewController = {
     if (!currentUser) throw new UnauthorizedError("Unauthenticated");
 
     const id = req.params.id as string;
-    const result = await interviewService.recordOutcome(
-      id,
-      req.body as OutcomeInput,
-      currentUser
-    );
+    const result = await interviewService.recordOutcome(id, req.body as OutcomeInput, currentUser);
 
-    res.status(HTTP_STATUS.OK).json(
-      successResponse(INTERVIEW_MESSAGES.INTERVIEW_OUTCOME_RECORDED, result)
-    );
+    res
+      .status(HTTP_STATUS.OK)
+      .json(successResponse(INTERVIEW_MESSAGES.INTERVIEW_OUTCOME_RECORDED, result));
   },
 
   assignInterviewers: async (req: Request, res: Response): Promise<void> => {
@@ -148,9 +142,9 @@ export const interviewController = {
       currentUser
     );
 
-    res.status(HTTP_STATUS.OK).json(
-      successResponse(INTERVIEW_MESSAGES.INTERVIEWERS_UPDATED, result)
-    );
+    res
+      .status(HTTP_STATUS.OK)
+      .json(successResponse(INTERVIEW_MESSAGES.INTERVIEWERS_UPDATED, result));
   },
 
   softDeleteInterview: async (req: Request, res: Response): Promise<void> => {
@@ -160,8 +154,6 @@ export const interviewController = {
     const id = req.params.id as string;
     await interviewService.softDeleteInterview(id, currentUser);
 
-    res.status(HTTP_STATUS.OK).json(
-      successResponse(INTERVIEW_MESSAGES.INTERVIEW_DELETED)
-    );
+    res.status(HTTP_STATUS.OK).json(successResponse(INTERVIEW_MESSAGES.INTERVIEW_DELETED));
   },
 };

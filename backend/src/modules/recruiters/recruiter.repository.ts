@@ -3,7 +3,6 @@ import { Prisma } from "@prisma/client";
 import { safeUserSelect } from "../../shared/prisma/selects/user.select";
 import { Role } from "../../shared/enums/role.enum";
 
-
 export const recruiterRepository = {
   findById: async (id: string, includeDeleted = false) => {
     const where: Prisma.UserWhereInput = {

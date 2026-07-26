@@ -3,15 +3,21 @@ export const arrayUtils = {
     return Array.from(new Set(arr));
   },
 
-  groupBy: <T, K extends string | number | symbol>(arr: T[], getKey: (item: T) => K): Record<K, T[]> => {
-    return arr.reduce((acc, item) => {
-      const key = getKey(item);
-      if (!acc[key]) {
-        acc[key] = [];
-      }
-      acc[key].push(item);
-      return acc;
-    }, {} as Record<K, T[]>);
+  groupBy: <T, K extends string | number | symbol>(
+    arr: T[],
+    getKey: (item: T) => K
+  ): Record<K, T[]> => {
+    return arr.reduce(
+      (acc, item) => {
+        const key = getKey(item);
+        if (!acc[key]) {
+          acc[key] = [];
+        }
+        acc[key].push(item);
+        return acc;
+      },
+      {} as Record<K, T[]>
+    );
   },
 
   chunk: <T>(arr: T[], size: number): T[][] => {

@@ -1,6 +1,11 @@
 import { Role, CandidateStatus } from "@prisma/client";
 import { prisma } from "../../config/prisma";
-import { ForbiddenError, NotFoundError, ConflictError, UnprocessableEntityError } from "../../shared/errors";
+import {
+  ForbiddenError,
+  NotFoundError,
+  ConflictError,
+  UnprocessableEntityError,
+} from "../../shared/errors";
 import { AuthenticatedUser } from "../../shared/types";
 import { CANDIDATES_MESSAGES } from "./candidate.constants";
 import { candidateRepository } from "./candidate.repository";
@@ -78,96 +83,122 @@ export const candidateService = {
     }
 
     // Wrap counter checks, duplicate checks, candidate creation and nested records inside transaction
-    return prisma.$transaction(async (tx) => {
-      // Verify primary recruiter user exists in same company and is RECRUITER
-      const recruiterUser = await candidateRepository.findRecruiterById(parsedInput.primaryRecruiterId, companyId, tx);
-      if (!recruiterUser) {
-        throw new UnprocessableEntityError(CANDIDATES_MESSAGES.RECRUITER_NOT_FOUND);
-      }
-      if (recruiterUser.role !== Role.RECRUITER) {
-        throw new UnprocessableEntityError(CANDIDATES_MESSAGES.RECRUITER_ROLE_INVALID);
-      }
-
-      // Duplicate detection on email or phone
-      const duplicate = await candidateRepository.findByEmailOrPhone(companyId, parsedInput.email, parsedInput.phone, tx);
-      if (duplicate) {
-        if (parsedInput.email && duplicate.email === parsedInput.email) {
-          throw new ConflictError(CANDIDATES_MESSAGES.EMAIL_ALREADY_EXISTS, { duplicateId: duplicate.id });
+    return prisma.$transaction(
+      async (tx) => {
+        // Verify primary recruiter user exists in same company and is RECRUITER
+        const recruiterUser = await candidateRepository.findRecruiterById(
+          parsedInput.primaryRecruiterId,
+          companyId,
+          tx
+        );
+        if (!recruiterUser) {
+          throw new UnprocessableEntityError(CANDIDATES_MESSAGES.RECRUITER_NOT_FOUND);
         }
-        if (parsedInput.phone && duplicate.phone === parsedInput.phone) {
-          throw new ConflictError(CANDIDATES_MESSAGES.PHONE_ALREADY_EXISTS, { duplicateId: duplicate.id });
+        if (recruiterUser.role !== Role.RECRUITER) {
+          throw new UnprocessableEntityError(CANDIDATES_MESSAGES.RECRUITER_ROLE_INVALID);
         }
-      }
 
-      // Concurrency-safe atomic Candidate Code generation using the counter table
-      const codeCount = await candidateRepository.incrementCandidateCounter(companyId, tx);
-      const candidateCode = `CAN-${String(codeCount).padStart(5, "0")}`;
-
-      const { skills, education, experience, documents, notes, tags, ...candidateData } = parsedInput;
-
-      // 1. Create base candidate profile
-      const candidate = await candidateRepository.create(companyId, currentUser.id, candidateCode, candidateData, tx);
-
-      // 2. Add skills
-      if (skills && skills.length > 0) {
-        for (const skill of skills) {
-          const catalogueSkill = await candidateRepository.findSkillInCatalogue(skill.skillId, tx);
-          if (!catalogueSkill) {
-            throw new NotFoundError(CANDIDATES_MESSAGES.SKILL_CATALOGUE_NOT_FOUND);
+        // Duplicate detection on email or phone
+        const duplicate = await candidateRepository.findByEmailOrPhone(
+          companyId,
+          parsedInput.email,
+          parsedInput.phone,
+          tx
+        );
+        if (duplicate) {
+          if (parsedInput.email && duplicate.email === parsedInput.email) {
+            throw new ConflictError(CANDIDATES_MESSAGES.EMAIL_ALREADY_EXISTS, {
+              duplicateId: duplicate.id,
+            });
           }
-          await candidateRepository.addSkill(candidate.id, skill, tx);
-        }
-      }
-
-      // 3. Add education records
-      if (education && education.length > 0) {
-        for (const edu of education) {
-          await candidateRepository.addEducation(candidate.id, edu, tx);
-        }
-      }
-
-      // 4. Add experience records
-      if (experience && experience.length > 0) {
-        for (const exp of experience) {
-          await candidateRepository.addExperience(candidate.id, exp, tx);
-        }
-      }
-
-      // 5. Add documents (Resume deactivations will run automatically per resume within transaction)
-      if (documents && documents.length > 0) {
-        for (const doc of documents) {
-          await candidateRepository.addDocument(candidate.id, currentUser.id, doc, tx);
-        }
-      }
-
-      // 6. Add notes
-      if (notes && notes.length > 0) {
-        for (const note of notes) {
-          await candidateRepository.addNote(candidate.id, currentUser.id, note, tx);
-        }
-      }
-
-      // 7. Add tags
-      if (tags && tags.length > 0) {
-        for (const tagName of tags) {
-          let tag = await candidateRepository.findTagByName(companyId, tagName, tx);
-          if (!tag) {
-            tag = await candidateRepository.createTag(companyId, tagName, tx);
+          if (parsedInput.phone && duplicate.phone === parsedInput.phone) {
+            throw new ConflictError(CANDIDATES_MESSAGES.PHONE_ALREADY_EXISTS, {
+              duplicateId: duplicate.id,
+            });
           }
-          await candidateRepository.assignTag(candidate.id, tag.id, tx);
         }
-      }
 
-      // Return fully loaded candidate profile
-      const finalCandidate = await candidateRepository.findById(candidate.id, tx);
-      if (!finalCandidate) {
-        throw new NotFoundError(CANDIDATES_MESSAGES.CANDIDATE_NOT_FOUND);
+        // Concurrency-safe atomic Candidate Code generation using the counter table
+        const codeCount = await candidateRepository.incrementCandidateCounter(companyId, tx);
+        const candidateCode = `CAN-${String(codeCount).padStart(5, "0")}`;
+
+        const { skills, education, experience, documents, notes, tags, ...candidateData } =
+          parsedInput;
+
+        // 1. Create base candidate profile
+        const candidate = await candidateRepository.create(
+          companyId,
+          currentUser.id,
+          candidateCode,
+          candidateData,
+          tx
+        );
+
+        // 2. Add skills
+        if (skills && skills.length > 0) {
+          for (const skill of skills) {
+            const catalogueSkill = await candidateRepository.findSkillInCatalogue(
+              skill.skillId,
+              tx
+            );
+            if (!catalogueSkill) {
+              throw new NotFoundError(CANDIDATES_MESSAGES.SKILL_CATALOGUE_NOT_FOUND);
+            }
+            await candidateRepository.addSkill(candidate.id, skill, tx);
+          }
+        }
+
+        // 3. Add education records
+        if (education && education.length > 0) {
+          for (const edu of education) {
+            await candidateRepository.addEducation(candidate.id, edu, tx);
+          }
+        }
+
+        // 4. Add experience records
+        if (experience && experience.length > 0) {
+          for (const exp of experience) {
+            await candidateRepository.addExperience(candidate.id, exp, tx);
+          }
+        }
+
+        // 5. Add documents (Resume deactivations will run automatically per resume within transaction)
+        if (documents && documents.length > 0) {
+          for (const doc of documents) {
+            await candidateRepository.addDocument(candidate.id, currentUser.id, doc, tx);
+          }
+        }
+
+        // 6. Add notes
+        if (notes && notes.length > 0) {
+          for (const note of notes) {
+            await candidateRepository.addNote(candidate.id, currentUser.id, note, tx);
+          }
+        }
+
+        // 7. Add tags
+        if (tags && tags.length > 0) {
+          for (const tagName of tags) {
+            let tag = await candidateRepository.findTagByName(companyId, tagName, tx);
+            if (!tag) {
+              tag = await candidateRepository.createTag(companyId, tagName, tx);
+            }
+            await candidateRepository.assignTag(candidate.id, tag.id, tx);
+          }
+        }
+
+        // Return fully loaded candidate profile
+        const finalCandidate = await candidateRepository.findById(candidate.id, tx);
+        if (!finalCandidate) {
+          throw new NotFoundError(CANDIDATES_MESSAGES.CANDIDATE_NOT_FOUND);
+        }
+        return finalCandidate;
+      },
+      {
+        maxWait: 15000,
+        timeout: 30000,
       }
-      return finalCandidate;
-    }, {
-      maxWait: 15000,
-      timeout: 30000,
-    });
+    );
   },
 
   getCandidateById: async (id: string, currentUser: AuthenticatedUser) => {
@@ -177,7 +208,11 @@ export const candidateService = {
     return validateCandidateExists(id, currentUser);
   },
 
-  updateCandidate: async (id: string, input: CandidateUpdateInput, currentUser: AuthenticatedUser) => {
+  updateCandidate: async (
+    id: string,
+    input: CandidateUpdateInput,
+    currentUser: AuthenticatedUser
+  ) => {
     enforceWriterRole(currentUser);
     const companyId = currentUser.companyId!;
     const candidate = await validateCandidateExists(id, currentUser);
@@ -185,13 +220,20 @@ export const candidateService = {
     const parsedInput = updateCandidateSchema.parse(input);
 
     // If recruiter tries to reassign the primary recruiter, reject it
-    if (currentUser.role === Role.RECRUITER && parsedInput.primaryRecruiterId && parsedInput.primaryRecruiterId !== candidate.primaryRecruiterId) {
+    if (
+      currentUser.role === Role.RECRUITER &&
+      parsedInput.primaryRecruiterId &&
+      parsedInput.primaryRecruiterId !== candidate.primaryRecruiterId
+    ) {
       throw new ForbiddenError(CANDIDATES_MESSAGES.FORBIDDEN_MODIFICATION);
     }
 
     // Verify updated primary recruiter if provided (uses repository wrapper)
     if (parsedInput.primaryRecruiterId) {
-      const recruiterUser = await candidateRepository.findRecruiterById(parsedInput.primaryRecruiterId, companyId);
+      const recruiterUser = await candidateRepository.findRecruiterById(
+        parsedInput.primaryRecruiterId,
+        companyId
+      );
       if (!recruiterUser) {
         throw new UnprocessableEntityError(CANDIDATES_MESSAGES.RECRUITER_NOT_FOUND);
       }
@@ -202,13 +244,21 @@ export const candidateService = {
 
     // Duplicate detection on updated contact details
     if (parsedInput.email || parsedInput.phone) {
-      const duplicate = await candidateRepository.findByEmailOrPhone(companyId, parsedInput.email, parsedInput.phone);
+      const duplicate = await candidateRepository.findByEmailOrPhone(
+        companyId,
+        parsedInput.email,
+        parsedInput.phone
+      );
       if (duplicate && duplicate.id !== id) {
         if (parsedInput.email && duplicate.email === parsedInput.email) {
-          throw new ConflictError(CANDIDATES_MESSAGES.EMAIL_ALREADY_EXISTS, { duplicateId: duplicate.id });
+          throw new ConflictError(CANDIDATES_MESSAGES.EMAIL_ALREADY_EXISTS, {
+            duplicateId: duplicate.id,
+          });
         }
         if (parsedInput.phone && duplicate.phone === parsedInput.phone) {
-          throw new ConflictError(CANDIDATES_MESSAGES.PHONE_ALREADY_EXISTS, { duplicateId: duplicate.id });
+          throw new ConflictError(CANDIDATES_MESSAGES.PHONE_ALREADY_EXISTS, {
+            duplicateId: duplicate.id,
+          });
         }
       }
     }
@@ -216,12 +266,18 @@ export const candidateService = {
     // Status transition rules
     if (parsedInput.status) {
       // 1. Cannot transition to ARCHIVED directly on update (use archive API / soft delete)
-      if (parsedInput.status === CandidateStatus.ARCHIVED && candidate.status !== CandidateStatus.ARCHIVED) {
+      if (
+        parsedInput.status === CandidateStatus.ARCHIVED &&
+        candidate.status !== CandidateStatus.ARCHIVED
+      ) {
         throw new UnprocessableEntityError(CANDIDATES_MESSAGES.INVALID_STATUS_TRANSITION);
       }
 
       // 2. Blacklisted transition checks
-      if (candidate.status === CandidateStatus.BLACKLISTED && parsedInput.status !== CandidateStatus.BLACKLISTED) {
+      if (
+        candidate.status === CandidateStatus.BLACKLISTED &&
+        parsedInput.status !== CandidateStatus.BLACKLISTED
+      ) {
         if (currentUser.role !== Role.COMPANY_ADMIN) {
           throw new ForbiddenError(CANDIDATES_MESSAGES.BLACKLISTED_TRANSITION_FORBIDDEN);
         }
@@ -245,7 +301,9 @@ export const candidateService = {
     }
 
     // Set candidate status to ARCHIVED alongside soft delete
-    await candidateRepository.update(id, companyId, currentUser.id, { status: CandidateStatus.ARCHIVED });
+    await candidateRepository.update(id, companyId, currentUser.id, {
+      status: CandidateStatus.ARCHIVED,
+    });
     return candidateRepository.softDelete(id, companyId);
   },
 
@@ -255,7 +313,7 @@ export const candidateService = {
       throw new ForbiddenError(CANDIDATES_MESSAGES.FORBIDDEN_ACCESS);
     }
     const companyId = currentUser.companyId!;
-    
+
     // Find candidate including deleted
     const candidate = await candidateRepository.findByIdIncludeDeleted(id);
     if (!candidate) {
@@ -268,7 +326,9 @@ export const candidateService = {
     }
 
     // Set candidate status to ACTIVE on restore
-    await candidateRepository.update(id, companyId, currentUser.id, { status: CandidateStatus.ACTIVE });
+    await candidateRepository.update(id, companyId, currentUser.id, {
+      status: CandidateStatus.ACTIVE,
+    });
     return candidateRepository.restore(id, companyId);
   },
 
@@ -292,7 +352,11 @@ export const candidateService = {
   },
 
   // Skills
-  addSkill: async (candidateId: string, input: CandidateSkillInput, currentUser: AuthenticatedUser) => {
+  addSkill: async (
+    candidateId: string,
+    input: CandidateSkillInput,
+    currentUser: AuthenticatedUser
+  ) => {
     enforceWriterRole(currentUser);
     const candidate = await validateCandidateExists(candidateId, currentUser);
 
@@ -348,7 +412,11 @@ export const candidateService = {
   },
 
   // Education
-  addEducation: async (candidateId: string, input: CandidateEducationInput, currentUser: AuthenticatedUser) => {
+  addEducation: async (
+    candidateId: string,
+    input: CandidateEducationInput,
+    currentUser: AuthenticatedUser
+  ) => {
     enforceWriterRole(currentUser);
     await validateCandidateExists(candidateId, currentUser);
 
@@ -378,7 +446,11 @@ export const candidateService = {
     return validateCandidateExists(candidateId, currentUser);
   },
 
-  deleteEducation: async (candidateId: string, educationId: string, currentUser: AuthenticatedUser) => {
+  deleteEducation: async (
+    candidateId: string,
+    educationId: string,
+    currentUser: AuthenticatedUser
+  ) => {
     enforceWriterRole(currentUser);
     const candidate = await validateCandidateExists(candidateId, currentUser);
 
@@ -392,7 +464,11 @@ export const candidateService = {
   },
 
   // Experience
-  addExperience: async (candidateId: string, input: CandidateExperienceInput, currentUser: AuthenticatedUser) => {
+  addExperience: async (
+    candidateId: string,
+    input: CandidateExperienceInput,
+    currentUser: AuthenticatedUser
+  ) => {
     enforceWriterRole(currentUser);
     await validateCandidateExists(candidateId, currentUser);
 
@@ -422,7 +498,11 @@ export const candidateService = {
     return validateCandidateExists(candidateId, currentUser);
   },
 
-  deleteExperience: async (candidateId: string, experienceId: string, currentUser: AuthenticatedUser) => {
+  deleteExperience: async (
+    candidateId: string,
+    experienceId: string,
+    currentUser: AuthenticatedUser
+  ) => {
     enforceWriterRole(currentUser);
     const candidate = await validateCandidateExists(candidateId, currentUser);
 
@@ -436,7 +516,11 @@ export const candidateService = {
   },
 
   // Documents
-  addDocument: async (candidateId: string, input: CandidateDocumentInput, currentUser: AuthenticatedUser) => {
+  addDocument: async (
+    candidateId: string,
+    input: CandidateDocumentInput,
+    currentUser: AuthenticatedUser
+  ) => {
     enforceWriterRole(currentUser);
     await validateCandidateExists(candidateId, currentUser);
 
@@ -446,7 +530,11 @@ export const candidateService = {
     return validateCandidateExists(candidateId, currentUser);
   },
 
-  deleteDocument: async (candidateId: string, documentId: string, currentUser: AuthenticatedUser) => {
+  deleteDocument: async (
+    candidateId: string,
+    documentId: string,
+    currentUser: AuthenticatedUser
+  ) => {
     enforceWriterRole(currentUser);
     const candidate = await validateCandidateExists(candidateId, currentUser);
 
@@ -460,7 +548,11 @@ export const candidateService = {
   },
 
   // Notes
-  addNote: async (candidateId: string, input: CandidateNoteInput, currentUser: AuthenticatedUser) => {
+  addNote: async (
+    candidateId: string,
+    input: CandidateNoteInput,
+    currentUser: AuthenticatedUser
+  ) => {
     enforceWriterRole(currentUser);
     await validateCandidateExists(candidateId, currentUser);
 
@@ -469,7 +561,12 @@ export const candidateService = {
     return candidateRepository.addNote(candidateId, currentUser.id, parsedInput);
   },
 
-  updateNote: async (candidateId: string, noteId: string, input: CandidateNoteInput, currentUser: AuthenticatedUser) => {
+  updateNote: async (
+    candidateId: string,
+    noteId: string,
+    input: CandidateNoteInput,
+    currentUser: AuthenticatedUser
+  ) => {
     enforceWriterRole(currentUser);
     await validateCandidateExists(candidateId, currentUser);
 

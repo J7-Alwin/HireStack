@@ -1,4 +1,10 @@
-import { InterviewType, InterviewRound, InterviewStatus, InterviewOutcome, InterviewMode } from "@prisma/client";
+import {
+  InterviewType,
+  InterviewRound,
+  InterviewStatus,
+  InterviewOutcome,
+  InterviewMode,
+} from "@prisma/client";
 
 export interface CreateInterviewInput {
   applicationId: string;

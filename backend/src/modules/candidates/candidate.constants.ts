@@ -8,7 +8,8 @@ export const CANDIDATES_MESSAGES = {
   CANDIDATE_RESTORED: "Candidate restored successfully",
   FORBIDDEN_MODIFICATION: "You do not have permission to manage this candidate",
   FORBIDDEN_ACCESS: "You do not have permission to perform this action",
-  CROSS_COMPANY_ACCESS_FORBIDDEN: "Cross-company access to another company's candidate is not permitted",
+  CROSS_COMPANY_ACCESS_FORBIDDEN:
+    "Cross-company access to another company's candidate is not permitted",
   EMAIL_ALREADY_EXISTS: "A candidate with this email address already exists in your company",
   PHONE_ALREADY_EXISTS: "A candidate with this phone number already exists in your company",
   REQUIRED_CONTACT_INFO: "At least email or phone number is required to create a candidate",

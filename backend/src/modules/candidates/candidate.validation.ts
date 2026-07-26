@@ -43,8 +43,19 @@ const urlSchema = z.string().trim().url("Invalid URL format");
 export const candidateSkillSchema = z.object({
   skillId: z.string().cuid("Invalid skill ID"),
   proficiency: skillProficiencySchema.optional(),
-  experienceYears: z.number().int().nonnegative("Experience years cannot be negative").optional().nullable(),
-  experienceMonths: z.number().int().min(0, "Months must be at least 0").max(11, "Months cannot exceed 11").optional().nullable(),
+  experienceYears: z
+    .number()
+    .int()
+    .nonnegative("Experience years cannot be negative")
+    .optional()
+    .nullable(),
+  experienceMonths: z
+    .number()
+    .int()
+    .min(0, "Months must be at least 0")
+    .max(11, "Months cannot exceed 11")
+    .optional()
+    .nullable(),
   isPrimary: z.boolean().optional(),
 });
 
@@ -55,7 +66,11 @@ export const candidateEducationSchema = z
     specialization: z.string().trim().max(200).optional().nullable(),
     institution: z.string().trim().min(1, "Institution cannot be empty").max(200),
     university: z.string().trim().max(200).optional().nullable(),
-    startDate: z.string().datetime({ message: "Invalid ISO datetime string" }).optional().nullable(),
+    startDate: z
+      .string()
+      .datetime({ message: "Invalid ISO datetime string" })
+      .optional()
+      .nullable(),
     endDate: z.string().datetime({ message: "Invalid ISO datetime string" }).optional().nullable(),
     graduationYear: z.number().int().min(1900).max(2100).optional().nullable(),
     grade: z.string().trim().max(50).optional().nullable(),
@@ -81,7 +96,11 @@ export const candidateEducationUpdateSchema = z
     specialization: z.string().trim().max(200).optional().nullable(),
     institution: z.string().trim().min(1, "Institution cannot be empty").max(200).optional(),
     university: z.string().trim().max(200).optional().nullable(),
-    startDate: z.string().datetime({ message: "Invalid ISO datetime string" }).optional().nullable(),
+    startDate: z
+      .string()
+      .datetime({ message: "Invalid ISO datetime string" })
+      .optional()
+      .nullable(),
     endDate: z.string().datetime({ message: "Invalid ISO datetime string" }).optional().nullable(),
     graduationYear: z.number().int().min(1900).max(2100).optional().nullable(),
     grade: z.string().trim().max(50).optional().nullable(),
@@ -185,12 +204,36 @@ export const createCandidateSchema = z
     zipCode: z.string().trim().max(20).optional().nullable(),
     currentCompany: z.string().trim().max(200).optional().nullable(),
     currentDesignation: z.string().trim().max(200).optional().nullable(),
-    experienceYears: z.number().int().nonnegative("Experience years cannot be negative").optional().nullable(),
-    experienceMonths: z.number().int().min(0, "Months must be at least 0").max(11, "Months cannot exceed 11").optional().nullable(),
-    expectedSalary: z.number().nonnegative("Expected salary cannot be negative").optional().nullable(),
-    currentSalary: z.number().nonnegative("Current salary cannot be negative").optional().nullable(),
+    experienceYears: z
+      .number()
+      .int()
+      .nonnegative("Experience years cannot be negative")
+      .optional()
+      .nullable(),
+    experienceMonths: z
+      .number()
+      .int()
+      .min(0, "Months must be at least 0")
+      .max(11, "Months cannot exceed 11")
+      .optional()
+      .nullable(),
+    expectedSalary: z
+      .number()
+      .nonnegative("Expected salary cannot be negative")
+      .optional()
+      .nullable(),
+    currentSalary: z
+      .number()
+      .nonnegative("Current salary cannot be negative")
+      .optional()
+      .nullable(),
     currency: z.string().trim().max(10).optional().nullable(),
-    noticePeriod: z.number().int().nonnegative("Notice period cannot be negative").optional().nullable(),
+    noticePeriod: z
+      .number()
+      .int()
+      .nonnegative("Notice period cannot be negative")
+      .optional()
+      .nullable(),
     employmentStatus: employmentStatusSchema.optional().nullable(),
     source: candidateSourceSchema.optional().nullable(),
     linkedInUrl: urlSchema.optional().nullable(),
@@ -224,12 +267,32 @@ export const updateCandidateSchema = z.object({
   zipCode: z.string().trim().max(20).optional().nullable(),
   currentCompany: z.string().trim().max(200).optional().nullable(),
   currentDesignation: z.string().trim().max(200).optional().nullable(),
-  experienceYears: z.number().int().nonnegative("Experience years cannot be negative").optional().nullable(),
-  experienceMonths: z.number().int().min(0, "Months must be at least 0").max(11, "Months cannot exceed 11").optional().nullable(),
-  expectedSalary: z.number().nonnegative("Expected salary cannot be negative").optional().nullable(),
+  experienceYears: z
+    .number()
+    .int()
+    .nonnegative("Experience years cannot be negative")
+    .optional()
+    .nullable(),
+  experienceMonths: z
+    .number()
+    .int()
+    .min(0, "Months must be at least 0")
+    .max(11, "Months cannot exceed 11")
+    .optional()
+    .nullable(),
+  expectedSalary: z
+    .number()
+    .nonnegative("Expected salary cannot be negative")
+    .optional()
+    .nullable(),
   currentSalary: z.number().nonnegative("Current salary cannot be negative").optional().nullable(),
   currency: z.string().trim().max(10).optional().nullable(),
-  noticePeriod: z.number().int().nonnegative("Notice period cannot be negative").optional().nullable(),
+  noticePeriod: z
+    .number()
+    .int()
+    .nonnegative("Notice period cannot be negative")
+    .optional()
+    .nullable(),
   employmentStatus: employmentStatusSchema.optional().nullable(),
   source: candidateSourceSchema.optional().nullable(),
   linkedInUrl: urlSchema.optional().nullable(),

@@ -82,7 +82,10 @@ export const departmentsService = {
     return department;
   },
 
-  getDepartmentById: async (id: string, currentUser: AuthenticatedUser): Promise<SafeDepartment> => {
+  getDepartmentById: async (
+    id: string,
+    currentUser: AuthenticatedUser
+  ): Promise<SafeDepartment> => {
     // Super Admins can fetch soft-deleted departments
     const includeDeleted = currentUser.role === Role.SUPER_ADMIN;
     const department = await departmentsRepository.findById(id, includeDeleted);
@@ -194,7 +197,10 @@ export const departmentsService = {
     if (input.name) {
       const trimmedName = input.name.trim();
       if (trimmedName.toLowerCase() !== department.name.toLowerCase()) {
-        const existing = await departmentsRepository.findByNameInCompany(department.companyId, trimmedName);
+        const existing = await departmentsRepository.findByNameInCompany(
+          department.companyId,
+          trimmedName
+        );
         if (existing && existing.id !== id) {
           throw new ConflictError(DEPARTMENTS_MESSAGES.DEPARTMENT_ALREADY_EXISTS);
         }
@@ -274,7 +280,10 @@ export const departmentsService = {
     return updated;
   },
 
-  softDeleteDepartment: async (id: string, currentUser: AuthenticatedUser): Promise<SafeDepartment> => {
+  softDeleteDepartment: async (
+    id: string,
+    currentUser: AuthenticatedUser
+  ): Promise<SafeDepartment> => {
     // 1. Authorization check
     if (currentUser.role !== Role.SUPER_ADMIN && currentUser.role !== Role.COMPANY_ADMIN) {
       throw new ForbiddenError(DEPARTMENTS_MESSAGES.FORBIDDEN_MODIFICATION);
@@ -327,7 +336,10 @@ export const departmentsService = {
     return deleted;
   },
 
-  restoreDepartment: async (id: string, currentUser: AuthenticatedUser): Promise<SafeDepartment> => {
+  restoreDepartment: async (
+    id: string,
+    currentUser: AuthenticatedUser
+  ): Promise<SafeDepartment> => {
     // 1. Authorization check
     if (currentUser.role !== Role.SUPER_ADMIN && currentUser.role !== Role.COMPANY_ADMIN) {
       throw new ForbiddenError(DEPARTMENTS_MESSAGES.FORBIDDEN_MODIFICATION);
@@ -358,7 +370,10 @@ export const departmentsService = {
 
     // 4. Verify no name conflict inside the same company
     const originalName = department.name.replace(` (Deleted-${id})`, "");
-    const duplicate = await departmentsRepository.findByNameInCompany(department.companyId, originalName);
+    const duplicate = await departmentsRepository.findByNameInCompany(
+      department.companyId,
+      originalName
+    );
     if (duplicate) {
       throw new ConflictError(DEPARTMENTS_MESSAGES.RESTORE_CONFLICT);
     }

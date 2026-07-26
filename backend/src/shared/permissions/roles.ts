@@ -3,7 +3,7 @@ import { Permission } from "./permissions";
 
 export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   [Role.SUPER_ADMIN]: Object.values(Permission),
-  
+
   [Role.COMPANY_ADMIN]: [
     Permission.CREATE_JOB,
     Permission.EDIT_JOB,
@@ -17,7 +17,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     Permission.MANAGE_RECRUITERS,
     Permission.MANAGE_USERS,
   ],
-  
+
   [Role.RECRUITER]: [
     Permission.CREATE_JOB,
     Permission.EDIT_JOB,
@@ -29,7 +29,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     Permission.VIEW_COMPANY,
     Permission.VIEW_RESUME,
   ],
-  
+
   [Role.CANDIDATE]: [
     Permission.VIEW_JOB,
     Permission.APPLY_JOB,

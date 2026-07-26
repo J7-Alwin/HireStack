@@ -1,4 +1,7 @@
-export function buildSearchCondition(search?: string, fields: string[] = []): Record<string, unknown> | undefined {
+export function buildSearchCondition(
+  search?: string,
+  fields: string[] = []
+): Record<string, unknown> | undefined {
   if (!search || fields.length === 0) {
     return undefined;
   }

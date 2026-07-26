@@ -3,7 +3,7 @@ import { emailValidatorSchema } from "../../shared/validators/email.validator";
 import { AccountStatus } from "../../shared/enums/status.enum";
 
 // Preprocessing helpers for queries
-const numericPreprocess = (defaultValue: number) => 
+const numericPreprocess = (defaultValue: number) =>
   z.preprocess((val) => {
     if (typeof val === "string") {
       const parsed = parseInt(val, 10);
@@ -27,13 +27,29 @@ const optionalUrlSchema = z.preprocess(
 
 export const onboardingSchema = z.object({
   company: z.object({
-    name: z.string().trim().min(1, "Company name is required").max(150, "Company name must not exceed 150 characters"),
-    description: z.string().trim().max(5000, "Description must not exceed 5000 characters").optional(),
+    name: z
+      .string()
+      .trim()
+      .min(1, "Company name is required")
+      .max(150, "Company name must not exceed 150 characters"),
+    description: z
+      .string()
+      .trim()
+      .max(5000, "Description must not exceed 5000 characters")
+      .optional(),
     website: optionalUrlSchema,
     industry: z.string().trim().min(1, "Industry is required"),
     companySize: z.string().trim().min(1, "Company size is required"),
-    contactEmail: z.preprocess((val) => (val === "" ? undefined : val), z.string().email("Invalid email address format").optional()),
-    contactPhone: z.string().trim().min(5, "Phone number must be at least 5 characters").optional().or(z.literal("")),
+    contactEmail: z.preprocess(
+      (val) => (val === "" ? undefined : val),
+      z.string().email("Invalid email address format").optional()
+    ),
+    contactPhone: z
+      .string()
+      .trim()
+      .min(5, "Phone number must be at least 5 characters")
+      .optional()
+      .or(z.literal("")),
     headquarters: z.string().trim().optional(),
     logoUrl: optionalUrlSchema,
   }),
@@ -44,13 +60,30 @@ export const onboardingSchema = z.object({
 });
 
 export const updateCompanySchema = z.object({
-  name: z.string().trim().min(1, "Company name is required").max(150, "Company name must not exceed 150 characters").optional(),
-  description: z.string().trim().max(5000, "Description must not exceed 5000 characters").optional(),
+  name: z
+    .string()
+    .trim()
+    .min(1, "Company name is required")
+    .max(150, "Company name must not exceed 150 characters")
+    .optional(),
+  description: z
+    .string()
+    .trim()
+    .max(5000, "Description must not exceed 5000 characters")
+    .optional(),
   website: optionalUrlSchema,
   industry: z.string().trim().min(1, "Industry is required").optional(),
   companySize: z.string().trim().min(1, "Company size is required").optional(),
-  contactEmail: z.preprocess((val) => (val === "" ? undefined : val), z.string().email("Invalid email address format").optional()),
-  contactPhone: z.string().trim().min(5, "Phone number must be at least 5 characters").optional().or(z.literal("")),
+  contactEmail: z.preprocess(
+    (val) => (val === "" ? undefined : val),
+    z.string().email("Invalid email address format").optional()
+  ),
+  contactPhone: z
+    .string()
+    .trim()
+    .min(5, "Phone number must be at least 5 characters")
+    .optional()
+    .or(z.literal("")),
   headquarters: z.string().trim().optional(),
   logoUrl: optionalUrlSchema,
 });

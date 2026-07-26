@@ -17,9 +17,7 @@ export const usersController = {
 
     const user = await usersService.getCurrentUser(currentUser.id);
 
-    res.status(HTTP_STATUS.OK).json(
-      successResponse(USERS_MESSAGES.USER_RETRIEVED, { user })
-    );
+    res.status(HTTP_STATUS.OK).json(successResponse(USERS_MESSAGES.USER_RETRIEVED, { user }));
   },
 
   getUserById: async (req: Request, res: Response): Promise<void> => {
@@ -31,9 +29,7 @@ export const usersController = {
 
     const user = await usersService.getUserById(id, currentUser);
 
-    res.status(HTTP_STATUS.OK).json(
-      successResponse(USERS_MESSAGES.USER_RETRIEVED, { user })
-    );
+    res.status(HTTP_STATUS.OK).json(successResponse(USERS_MESSAGES.USER_RETRIEVED, { user }));
   },
 
   listUsers: async (req: Request, res: Response): Promise<void> => {
@@ -45,9 +41,9 @@ export const usersController = {
     const filters = req.query as unknown as UserQueryFilters;
     const result = await usersService.listUsers(filters, currentUser);
 
-    res.status(HTTP_STATUS.OK).json(
-      paginationResponse(USERS_MESSAGES.USERS_RETRIEVED, result.data, result.meta)
-    );
+    res
+      .status(HTTP_STATUS.OK)
+      .json(paginationResponse(USERS_MESSAGES.USERS_RETRIEVED, result.data, result.meta));
   },
 
   updateStatus: async (req: Request, res: Response): Promise<void> => {
@@ -60,9 +56,7 @@ export const usersController = {
 
     const user = await usersService.updateUserStatus(id, status, currentUser);
 
-    res.status(HTTP_STATUS.OK).json(
-      successResponse(USERS_MESSAGES.STATUS_UPDATED, { user })
-    );
+    res.status(HTTP_STATUS.OK).json(successResponse(USERS_MESSAGES.STATUS_UPDATED, { user }));
   },
 
   softDelete: async (req: Request, res: Response): Promise<void> => {
@@ -74,9 +68,7 @@ export const usersController = {
 
     const user = await usersService.softDeleteUser(id, currentUser);
 
-    res.status(HTTP_STATUS.OK).json(
-      successResponse(USERS_MESSAGES.USER_DELETED, { user })
-    );
+    res.status(HTTP_STATUS.OK).json(successResponse(USERS_MESSAGES.USER_DELETED, { user }));
   },
 
   restore: async (req: Request, res: Response): Promise<void> => {
@@ -88,8 +80,6 @@ export const usersController = {
 
     const user = await usersService.restoreUser(id, currentUser);
 
-    res.status(HTTP_STATUS.OK).json(
-      successResponse(USERS_MESSAGES.USER_RESTORED, { user })
-    );
+    res.status(HTTP_STATUS.OK).json(successResponse(USERS_MESSAGES.USER_RESTORED, { user }));
   },
 };

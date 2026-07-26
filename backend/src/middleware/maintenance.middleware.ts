@@ -33,9 +33,11 @@ export const maintenanceMiddleware: RequestHandler = async (
     const isMaintenance = await currentService.isUnderMaintenance(req);
 
     if (isMaintenance) {
-      res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(
-        errorResponse("The server is currently undergoing maintenance. Please check back later.")
-      );
+      res
+        .status(HTTP_STATUS.INTERNAL_SERVER_ERROR)
+        .json(
+          errorResponse("The server is currently undergoing maintenance. Please check back later.")
+        );
       return;
     }
 

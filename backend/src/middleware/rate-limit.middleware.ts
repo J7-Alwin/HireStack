@@ -16,9 +16,13 @@ export function createRateLimiter(options?: RateLimitOptions): RequestHandler {
     standardHeaders: true,
     legacyHeaders: false,
     handler: (req, res, _next) => {
-      res.status(HTTP_STATUS.TOO_MANY_REQUESTS).json(
-        errorResponse(options?.message || "Too many requests from this IP, please try again later")
-      );
+      res
+        .status(HTTP_STATUS.TOO_MANY_REQUESTS)
+        .json(
+          errorResponse(
+            options?.message || "Too many requests from this IP, please try again later"
+          )
+        );
     },
   }) as unknown as RequestHandler;
 }

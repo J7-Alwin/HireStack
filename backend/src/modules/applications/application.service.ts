@@ -1,8 +1,25 @@
-import { Role, ApplicationStage, ApplicationStatus, Prisma } from "@prisma/client";
+import {
+  Role,
+  ApplicationStage,
+  ApplicationStatus,
+  Prisma,
+  PipelineStage,
+  PipelineTimelineEventType,
+} from "@prisma/client";
 import { prisma } from "../../config/prisma";
-import { ForbiddenError, NotFoundError, ConflictError, UnprocessableEntityError, ValidationError } from "../../shared/errors";
+import {
+  ForbiddenError,
+  NotFoundError,
+  ConflictError,
+  UnprocessableEntityError,
+  ValidationError,
+} from "../../shared/errors";
 import { AuthenticatedUser } from "../../shared/types";
-import { APPLICATIONS_MESSAGES, STAGE_TRANSITION_RULES, STATUS_TRANSITION_RULES } from "./application.constants";
+import {
+  APPLICATIONS_MESSAGES,
+  STAGE_TRANSITION_RULES,
+  STATUS_TRANSITION_RULES,
+} from "./application.constants";
 import { applicationRepository } from "./application.repository";
 import {
   ApplicationCreateInput,
@@ -42,7 +59,11 @@ function enforceWriterRole(currentUser: AuthenticatedUser) {
   }
 }
 
-async function getApplicationAndValidateAccess(id: string, currentUser: AuthenticatedUser, tx?: Prisma.TransactionClient) {
+async function getApplicationAndValidateAccess(
+  id: string,
+  currentUser: AuthenticatedUser,
+  tx?: Prisma.TransactionClient
+) {
   const application = await applicationRepository.findById(id, false, tx);
   if (!application) {
     throw new NotFoundError(APPLICATIONS_MESSAGES.APPLICATION_NOT_FOUND);
@@ -58,11 +79,97 @@ async function getApplicationAndValidateAccess(id: string, currentUser: Authenti
 }
 
 function verifyNoImmutableFields(body: unknown) {
-  const immutableFields = ["applicationCode", "companyId", "candidateId", "jobId", "appliedAt", "createdAt"];
+  const immutableFields = [
+    "applicationCode",
+    "companyId",
+    "candidateId",
+    "jobId",
+    "appliedAt",
+    "createdAt",
+  ];
   for (const field of immutableFields) {
     if (body && typeof body === "object" && field in body) {
       throw new ValidationError(APPLICATIONS_MESSAGES.IMMUTABLE_FIELD_UPDATE);
     }
+  }
+}
+
+async function syncPipelineStage(
+  applicationId: string,
+  targetStage: PipelineStage,
+  userId: string,
+  comments?: string,
+  tx?: Prisma.TransactionClient
+) {
+  const client = tx || prisma;
+  const pipeline = await client.hiringPipeline.findFirst({
+    where: { applicationId, deletedAt: null },
+  });
+
+  if (pipeline && !pipeline.isCompleted) {
+    const isCompleted = ["HIRED", "REJECTED", "WITHDRAWN"].includes(targetStage);
+    const completedReason = isCompleted ? targetStage : null;
+    const orderMap: Record<string, number> = {
+      APPLIED: 1,
+      SCREENING: 2,
+      SHORTLISTED: 3,
+      HR_INTERVIEW: 4,
+      TECHNICAL_INTERVIEW: 5,
+      FINAL_INTERVIEW: 6,
+      OFFER_PENDING: 7,
+      OFFER_SENT: 8,
+      OFFER_ACCEPTED: 9,
+      HIRED: 10,
+      REJECTED: 11,
+      WITHDRAWN: 12,
+    };
+    const stageOrder = orderMap[targetStage] || 1;
+
+    await client.hiringPipeline.update({
+      where: { id: pipeline.id },
+      data: {
+        currentStage: targetStage,
+        previousStage: pipeline.currentStage,
+        stageOrder,
+        stageChangedAt: new Date(),
+        isCompleted,
+        completedReason,
+      },
+    });
+
+    await client.pipelineHistory.create({
+      data: {
+        pipelineId: pipeline.id,
+        fromStage: pipeline.currentStage,
+        toStage: targetStage,
+        movedById: userId,
+        reason: "Automatic Sync",
+        comments: comments || `Automatically transitioned stage to ${targetStage}`,
+      },
+    });
+
+    let timelineEventType: PipelineTimelineEventType = PipelineTimelineEventType.STAGE_OVERRIDE;
+    switch (targetStage) {
+      case PipelineStage.HIRED:
+        timelineEventType = PipelineTimelineEventType.CANDIDATE_HIRED;
+        break;
+      case PipelineStage.REJECTED:
+        timelineEventType = PipelineTimelineEventType.CANDIDATE_REJECTED;
+        break;
+      case PipelineStage.WITHDRAWN:
+        timelineEventType = PipelineTimelineEventType.CANDIDATE_WITHDRAWN;
+        break;
+    }
+
+    await client.pipelineTimeline.create({
+      data: {
+        pipelineId: pipeline.id,
+        eventType: timelineEventType,
+        title: `Hiring Decision: ${targetStage}`,
+        description: comments || `Hiring state automatically synced to ${targetStage}.`,
+        createdById: userId,
+      },
+    });
   }
 }
 
@@ -102,7 +209,10 @@ export const applicationService = {
       }
 
       // 3. Verify recruiter exists, belongs to same company, and has RECRUITER role
-      const recruiter = await applicationRepository.findUserById(parsedInput.assignedRecruiterId, tx);
+      const recruiter = await applicationRepository.findUserById(
+        parsedInput.assignedRecruiterId,
+        tx
+      );
       if (!recruiter || recruiter.deletedAt !== null) {
         throw new UnprocessableEntityError(APPLICATIONS_MESSAGES.RECRUITER_NOT_FOUND);
       }
@@ -114,12 +224,20 @@ export const applicationService = {
       }
 
       // Recruiter role check: Recruiter must assign to themselves
-      if (currentUser.role === Role.RECRUITER && parsedInput.assignedRecruiterId !== currentUser.id) {
+      if (
+        currentUser.role === Role.RECRUITER &&
+        parsedInput.assignedRecruiterId !== currentUser.id
+      ) {
         throw new ForbiddenError(APPLICATIONS_MESSAGES.FORBIDDEN_MODIFICATION);
       }
 
       // 4. Check for duplicate active applications
-      const duplicate = await applicationRepository.findActiveApplication(companyId, parsedInput.candidateId, parsedInput.jobId, tx);
+      const duplicate = await applicationRepository.findActiveApplication(
+        companyId,
+        parsedInput.candidateId,
+        parsedInput.jobId,
+        tx
+      );
       if (duplicate) {
         throw new ConflictError(APPLICATIONS_MESSAGES.DUPLICATE_APPLICATION);
       }
@@ -129,7 +247,7 @@ export const applicationService = {
       const applicationCode = `APP-${String(counter).padStart(6, "0")}`;
 
       // 6. Create application
-      return await applicationRepository.create(
+      const application = await applicationRepository.create(
         {
           applicationCode,
           companyId,
@@ -144,6 +262,46 @@ export const applicationService = {
         },
         tx
       );
+
+      // Create Hiring Pipeline
+      const pipeline = await tx.hiringPipeline.create({
+        data: {
+          companyId,
+          applicationId: application.id,
+          candidateId: parsedInput.candidateId,
+          recruiterId: parsedInput.assignedRecruiterId,
+          jobId: parsedInput.jobId,
+          currentStage: PipelineStage.APPLIED,
+          stageOrder: 1,
+          isCompleted: false,
+        },
+      });
+
+      // Create Pipeline History
+      await tx.pipelineHistory.create({
+        data: {
+          pipelineId: pipeline.id,
+          fromStage: null,
+          toStage: PipelineStage.APPLIED,
+          movedById: currentUser.id,
+          reason: "Application Submitted",
+          comments: parsedInput.remarks || "Initial pipeline creation on submission",
+        },
+      });
+
+      // Create Pipeline Timeline Event
+      await tx.pipelineTimeline.create({
+        data: {
+          pipelineId: pipeline.id,
+          eventType: PipelineTimelineEventType.APPLICATION_SUBMITTED,
+          title: "Application Submitted",
+          description:
+            "The application has been successfully submitted and entered the hiring pipeline.",
+          createdById: currentUser.id,
+        },
+      });
+
+      return application;
     });
   },
 
@@ -184,7 +342,11 @@ export const applicationService = {
     return application;
   },
 
-  updateApplication: async (id: string, input: ApplicationUpdateInput, currentUser: AuthenticatedUser) => {
+  updateApplication: async (
+    id: string,
+    input: ApplicationUpdateInput,
+    currentUser: AuthenticatedUser
+  ) => {
     verifyNoImmutableFields(input);
     enforceWriterRole(currentUser);
 
@@ -197,14 +359,22 @@ export const applicationService = {
 
       const parsedInput = updateApplicationSchema.parse(input);
 
-      return await applicationRepository.update(id, {
-        remarks: parsedInput.remarks,
-        updatedBy: currentUser.id,
-      }, tx);
+      return await applicationRepository.update(
+        id,
+        {
+          remarks: parsedInput.remarks,
+          updatedBy: currentUser.id,
+        },
+        tx
+      );
     });
   },
 
-  assignRecruiter: async (id: string, input: ApplicationAssignRecruiterInput, currentUser: AuthenticatedUser) => {
+  assignRecruiter: async (
+    id: string,
+    input: ApplicationAssignRecruiterInput,
+    currentUser: AuthenticatedUser
+  ) => {
     verifyNoImmutableFields(input);
     // Only Company Admin can assign/reassign recruiters
     if (currentUser.role !== Role.COMPANY_ADMIN) {
@@ -221,7 +391,10 @@ export const applicationService = {
 
       const parsedInput = assignRecruiterSchema.parse(input);
 
-      const recruiter = await applicationRepository.findUserById(parsedInput.assignedRecruiterId, tx);
+      const recruiter = await applicationRepository.findUserById(
+        parsedInput.assignedRecruiterId,
+        tx
+      );
       if (!recruiter || recruiter.deletedAt !== null) {
         throw new UnprocessableEntityError(APPLICATIONS_MESSAGES.RECRUITER_NOT_FOUND);
       }
@@ -243,7 +416,11 @@ export const applicationService = {
     });
   },
 
-  updateStage: async (id: string, input: ApplicationUpdateStageInput, currentUser: AuthenticatedUser) => {
+  updateStage: async (
+    id: string,
+    input: ApplicationUpdateStageInput,
+    currentUser: AuthenticatedUser
+  ) => {
     verifyNoImmutableFields(input);
     enforceWriterRole(currentUser);
 
@@ -264,18 +441,26 @@ export const applicationService = {
         throw new UnprocessableEntityError(APPLICATIONS_MESSAGES.INVALID_STAGE_TRANSITION);
       }
 
-      return await applicationRepository.update(id, {
-        stage: nextStage,
-        updatedBy: currentUser.id,
-      }, tx);
+      return await applicationRepository.update(
+        id,
+        {
+          stage: nextStage,
+          updatedBy: currentUser.id,
+        },
+        tx
+      );
     });
   },
 
-  updateStatus: async (id: string, input: ApplicationUpdateStatusInput, currentUser: AuthenticatedUser) => {
+  updateStatus: async (
+    id: string,
+    input: ApplicationUpdateStatusInput,
+    currentUser: AuthenticatedUser
+  ) => {
     verifyNoImmutableFields(input);
     enforceWriterRole(currentUser);
 
-    return await prisma.$transaction(async (tx) => {
+    return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const application = await getApplicationAndValidateAccess(id, currentUser, tx);
 
       const parsedInput = updateStatusSchema.parse(input);
@@ -309,18 +494,54 @@ export const applicationService = {
         }
       }
 
-      return await applicationRepository.update(id, {
-        status: nextStatus,
-        updatedBy: currentUser.id,
-      }, tx);
+      const updated = await applicationRepository.update(
+        id,
+        {
+          status: nextStatus,
+          updatedBy: currentUser.id,
+        },
+        tx
+      );
+
+      if (nextStatus === ApplicationStatus.HIRED) {
+        await syncPipelineStage(
+          id,
+          PipelineStage.HIRED,
+          currentUser.id,
+          "Candidate hired successfully.",
+          tx
+        );
+      } else if (nextStatus === ApplicationStatus.REJECTED) {
+        await syncPipelineStage(
+          id,
+          PipelineStage.REJECTED,
+          currentUser.id,
+          "Application rejected.",
+          tx
+        );
+      } else if (nextStatus === ApplicationStatus.WITHDRAWN) {
+        await syncPipelineStage(
+          id,
+          PipelineStage.WITHDRAWN,
+          currentUser.id,
+          "Application withdrawn by candidate.",
+          tx
+        );
+      }
+
+      return updated;
     });
   },
 
-  rejectApplication: async (id: string, input: ApplicationRejectInput, currentUser: AuthenticatedUser) => {
+  rejectApplication: async (
+    id: string,
+    input: ApplicationRejectInput,
+    currentUser: AuthenticatedUser
+  ) => {
     verifyNoImmutableFields(input);
     enforceWriterRole(currentUser);
 
-    return await prisma.$transaction(async (tx) => {
+    return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const application = await getApplicationAndValidateAccess(id, currentUser, tx);
 
       if (application.status !== ApplicationStatus.ACTIVE) {
@@ -334,20 +555,40 @@ export const applicationService = {
 
       const parsedInput = rejectApplicationSchema.parse(input);
 
-      return await applicationRepository.update(id, {
-        status: ApplicationStatus.REJECTED,
-        rejectionReasonCode: parsedInput.rejectionReasonCode,
-        rejectionReasonNote: parsedInput.rejectionReasonNote,
-        updatedBy: currentUser.id,
-      }, tx);
+      const updated = await applicationRepository.update(
+        id,
+        {
+          status: ApplicationStatus.REJECTED,
+          rejectionReasonCode: parsedInput.rejectionReasonCode,
+          rejectionReasonNote: parsedInput.rejectionReasonNote,
+          updatedBy: currentUser.id,
+        },
+        tx
+      );
+
+      const reasonText =
+        parsedInput.rejectionReasonNote || `Reason: ${parsedInput.rejectionReasonCode}`;
+      await syncPipelineStage(
+        id,
+        PipelineStage.REJECTED,
+        currentUser.id,
+        `Application rejected. ${reasonText}`,
+        tx
+      );
+
+      return updated;
     });
   },
 
-  withdrawApplication: async (id: string, input: ApplicationWithdrawInput, currentUser: AuthenticatedUser) => {
+  withdrawApplication: async (
+    id: string,
+    input: ApplicationWithdrawInput,
+    currentUser: AuthenticatedUser
+  ) => {
     verifyNoImmutableFields(input);
     enforceWriterRole(currentUser);
 
-    return await prisma.$transaction(async (tx) => {
+    return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const application = await getApplicationAndValidateAccess(id, currentUser, tx);
 
       if (application.status !== ApplicationStatus.ACTIVE) {
@@ -356,12 +597,28 @@ export const applicationService = {
 
       const parsedInput = withdrawApplicationSchema.parse(input);
 
-      return await applicationRepository.update(id, {
-        status: ApplicationStatus.WITHDRAWN,
-        withdrawalReasonCode: parsedInput.withdrawalReasonCode,
-        withdrawalReasonNote: parsedInput.withdrawalReasonNote,
-        updatedBy: currentUser.id,
-      }, tx);
+      const updated = await applicationRepository.update(
+        id,
+        {
+          status: ApplicationStatus.WITHDRAWN,
+          withdrawalReasonCode: parsedInput.withdrawalReasonCode,
+          withdrawalReasonNote: parsedInput.withdrawalReasonNote,
+          updatedBy: currentUser.id,
+        },
+        tx
+      );
+
+      const reasonText =
+        parsedInput.withdrawalReasonNote || `Reason: ${parsedInput.withdrawalReasonCode}`;
+      await syncPipelineStage(
+        id,
+        PipelineStage.WITHDRAWN,
+        currentUser.id,
+        `Application withdrawn by candidate. ${reasonText}`,
+        tx
+      );
+
+      return updated;
     });
   },
 
@@ -369,14 +626,26 @@ export const applicationService = {
     if (currentUser.role !== Role.COMPANY_ADMIN) {
       throw new ForbiddenError(APPLICATIONS_MESSAGES.FORBIDDEN_ACCESS);
     }
-    return await prisma.$transaction(async (tx) => {
+    return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const application = await applicationRepository.findById(id, false, tx);
       if (!application) {
         throw new NotFoundError(APPLICATIONS_MESSAGES.APPLICATION_NOT_FOUND);
       }
       validateCompanyAccess(application.companyId, currentUser);
 
-      return await applicationRepository.softDelete(id, tx);
+      const result = await applicationRepository.softDelete(id, tx);
+
+      const pipeline = await tx.hiringPipeline.findFirst({
+        where: { applicationId: id, deletedAt: null },
+      });
+      if (pipeline) {
+        await tx.hiringPipeline.update({
+          where: { id: pipeline.id },
+          data: { deletedAt: new Date() },
+        });
+      }
+
+      return result;
     });
   },
 
@@ -409,7 +678,10 @@ export const applicationService = {
         }
 
         // Verify candidate eligibility
-        const candidate = await applicationRepository.findCandidateById(application.candidateId, tx);
+        const candidate = await applicationRepository.findCandidateById(
+          application.candidateId,
+          tx
+        );
         if (!candidate || candidate.deletedAt !== null) {
           throw new NotFoundError(APPLICATIONS_MESSAGES.CANDIDATE_NOT_FOUND);
         }

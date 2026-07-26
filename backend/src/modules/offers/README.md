@@ -74,16 +74,16 @@ stateDiagram-v2
     VIEWED --> DECLINED : Candidate Declines
     SENT --> ACCEPTED : Direct Accept
     SENT --> DECLINED : Direct Decline
-    
+
     DRAFT --> WITHDRAWN : Withdraw/Revise
     PENDING_APPROVAL --> WITHDRAWN : Withdraw/Revise
     APPROVED --> WITHDRAWN : Withdraw/Revise
     SENT --> WITHDRAWN : Withdraw/Revise
     VIEWED --> WITHDRAWN : Withdraw/Revise
-    
+
     SENT --> EXPIRED : Expiry check on Accept
     VIEWED --> EXPIRED : Expiry check on Accept
-    
+
     ACCEPTED --> [*]
     DECLINED --> [*]
     WITHDRAWN --> [*]
@@ -92,17 +92,17 @@ stateDiagram-v2
 
 ### Transition Rule Table
 
-| Current Status | Target Status | Performed By | Description |
-| :--- | :--- | :--- | :--- |
-| `DRAFT` | `PENDING_APPROVAL` | Recruiter, Admin | Submit draft for internal review |
-| `PENDING_APPROVAL` | `APPROVED` | Company Admin | Offer details reviewed and accepted |
-| `PENDING_APPROVAL` | `DRAFT` | Company Admin | Offer rejected during review; returned to draft |
-| `APPROVED` | `SENT` | Company Admin | Email sent out containing offer details |
-| `SENT` | `VIEWED` | Candidate | Candidate opens the offer page |
-| `SENT`/`VIEWED` | `ACCEPTED` | Candidate | Candidate accepts the terms |
-| `SENT`/`VIEWED` | `DECLINED` | Candidate | Candidate declines the terms |
-| `DRAFT` to `VIEWED` | `WITHDRAWN` | Company Admin | Offer is recalled or superseded by revision |
-| `SENT`/`VIEWED` | `EXPIRED` | System (Dynamic) | Triggered when candidate accepts past `expiryDate` |
+| Current Status      | Target Status      | Performed By     | Description                                        |
+| :------------------ | :----------------- | :--------------- | :------------------------------------------------- |
+| `DRAFT`             | `PENDING_APPROVAL` | Recruiter, Admin | Submit draft for internal review                   |
+| `PENDING_APPROVAL`  | `APPROVED`         | Company Admin    | Offer details reviewed and accepted                |
+| `PENDING_APPROVAL`  | `DRAFT`            | Company Admin    | Offer rejected during review; returned to draft    |
+| `APPROVED`          | `SENT`             | Company Admin    | Email sent out containing offer details            |
+| `SENT`              | `VIEWED`           | Candidate        | Candidate opens the offer page                     |
+| `SENT`/`VIEWED`     | `ACCEPTED`         | Candidate        | Candidate accepts the terms                        |
+| `SENT`/`VIEWED`     | `DECLINED`         | Candidate        | Candidate declines the terms                       |
+| `DRAFT` to `VIEWED` | `WITHDRAWN`        | Company Admin    | Offer is recalled or superseded by revision        |
+| `SENT`/`VIEWED`     | `EXPIRED`          | System (Dynamic) | Triggered when candidate accepts past `expiryDate` |
 
 ---
 
@@ -110,21 +110,21 @@ stateDiagram-v2
 
 All endpoints enforce tenant isolation (`companyId`) and strict Role-Based Access Control (RBAC):
 
-| Action | API Route | Super Admin | Company Admin | Recruiter | Candidate |
-| :--- | :--- | :---: | :---: | :---: | :---: |
-| Create Offer | `POST /` | ❌ | Allowed | Allowed (Owned) | ❌ |
-| Update Draft | `PATCH /:id` | ❌ | Allowed | Allowed (Owned) | ❌ |
-| Submit Review | `POST /:id/submit` | ❌ | Allowed | Allowed (Owned) | ❌ |
-| Approve Offer | `POST /:id/approve` | ❌ | Allowed | ❌ | ❌ |
-| Send Offer | `POST /:id/send` | ❌ | Allowed | ❌ | ❌ |
-| View Offer | `POST /:id/view` | ❌ | Allowed | Allowed | Allowed |
-| Accept Offer | `POST /:id/accept` | ❌ | Allowed | Allowed | Allowed |
-| Decline Offer | `POST /:id/decline` | ❌ | Allowed | Allowed | Allowed |
-| Withdraw Offer | `POST /:id/withdraw` | ❌ | Allowed | ❌ | ❌ |
-| Revise Offer | `POST /:id/revision` | ❌ | Allowed | Allowed (Owned) | ❌ |
-| Soft Delete | `DELETE /:id` | ❌ | Allowed | ❌ | ❌ |
-| List Offers | `GET /` | ❌ | Allowed | Allowed | ❌ |
-| Get by ID | `GET /:id` | ❌ | Allowed | Allowed | ❌ |
+| Action         | API Route            | Super Admin | Company Admin |    Recruiter    | Candidate |
+| :------------- | :------------------- | :---------: | :-----------: | :-------------: | :-------: |
+| Create Offer   | `POST /`             |     ❌      |    Allowed    | Allowed (Owned) |    ❌     |
+| Update Draft   | `PATCH /:id`         |     ❌      |    Allowed    | Allowed (Owned) |    ❌     |
+| Submit Review  | `POST /:id/submit`   |     ❌      |    Allowed    | Allowed (Owned) |    ❌     |
+| Approve Offer  | `POST /:id/approve`  |     ❌      |    Allowed    |       ❌        |    ❌     |
+| Send Offer     | `POST /:id/send`     |     ❌      |    Allowed    |       ❌        |    ❌     |
+| View Offer     | `POST /:id/view`     |     ❌      |    Allowed    |     Allowed     |  Allowed  |
+| Accept Offer   | `POST /:id/accept`   |     ❌      |    Allowed    |     Allowed     |  Allowed  |
+| Decline Offer  | `POST /:id/decline`  |     ❌      |    Allowed    |     Allowed     |  Allowed  |
+| Withdraw Offer | `POST /:id/withdraw` |     ❌      |    Allowed    |       ❌        |    ❌     |
+| Revise Offer   | `POST /:id/revision` |     ❌      |    Allowed    | Allowed (Owned) |    ❌     |
+| Soft Delete    | `DELETE /:id`        |     ❌      |    Allowed    |       ❌        |    ❌     |
+| List Offers    | `GET /`              |     ❌      |    Allowed    |     Allowed     |    ❌     |
+| Get by ID      | `GET /:id`           |     ❌      |    Allowed    |     Allowed     |    ❌     |
 
 - **Allowed (Owned)**: Recruiters can only modify offers they created or if they are the primary assigned Recruiter on the candidate's `Application`.
 - **Candidate access**: Candidates are authenticated users associated with the `candidateId` of the specific offer.
@@ -149,6 +149,7 @@ All endpoints enforce tenant isolation (`companyId`) and strict Role-Based Acces
 ## 6. API Endpoints & Validation Rules
 
 ### Offer Creation
+
 - **Endpoint:** `POST /api/v1/offers`
 - **Body Validation:**
   - `applicationId`: UUID (Required)
@@ -161,6 +162,7 @@ All endpoints enforce tenant isolation (`companyId`) and strict Role-Based Acces
   - `notes`: String (Optional, max 2000 chars)
 
 ### Offer Revision
+
 - **Endpoint:** `POST /api/v1/offers/:id/revision`
 - **Body Validation:** Same schema as Offer Creation.
 - **Mechanism:** Acquires database row lock on the old version, creates a new version record (`version` increments, same `offerCode`), and marks the old version as `WITHDRAWN`.

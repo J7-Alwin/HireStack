@@ -10,7 +10,7 @@ export const companiesRepository = {
     if (!includeDeleted) {
       where.deletedAt = null;
     }
-    
+
     return await prisma.company.findFirst({
       where,
       select: safeCompanySelect,

@@ -1,7 +1,11 @@
 import { Request, Response, NextFunction, RequestHandler } from "express";
 import { requestLogger } from "../shared/logger/request.logger";
 
-export const requestLoggerMiddleware: RequestHandler = (req: Request, res: Response, next: NextFunction): void => {
+export const requestLoggerMiddleware: RequestHandler = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): void => {
   const method = req.method;
   const url = req.originalUrl || req.url;
   const path = req.path || req.url || "";

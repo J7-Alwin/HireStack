@@ -12,7 +12,8 @@ export const RECRUITERS_MESSAGES = {
   RECRUITER_RESTORED: "Recruiter restored successfully",
   FORBIDDEN_MODIFICATION: "Only SUPER_ADMIN and COMPANY_ADMIN can manage recruiters",
   FORBIDDEN_ACCESS: "You do not have permission to perform this action",
-  CROSS_COMPANY_ACCESS_FORBIDDEN: "Cross-company access to another company's recruiter is not permitted",
+  CROSS_COMPANY_ACCESS_FORBIDDEN:
+    "Cross-company access to another company's recruiter is not permitted",
   INVALID_DEPARTMENT: "Invalid department assignment",
   DEPARTMENT_NOT_FOUND: "Department not found",
   DEPARTMENT_INACTIVE: "Cannot assign to an inactive department",

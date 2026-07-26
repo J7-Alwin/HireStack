@@ -20,9 +20,9 @@ export const companiesController = {
     const onboardingInput = req.body as CompanyOnboardingInput;
     const result = await companyOnboardingService.onboardCompany(onboardingInput, currentUser);
 
-    res.status(HTTP_STATUS.CREATED).json(
-      successResponse(COMPANIES_MESSAGES.ONBOARDING_SUCCESS, result)
-    );
+    res
+      .status(HTTP_STATUS.CREATED)
+      .json(successResponse(COMPANIES_MESSAGES.ONBOARDING_SUCCESS, result));
   },
 
   listCompanies: async (req: Request, res: Response): Promise<void> => {
@@ -34,9 +34,9 @@ export const companiesController = {
     const filters = req.query as unknown as CompanyQueryFilters;
     const result = await companiesService.listCompanies(filters, currentUser);
 
-    res.status(HTTP_STATUS.OK).json(
-      paginationResponse(COMPANIES_MESSAGES.COMPANIES_RETRIEVED, result.data, result.meta)
-    );
+    res
+      .status(HTTP_STATUS.OK)
+      .json(paginationResponse(COMPANIES_MESSAGES.COMPANIES_RETRIEVED, result.data, result.meta));
   },
 
   getCompanyById: async (req: Request, res: Response): Promise<void> => {
@@ -48,9 +48,9 @@ export const companiesController = {
 
     const company = await companiesService.getCompanyById(id, currentUser);
 
-    res.status(HTTP_STATUS.OK).json(
-      successResponse(COMPANIES_MESSAGES.COMPANY_RETRIEVED, { company })
-    );
+    res
+      .status(HTTP_STATUS.OK)
+      .json(successResponse(COMPANIES_MESSAGES.COMPANY_RETRIEVED, { company }));
   },
 
   updateCompany: async (req: Request, res: Response): Promise<void> => {
@@ -63,9 +63,9 @@ export const companiesController = {
     const updateData = req.body as Partial<Prisma.CompanyUpdateInput>;
     const company = await companiesService.updateCompany(id, updateData, currentUser);
 
-    res.status(HTTP_STATUS.OK).json(
-      successResponse(COMPANIES_MESSAGES.COMPANY_UPDATED, { company })
-    );
+    res
+      .status(HTTP_STATUS.OK)
+      .json(successResponse(COMPANIES_MESSAGES.COMPANY_UPDATED, { company }));
   },
 
   updateStatus: async (req: Request, res: Response): Promise<void> => {
@@ -78,9 +78,9 @@ export const companiesController = {
     const { status } = req.body as { status: AccountStatus };
     const company = await companiesService.updateCompanyStatus(id, status, currentUser);
 
-    res.status(HTTP_STATUS.OK).json(
-      successResponse(COMPANIES_MESSAGES.STATUS_UPDATED, { company })
-    );
+    res
+      .status(HTTP_STATUS.OK)
+      .json(successResponse(COMPANIES_MESSAGES.STATUS_UPDATED, { company }));
   },
 
   softDelete: async (req: Request, res: Response): Promise<void> => {
@@ -92,9 +92,9 @@ export const companiesController = {
 
     const company = await companiesService.softDeleteCompany(id, currentUser);
 
-    res.status(HTTP_STATUS.OK).json(
-      successResponse(COMPANIES_MESSAGES.COMPANY_DELETED, { company })
-    );
+    res
+      .status(HTTP_STATUS.OK)
+      .json(successResponse(COMPANIES_MESSAGES.COMPANY_DELETED, { company }));
   },
 
   restore: async (req: Request, res: Response): Promise<void> => {
@@ -106,8 +106,8 @@ export const companiesController = {
 
     const company = await companiesService.restoreCompany(id, currentUser);
 
-    res.status(HTTP_STATUS.OK).json(
-      successResponse(COMPANIES_MESSAGES.COMPANY_RESTORED, { company })
-    );
+    res
+      .status(HTTP_STATUS.OK)
+      .json(successResponse(COMPANIES_MESSAGES.COMPANY_RESTORED, { company }));
   },
 };

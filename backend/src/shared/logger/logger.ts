@@ -1,6 +1,15 @@
 type LogLevel = "info" | "warn" | "error" | "debug";
 
-const SENSITIVE_KEYS = ["password", "token", "secret", "cookie", "jwt", "authorization", "cvv", "hash"];
+const SENSITIVE_KEYS = [
+  "password",
+  "token",
+  "secret",
+  "cookie",
+  "jwt",
+  "authorization",
+  "cvv",
+  "hash",
+];
 
 function maskSensitiveInfo(data: unknown): unknown {
   if (data === null || data === undefined) {
@@ -58,7 +67,9 @@ class Logger {
         timestamp,
         level,
         message,
-        ...(cleanMeta && typeof cleanMeta === "object" ? (cleanMeta as object) : { meta: cleanMeta }),
+        ...(cleanMeta && typeof cleanMeta === "object"
+          ? (cleanMeta as object)
+          : { meta: cleanMeta }),
       });
     }
 
@@ -85,13 +96,18 @@ class Logger {
   }
 
   public error(message: string, error?: unknown, meta?: unknown): void {
-    const errorDetails = error instanceof Error ? {
-      name: error.name,
-      message: error.message,
-      stack: error.stack,
-    } : error;
-    
-    console.error(this.formatMessage("error", message, { error: errorDetails, ...(meta as object || {}) }));
+    const errorDetails =
+      error instanceof Error
+        ? {
+            name: error.name,
+            message: error.message,
+            stack: error.stack,
+          }
+        : error;
+
+    console.error(
+      this.formatMessage("error", message, { error: errorDetails, ...((meta as object) || {}) })
+    );
   }
 
   public debug(message: string, meta?: unknown): void {

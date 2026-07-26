@@ -145,7 +145,11 @@ export const offerRepository = {
     return toOfferDto(raw);
   },
 
-  findOfferById: async (id: string, includeDeleted = false, tx?: Prisma.TransactionClient): Promise<OfferDto | null> => {
+  findOfferById: async (
+    id: string,
+    includeDeleted = false,
+    tx?: Prisma.TransactionClient
+  ): Promise<OfferDto | null> => {
     const client = tx || prisma;
     const raw = await client.offer.findFirst({
       where: {
@@ -157,7 +161,10 @@ export const offerRepository = {
     return toOfferDto(raw);
   },
 
-  findActiveOfferByApplication: async (applicationId: string, tx?: Prisma.TransactionClient): Promise<OfferDto | null> => {
+  findActiveOfferByApplication: async (
+    applicationId: string,
+    tx?: Prisma.TransactionClient
+  ): Promise<OfferDto | null> => {
     const client = tx || prisma;
     const raw = await client.offer.findFirst({
       where: {
@@ -182,7 +189,10 @@ export const offerRepository = {
     await tx.$queryRaw`SELECT id FROM "Offer" WHERE id = ${id} FOR UPDATE`;
   },
 
-  incrementOfferCounter: async (companyId: string, tx: Prisma.TransactionClient): Promise<number> => {
+  incrementOfferCounter: async (
+    companyId: string,
+    tx: Prisma.TransactionClient
+  ): Promise<number> => {
     await tx.companyOfferCounter.upsert({
       where: { companyId },
       update: {},
@@ -206,7 +216,11 @@ export const offerRepository = {
     return nextCount;
   },
 
-  updateOffer: async (id: string, data: Prisma.OfferUncheckedUpdateInput, tx?: Prisma.TransactionClient): Promise<OfferDto> => {
+  updateOffer: async (
+    id: string,
+    data: Prisma.OfferUncheckedUpdateInput,
+    tx?: Prisma.TransactionClient
+  ): Promise<OfferDto> => {
     const client = tx || prisma;
     const raw = await client.offer.update({
       where: { id },
@@ -220,8 +234,17 @@ export const offerRepository = {
     return offerRepository.updateOffer(id, { status: OfferStatus.WITHDRAWN }, tx);
   },
 
-  approveOffer: async (id: string, approvedBy: string, approvedAt: Date, tx?: Prisma.TransactionClient): Promise<OfferDto> => {
-    return offerRepository.updateOffer(id, { status: OfferStatus.APPROVED, approvedBy, approvedAt }, tx);
+  approveOffer: async (
+    id: string,
+    approvedBy: string,
+    approvedAt: Date,
+    tx?: Prisma.TransactionClient
+  ): Promise<OfferDto> => {
+    return offerRepository.updateOffer(
+      id,
+      { status: OfferStatus.APPROVED, approvedBy, approvedAt },
+      tx
+    );
   },
 
   sendOffer: async (id: string, sentAt: Date, tx?: Prisma.TransactionClient): Promise<OfferDto> => {
@@ -237,7 +260,15 @@ export const offerRepository = {
     recruiterId: string,
     tx?: Prisma.TransactionClient
   ): Promise<OfferDto> => {
-    return offerRepository.createOffer(companyId, offerCode, version, candidateId, input, recruiterId, tx);
+    return offerRepository.createOffer(
+      companyId,
+      offerCode,
+      version,
+      candidateId,
+      input,
+      recruiterId,
+      tx
+    );
   },
 
   softDeleteOffer: async (id: string, tx?: Prisma.TransactionClient): Promise<OfferDto> => {
@@ -330,7 +361,10 @@ export const offerRepository = {
     return where;
   },
 
-  buildSortQuery: (sortBy?: string, sortOrder?: "asc" | "desc"): Prisma.OfferOrderByWithRelationInput => {
+  buildSortQuery: (
+    sortBy?: string,
+    sortOrder?: "asc" | "desc"
+  ): Prisma.OfferOrderByWithRelationInput => {
     let orderBy: Prisma.OfferOrderByWithRelationInput = {
       createdAt: "desc",
     };

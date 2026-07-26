@@ -188,11 +188,7 @@ export const jobRepository = {
     });
   },
 
-  assignRecruiters: async (
-    jobId: string,
-    recruiterIds: string[],
-    assignedById: string
-  ) => {
+  assignRecruiters: async (jobId: string, recruiterIds: string[], assignedById: string) => {
     return await prisma.$transaction(async (tx) => {
       for (const recruiterId of recruiterIds) {
         await tx.jobRecruiter.upsert({

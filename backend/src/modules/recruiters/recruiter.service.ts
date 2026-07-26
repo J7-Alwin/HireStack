@@ -36,7 +36,10 @@ async function validateDepartment(departmentId: string, companyId: string): Prom
   }
 }
 
-function validateRecruiterOwnership(recruiterCompanyId: string | null, currentUser: AuthenticatedUser): void {
+function validateRecruiterOwnership(
+  recruiterCompanyId: string | null,
+  currentUser: AuthenticatedUser
+): void {
   if (!currentUser.companyId || currentUser.companyId !== recruiterCompanyId) {
     throw new ForbiddenError(RECRUITERS_MESSAGES.CROSS_COMPANY_ACCESS_FORBIDDEN);
   }
@@ -179,10 +182,7 @@ export const recruiterService = {
     let orderBy: Prisma.UserOrderByWithRelationInput | Prisma.UserOrderByWithRelationInput[];
 
     if (sortBy === "name") {
-      orderBy = [
-        { firstName: sortOrder },
-        { lastName: sortOrder },
-      ];
+      orderBy = [{ firstName: sortOrder }, { lastName: sortOrder }];
     } else if (sortBy === "department") {
       orderBy = {
         department: {
@@ -241,7 +241,8 @@ export const recruiterService = {
 
     // Derived Name update if either firstName or lastName is updated
     if (input.firstName !== undefined || input.lastName !== undefined) {
-      const first = input.firstName !== undefined ? input.firstName.trim() : recruiter.firstName || "";
+      const first =
+        input.firstName !== undefined ? input.firstName.trim() : recruiter.firstName || "";
       const last = input.lastName !== undefined ? input.lastName.trim() : recruiter.lastName || "";
       updateData.name = `${first} ${last}`.trim();
     }

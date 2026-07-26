@@ -16,14 +16,11 @@ export const recruiterController = {
     }
 
     const parsedBody = createRecruiterSchema.parse(req.body);
-    const result = await recruiterService.createRecruiter(
-      parsedBody,
-      currentUser
-    );
+    const result = await recruiterService.createRecruiter(parsedBody, currentUser);
 
-    res.status(HTTP_STATUS.CREATED).json(
-      successResponse(RECRUITERS_MESSAGES.RECRUITER_CREATED, result)
-    );
+    res
+      .status(HTTP_STATUS.CREATED)
+      .json(successResponse(RECRUITERS_MESSAGES.RECRUITER_CREATED, result));
   },
 
   listRecruiters: async (req: Request, res: Response): Promise<void> => {
@@ -35,9 +32,9 @@ export const recruiterController = {
     const filters = req.query as unknown as RecruiterQueryFilters;
     const result = await recruiterService.listRecruiters(filters, currentUser);
 
-    res.status(HTTP_STATUS.OK).json(
-      paginationResponse(RECRUITERS_MESSAGES.RECRUITERS_RETRIEVED, result.data, result.meta)
-    );
+    res
+      .status(HTTP_STATUS.OK)
+      .json(paginationResponse(RECRUITERS_MESSAGES.RECRUITERS_RETRIEVED, result.data, result.meta));
   },
 
   getRecruiterById: async (req: Request, res: Response): Promise<void> => {
@@ -49,9 +46,9 @@ export const recruiterController = {
 
     const recruiter = await recruiterService.getRecruiterById(id, currentUser);
 
-    res.status(HTTP_STATUS.OK).json(
-      successResponse(RECRUITERS_MESSAGES.RECRUITER_RETRIEVED, recruiter)
-    );
+    res
+      .status(HTTP_STATUS.OK)
+      .json(successResponse(RECRUITERS_MESSAGES.RECRUITER_RETRIEVED, recruiter));
   },
 
   updateRecruiter: async (req: Request, res: Response): Promise<void> => {
@@ -64,9 +61,9 @@ export const recruiterController = {
     const input = req.body as RecruiterUpdateInput;
     const recruiter = await recruiterService.updateRecruiter(id, input, currentUser);
 
-    res.status(HTTP_STATUS.OK).json(
-      successResponse(RECRUITERS_MESSAGES.RECRUITER_UPDATED, recruiter)
-    );
+    res
+      .status(HTTP_STATUS.OK)
+      .json(successResponse(RECRUITERS_MESSAGES.RECRUITER_UPDATED, recruiter));
   },
 
   changeDepartment: async (req: Request, res: Response): Promise<void> => {
@@ -79,9 +76,9 @@ export const recruiterController = {
     const { departmentId } = req.body as { departmentId: string };
     const recruiter = await recruiterService.changeDepartment(id, departmentId, currentUser);
 
-    res.status(HTTP_STATUS.OK).json(
-      successResponse(RECRUITERS_MESSAGES.DEPARTMENT_CHANGED, recruiter)
-    );
+    res
+      .status(HTTP_STATUS.OK)
+      .json(successResponse(RECRUITERS_MESSAGES.DEPARTMENT_CHANGED, recruiter));
   },
 
   activateRecruiter: async (req: Request, res: Response): Promise<void> => {
@@ -93,9 +90,9 @@ export const recruiterController = {
 
     const recruiter = await recruiterService.activateRecruiter(id, currentUser);
 
-    res.status(HTTP_STATUS.OK).json(
-      successResponse(RECRUITERS_MESSAGES.RECRUITER_ACTIVATED, recruiter)
-    );
+    res
+      .status(HTTP_STATUS.OK)
+      .json(successResponse(RECRUITERS_MESSAGES.RECRUITER_ACTIVATED, recruiter));
   },
 
   deactivateRecruiter: async (req: Request, res: Response): Promise<void> => {
@@ -107,9 +104,9 @@ export const recruiterController = {
 
     const recruiter = await recruiterService.deactivateRecruiter(id, currentUser);
 
-    res.status(HTTP_STATUS.OK).json(
-      successResponse(RECRUITERS_MESSAGES.RECRUITER_DEACTIVATED, recruiter)
-    );
+    res
+      .status(HTTP_STATUS.OK)
+      .json(successResponse(RECRUITERS_MESSAGES.RECRUITER_DEACTIVATED, recruiter));
   },
 
   softDelete: async (req: Request, res: Response): Promise<void> => {
@@ -121,9 +118,9 @@ export const recruiterController = {
 
     const recruiter = await recruiterService.softDeleteRecruiter(id, currentUser);
 
-    res.status(HTTP_STATUS.OK).json(
-      successResponse(RECRUITERS_MESSAGES.RECRUITER_DELETED, recruiter)
-    );
+    res
+      .status(HTTP_STATUS.OK)
+      .json(successResponse(RECRUITERS_MESSAGES.RECRUITER_DELETED, recruiter));
   },
 
   restore: async (req: Request, res: Response): Promise<void> => {
@@ -135,8 +132,8 @@ export const recruiterController = {
 
     const recruiter = await recruiterService.restoreRecruiter(id, currentUser);
 
-    res.status(HTTP_STATUS.OK).json(
-      successResponse(RECRUITERS_MESSAGES.RECRUITER_RESTORED, recruiter)
-    );
+    res
+      .status(HTTP_STATUS.OK)
+      .json(successResponse(RECRUITERS_MESSAGES.RECRUITER_RESTORED, recruiter));
   },
 };

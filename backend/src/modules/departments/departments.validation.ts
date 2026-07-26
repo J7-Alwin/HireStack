@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const numericPreprocess = (defaultValue: number) => 
+const numericPreprocess = (defaultValue: number) =>
   z.preprocess((val) => {
     if (typeof val === "string") {
       const parsed = parseInt(val, 10);

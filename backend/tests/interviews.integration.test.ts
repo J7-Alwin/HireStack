@@ -2,7 +2,17 @@ import "dotenv/config";
 import { z } from "zod";
 import { prisma } from "../src/config/prisma";
 import { interviewService } from "../src/modules/interviews/service/interview.service";
-import { Role, InterviewType, InterviewRound, InterviewStatus, InterviewOutcome, InterviewMode, JobStatus, ApplicationStage, ApplicationStatus } from "@prisma/client";
+import {
+  Role,
+  InterviewType,
+  InterviewRound,
+  InterviewStatus,
+  InterviewOutcome,
+  InterviewMode,
+  JobStatus,
+  ApplicationStage,
+  ApplicationStatus,
+} from "@prisma/client";
 import { AuthenticatedUser } from "../src/shared/types";
 import { ConflictError, ForbiddenError, UnprocessableEntityError } from "../src/shared/errors";
 
@@ -34,10 +44,14 @@ async function assertThrows(
   const err = caughtError as Error & { constructor: { name: string } };
 
   if (err.constructor.name !== errorClass.name && !(err instanceof errorClass)) {
-    throw new Error(`Expected error of type ${errorClass.name}, but got ${err.constructor.name}: ${err.message}`);
+    throw new Error(
+      `Expected error of type ${errorClass.name}, but got ${err.constructor.name}: ${err.message}`
+    );
   }
   if (expectedMessage && !err.message.includes(expectedMessage)) {
-    throw new Error(`Expected error message to contain "${expectedMessage}", but got "${err.message}"`);
+    throw new Error(
+      `Expected error message to contain "${expectedMessage}", but got "${err.message}"`
+    );
   }
 }
 
@@ -310,7 +324,10 @@ async function runTests() {
     authRecruiterA1
   );
 
-  assert(onlineInt.interviewCode === "INT-000001", `Expected INT-000001, got ${onlineInt.interviewCode}`);
+  assert(
+    onlineInt.interviewCode === "INT-000001",
+    `Expected INT-000001, got ${onlineInt.interviewCode}`
+  );
   assert(onlineInt.status === InterviewStatus.SCHEDULED, "Should default to SCHEDULED");
   assert(onlineInt.mode === InterviewMode.ONLINE, "Mode should be ONLINE");
   assert(onlineInt.interviewers.length === 1, "Should have 1 interviewer assigned");
@@ -471,7 +488,10 @@ async function runTests() {
     authRecruiterA1
   );
 
-  assert(rescheduled.meetingLink === "https://zoom.us/j/rescheduled-link", "Meeting link should be updated");
+  assert(
+    rescheduled.meetingLink === "https://zoom.us/j/rescheduled-link",
+    "Meeting link should be updated"
+  );
   assert(new Date(rescheduled.startTime).getHours() === 14, "Start hour should be updated to 14");
 
   console.log("   -> Success!");
@@ -482,31 +502,51 @@ async function runTests() {
   console.log("🧪 Test Case 7: Status Transitions...");
 
   // Transition: SCHEDULED -> CONFIRMED (Success)
-  let updated = await interviewService.updateStatus(interview1Id, { status: InterviewStatus.CONFIRMED }, authRecruiterA1);
+  let updated = await interviewService.updateStatus(
+    interview1Id,
+    { status: InterviewStatus.CONFIRMED },
+    authRecruiterA1
+  );
   assert(updated.status === InterviewStatus.CONFIRMED, "Status should be CONFIRMED");
 
   // Transition: CONFIRMED -> COMPLETED (Throws UnprocessableEntity: must go through IN_PROGRESS)
   await assertThrows(
     async () => {
-      await interviewService.updateStatus(interview1Id, { status: InterviewStatus.COMPLETED }, authRecruiterA1);
+      await interviewService.updateStatus(
+        interview1Id,
+        { status: InterviewStatus.COMPLETED },
+        authRecruiterA1
+      );
     },
     UnprocessableEntityError,
     "Invalid interview status transition"
   );
 
   // Transition: CONFIRMED -> IN_PROGRESS (Success)
-  updated = await interviewService.updateStatus(interview1Id, { status: InterviewStatus.IN_PROGRESS }, authRecruiterA1);
+  updated = await interviewService.updateStatus(
+    interview1Id,
+    { status: InterviewStatus.IN_PROGRESS },
+    authRecruiterA1
+  );
   assert(updated.status === InterviewStatus.IN_PROGRESS, "Status should be IN_PROGRESS");
 
   // Transition: IN_PROGRESS -> COMPLETED (Success)
-  updated = await interviewService.updateStatus(interview1Id, { status: InterviewStatus.COMPLETED }, authRecruiterA1);
+  updated = await interviewService.updateStatus(
+    interview1Id,
+    { status: InterviewStatus.COMPLETED },
+    authRecruiterA1
+  );
   assert(updated.status === InterviewStatus.COMPLETED, "Status should be COMPLETED");
   assert(updated.completedAt !== null, "completedAt should be recorded");
 
   // COMPLETED (Terminal) -> SCHEDULED (Throws UnprocessableEntity)
   await assertThrows(
     async () => {
-      await interviewService.updateStatus(interview1Id, { status: InterviewStatus.SCHEDULED }, authRecruiterA1);
+      await interviewService.updateStatus(
+        interview1Id,
+        { status: InterviewStatus.SCHEDULED },
+        authRecruiterA1
+      );
     },
     UnprocessableEntityError,
     "Invalid interview status transition"
@@ -530,7 +570,10 @@ async function runTests() {
   );
 
   assert(finalOutcome.outcome === InterviewOutcome.PASS, "Outcome should be PASS");
-  assert(finalOutcome.resultNotes === "Excellent TS design skills shown.", "Result notes should be set");
+  assert(
+    finalOutcome.resultNotes === "Excellent TS design skills shown.",
+    "Result notes should be set"
+  );
 
   console.log("   -> Success!");
 
@@ -576,7 +619,10 @@ async function runTests() {
 
   // List all company interviews -> count = 1 (soft deleted excluded)
   list = await interviewService.listInterviews({}, authAdminA);
-  assert(list.data.length === 1, `Should return 1 interview after soft delete, got ${list.data.length}`);
+  assert(
+    list.data.length === 1,
+    `Should return 1 interview after soft delete, got ${list.data.length}`
+  );
 
   console.log("   -> Success!");
 
@@ -614,7 +660,17 @@ async function runTests() {
   });
 
   await prisma.user.deleteMany({
-    where: { id: { in: [adminAUser.id, recruiterA1User.id, recruiterA2User.id, adminBUser.id, superAdminUser.id] } },
+    where: {
+      id: {
+        in: [
+          adminAUser.id,
+          recruiterA1User.id,
+          recruiterA2User.id,
+          adminBUser.id,
+          superAdminUser.id,
+        ],
+      },
+    },
   });
 
   await prisma.department.deleteMany({

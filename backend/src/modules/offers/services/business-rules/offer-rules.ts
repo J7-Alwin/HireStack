@@ -1,12 +1,20 @@
 import { Role, OfferStatus, Prisma, ApplicationStatus } from "@prisma/client";
-import { ForbiddenError, NotFoundError, ConflictError, ValidationError } from "../../../../shared/errors";
+import {
+  ForbiddenError,
+  NotFoundError,
+  ConflictError,
+  ValidationError,
+} from "../../../../shared/errors";
 import { AuthenticatedUser } from "../../../../shared/types";
 import { OFFER_MESSAGES } from "../../constants/offer.constants";
 import { offerRepository } from "../../repositories/offer.repository";
 import { OfferDto } from "../../types/offer.dto";
 
 // Company and user access scopes
-export function validateCompanyAccess(entityCompanyId: string, currentUser: AuthenticatedUser): void {
+export function validateCompanyAccess(
+  entityCompanyId: string,
+  currentUser: AuthenticatedUser
+): void {
   if (currentUser.role === Role.SUPER_ADMIN) {
     throw new ForbiddenError(OFFER_MESSAGES.FORBIDDEN_ACCESS);
   }
@@ -94,7 +102,14 @@ export function ensureApplicationEligible(
 }
 
 export function verifyNoImmutableFields(body: unknown): void {
-  const immutableFields = ["offerCode", "companyId", "applicationId", "candidateId", "version", "createdAt"];
+  const immutableFields = [
+    "offerCode",
+    "companyId",
+    "applicationId",
+    "candidateId",
+    "version",
+    "createdAt",
+  ];
   for (const field of immutableFields) {
     if (body && typeof body === "object" && field in body) {
       throw new ValidationError(OFFER_MESSAGES.IMMUTABLE_FIELD_UPDATE);

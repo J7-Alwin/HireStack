@@ -1,6 +1,19 @@
-import { Role, InterviewStatus, InterviewMode, Prisma } from "@prisma/client";
+import {
+  Role,
+  InterviewStatus,
+  InterviewMode,
+  Prisma,
+  PipelineStage,
+  PipelineTimelineEventType,
+} from "@prisma/client";
 import { prisma } from "../../../config/prisma";
-import { ForbiddenError, NotFoundError, ConflictError, UnprocessableEntityError, ValidationError } from "../../../shared/errors";
+import {
+  ForbiddenError,
+  NotFoundError,
+  ConflictError,
+  UnprocessableEntityError,
+  ValidationError,
+} from "../../../shared/errors";
 import { AuthenticatedUser } from "../../../shared/types";
 import { logger } from "../../../shared/logger/logger";
 import { INTERVIEW_MESSAGES, STATUS_TRANSITION_RULES } from "../constants/interview.constants";
@@ -43,7 +56,11 @@ function enforceWriterRole(currentUser: AuthenticatedUser) {
   }
 }
 
-async function getInterviewAndValidateAccess(id: string, currentUser: AuthenticatedUser, tx?: Prisma.TransactionClient) {
+async function getInterviewAndValidateAccess(
+  id: string,
+  currentUser: AuthenticatedUser,
+  tx?: Prisma.TransactionClient
+) {
   const interview = await interviewRepository.findById(id, false, tx);
   if (!interview) {
     throw new NotFoundError(INTERVIEW_MESSAGES.INTERVIEW_NOT_FOUND);
@@ -51,7 +68,10 @@ async function getInterviewAndValidateAccess(id: string, currentUser: Authentica
   validateCompanyAccess(interview.companyId, currentUser);
 
   // Recruiter rule: Recruiters can only modify interviews on applications assigned to them
-  if (currentUser.role === Role.RECRUITER && interview.application.assignedRecruiterId !== currentUser.id) {
+  if (
+    currentUser.role === Role.RECRUITER &&
+    interview.application.assignedRecruiterId !== currentUser.id
+  ) {
     throw new ForbiddenError(INTERVIEW_MESSAGES.FORBIDDEN_MODIFICATION);
   }
 
@@ -85,70 +105,160 @@ export const interviewService = {
     const parsedInput = createInterviewSchema.parse(input);
     validateTimeInFuture(parsedInput.startTime);
 
-    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      // 1. Verify parent Application exists, belongs to company, and is ACTIVE
-      const application = await interviewRepository.findActiveApplication(parsedInput.applicationId, tx);
-      if (!application) {
-        throw new NotFoundError("Application not found");
-      }
-      if (application.companyId !== companyId) {
-        throw new ForbiddenError(INTERVIEW_MESSAGES.CROSS_COMPANY_ACCESS_FORBIDDEN);
-      }
-      if (application.status !== "ACTIVE") {
-        throw new ConflictError(INTERVIEW_MESSAGES.APPLICATION_NOT_ELIGIBLE);
-      }
-
-      // If recruiter, check they are the assigned recruiter
-      if (currentUser.role === Role.RECRUITER && application.assignedRecruiterId !== currentUser.id) {
-        throw new ForbiddenError(INTERVIEW_MESSAGES.FORBIDDEN_MODIFICATION);
-      }
-
-      // 2. Validate all interviewers belong to same company
-      const interviewers = await interviewRepository.findUsersCompany(parsedInput.interviewers, tx);
-      if (interviewers.length !== parsedInput.interviewers.length) {
-        throw new UnprocessableEntityError("One or more assigned interviewers not found");
-      }
-      for (const interviewer of interviewers) {
-        if (interviewer.companyId !== companyId) {
-          throw new UnprocessableEntityError("Assigned interviewers must belong to the same company");
+    const result = await prisma.$transaction(
+      async (tx: Prisma.TransactionClient) => {
+        // 1. Verify parent Application exists, belongs to company, and is ACTIVE
+        const application = await interviewRepository.findActiveApplication(
+          parsedInput.applicationId,
+          tx
+        );
+        if (!application) {
+          throw new NotFoundError("Application not found");
         }
-        if (interviewer.role !== Role.RECRUITER && interviewer.role !== Role.COMPANY_ADMIN) {
-          throw new UnprocessableEntityError("Assigned interviewers must have recruiter or company admin roles");
+        if (application.companyId !== companyId) {
+          throw new ForbiddenError(INTERVIEW_MESSAGES.CROSS_COMPANY_ACCESS_FORBIDDEN);
         }
+        if (application.status !== "ACTIVE") {
+          throw new ConflictError(INTERVIEW_MESSAGES.APPLICATION_NOT_ELIGIBLE);
+        }
+
+        // If recruiter, check they are the assigned recruiter
+        if (
+          currentUser.role === Role.RECRUITER &&
+          application.assignedRecruiterId !== currentUser.id
+        ) {
+          throw new ForbiddenError(INTERVIEW_MESSAGES.FORBIDDEN_MODIFICATION);
+        }
+
+        // 2. Validate all interviewers belong to same company
+        const interviewers = await interviewRepository.findUsersCompany(
+          parsedInput.interviewers,
+          tx
+        );
+        if (interviewers.length !== parsedInput.interviewers.length) {
+          throw new UnprocessableEntityError("One or more assigned interviewers not found");
+        }
+        for (const interviewer of interviewers) {
+          if (interviewer.companyId !== companyId) {
+            throw new UnprocessableEntityError(
+              "Assigned interviewers must belong to the same company"
+            );
+          }
+          if (interviewer.role !== Role.RECRUITER && interviewer.role !== Role.COMPANY_ADMIN) {
+            throw new UnprocessableEntityError(
+              "Assigned interviewers must have recruiter or company admin roles"
+            );
+          }
+        }
+
+        // 3. Check for interviewer scheduling conflicts
+        const conflict = await interviewRepository.findInterviewerConflicts(
+          parsedInput.interviewers,
+          new Date(parsedInput.scheduledDate),
+          new Date(parsedInput.startTime),
+          new Date(parsedInput.endTime),
+          undefined,
+          tx
+        );
+        if (conflict) {
+          throw new ConflictError(INTERVIEW_MESSAGES.INTERVIEWER_CONFLICT);
+        }
+
+        // 4. Check for duplicate rounds
+        const duplicateRound = await interviewRepository.findDuplicateActiveRound(
+          parsedInput.applicationId,
+          parsedInput.round,
+          undefined,
+          tx
+        );
+        if (duplicateRound) {
+          throw new ConflictError(INTERVIEW_MESSAGES.DUPLICATE_ROUND);
+        }
+
+        // 5. Generate safe interview code
+        const counter = await interviewRepository.incrementInterviewCounter(companyId, tx);
+        const interviewCode = `INT-${String(counter).padStart(6, "0")}`;
+
+        const interview = await interviewRepository.create(
+          companyId,
+          interviewCode,
+          { ...parsedInput, createdBy: currentUser.id },
+          parsedInput.interviewers,
+          tx
+        );
+
+        // Automatically update pipeline stage if pipeline exists
+        const pipeline = await tx.hiringPipeline.findFirst({
+          where: { applicationId: parsedInput.applicationId, deletedAt: null },
+        });
+
+        if (pipeline && !pipeline.isCompleted) {
+          let nextStage: PipelineStage = PipelineStage.TECHNICAL_INTERVIEW;
+          if (parsedInput.round === "HR") {
+            nextStage = PipelineStage.HR_INTERVIEW;
+          } else if (parsedInput.round === "FINAL") {
+            nextStage = PipelineStage.FINAL_INTERVIEW;
+          } else if (parsedInput.round === "SCREENING") {
+            nextStage = PipelineStage.SCREENING;
+          }
+
+          const orderMap: Record<string, number> = {
+            APPLIED: 1,
+            SCREENING: 2,
+            SHORTLISTED: 3,
+            HR_INTERVIEW: 4,
+            TECHNICAL_INTERVIEW: 5,
+            FINAL_INTERVIEW: 6,
+            OFFER_PENDING: 7,
+            OFFER_SENT: 8,
+            OFFER_ACCEPTED: 9,
+            HIRED: 10,
+            REJECTED: 11,
+            WITHDRAWN: 12,
+          };
+          const stageOrder = orderMap[nextStage] || 5;
+
+          // Update pipeline stage
+          await tx.hiringPipeline.update({
+            where: { id: pipeline.id },
+            data: {
+              currentStage: nextStage,
+              previousStage: pipeline.currentStage,
+              stageOrder,
+              stageChangedAt: new Date(),
+            },
+          });
+
+          // Add to history
+          await tx.pipelineHistory.create({
+            data: {
+              pipelineId: pipeline.id,
+              fromStage: pipeline.currentStage,
+              toStage: nextStage,
+              movedById: currentUser.id,
+              reason: "Interview Scheduled",
+              comments: `Interview round ${parsedInput.round} scheduled automatically.`,
+            },
+          });
+
+          // Add to timeline
+          await tx.pipelineTimeline.create({
+            data: {
+              pipelineId: pipeline.id,
+              eventType: PipelineTimelineEventType.INTERVIEW_SCHEDULED,
+              title: `Interview Scheduled (${parsedInput.round})`,
+              description: `A ${parsedInput.round} interview has been scheduled.`,
+              createdById: currentUser.id,
+            },
+          });
+        }
+
+        return interview;
+      },
+      {
+        timeout: 20000,
       }
-
-      // 3. Check for interviewer scheduling conflicts
-      const conflict = await interviewRepository.findInterviewerConflicts(
-        parsedInput.interviewers,
-        new Date(parsedInput.scheduledDate),
-        new Date(parsedInput.startTime),
-        new Date(parsedInput.endTime),
-        undefined,
-        tx
-      );
-      if (conflict) {
-        throw new ConflictError(INTERVIEW_MESSAGES.INTERVIEWER_CONFLICT);
-      }
-
-      // 4. Check for duplicate rounds
-      const duplicateRound = await interviewRepository.findDuplicateActiveRound(
-        parsedInput.applicationId,
-        parsedInput.round,
-        undefined,
-        tx
-      );
-      if (duplicateRound) {
-        throw new ConflictError(INTERVIEW_MESSAGES.DUPLICATE_ROUND);
-      }
-
-      // 5. Generate safe interview code
-      const counter = await interviewRepository.incrementInterviewCounter(companyId, tx);
-      const interviewCode = `INT-${String(counter).padStart(6, "0")}`;
-
-      return await interviewRepository.create(companyId, interviewCode, { ...parsedInput, createdBy: currentUser.id }, parsedInput.interviewers, tx);
-    }, {
-      timeout: 20000,
-    });
+    );
 
     logger.info("Interview Scheduled", {
       interviewId: result.id,
@@ -199,44 +309,51 @@ export const interviewService = {
     return interview;
   },
 
-  updateInterview: async (id: string, input: UpdateInterviewInput, currentUser: AuthenticatedUser) => {
+  updateInterview: async (
+    id: string,
+    input: UpdateInterviewInput,
+    currentUser: AuthenticatedUser
+  ) => {
     verifyNoImmutableFields(input);
     enforceWriterRole(currentUser);
 
     const parsedInput = updateInterviewSchema.parse(input);
 
-    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      const interview = await getInterviewAndValidateAccess(id, currentUser, tx);
+    const result = await prisma.$transaction(
+      async (tx: Prisma.TransactionClient) => {
+        const interview = await getInterviewAndValidateAccess(id, currentUser, tx);
 
-      if (
-        interview.status === InterviewStatus.COMPLETED ||
-        interview.status === InterviewStatus.CANCELLED ||
-        interview.status === InterviewStatus.NO_SHOW
-      ) {
-        throw new UnprocessableEntityError("Cannot update interviews in terminal status");
-      }
+        if (
+          interview.status === InterviewStatus.COMPLETED ||
+          interview.status === InterviewStatus.CANCELLED ||
+          interview.status === InterviewStatus.NO_SHOW
+        ) {
+          throw new UnprocessableEntityError("Cannot update interviews in terminal status");
+        }
 
-      // If mode is updated to ONLINE, require meetingLink
-      if (parsedInput.mode === InterviewMode.ONLINE && !interview.meetingLink) {
-        throw new ValidationError("ONLINE interview requires meetingLink");
-      }
-      // If mode is updated to ONSITE, require location
-      if (parsedInput.mode === InterviewMode.ONSITE && !interview.location) {
-        throw new ValidationError("ONSITE interview requires location");
-      }
+        // If mode is updated to ONLINE, require meetingLink
+        if (parsedInput.mode === InterviewMode.ONLINE && !interview.meetingLink) {
+          throw new ValidationError("ONLINE interview requires meetingLink");
+        }
+        // If mode is updated to ONSITE, require location
+        if (parsedInput.mode === InterviewMode.ONSITE && !interview.location) {
+          throw new ValidationError("ONSITE interview requires location");
+        }
 
-      return await interviewRepository.update(
-        id,
-        {
-          mode: parsedInput.mode,
-          notes: parsedInput.notes,
-          updatedBy: currentUser.id,
-        },
-        tx
-      );
-    }, {
-      timeout: 20000,
-    });
+        return await interviewRepository.update(
+          id,
+          {
+            mode: parsedInput.mode,
+            notes: parsedInput.notes,
+            updatedBy: currentUser.id,
+          },
+          tx
+        );
+      },
+      {
+        timeout: 20000,
+      }
+    );
 
     logger.info("Interview Updated", {
       interviewId: result.id,
@@ -251,63 +368,72 @@ export const interviewService = {
     return result;
   },
 
-  rescheduleInterview: async (id: string, input: RescheduleInterviewInput, currentUser: AuthenticatedUser) => {
+  rescheduleInterview: async (
+    id: string,
+    input: RescheduleInterviewInput,
+    currentUser: AuthenticatedUser
+  ) => {
     verifyNoImmutableFields(input);
     enforceWriterRole(currentUser);
 
     const parsedInput = rescheduleSchema.parse(input);
     validateTimeInFuture(parsedInput.startTime);
 
-    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      const interview = await getInterviewAndValidateAccess(id, currentUser, tx);
+    const result = await prisma.$transaction(
+      async (tx: Prisma.TransactionClient) => {
+        const interview = await getInterviewAndValidateAccess(id, currentUser, tx);
 
-      if (
-        interview.status === InterviewStatus.COMPLETED ||
-        interview.status === InterviewStatus.CANCELLED ||
-        interview.status === InterviewStatus.NO_SHOW
-      ) {
-        throw new UnprocessableEntityError("Cannot reschedule interviews in terminal status");
-      }
+        if (
+          interview.status === InterviewStatus.COMPLETED ||
+          interview.status === InterviewStatus.CANCELLED ||
+          interview.status === InterviewStatus.NO_SHOW
+        ) {
+          throw new UnprocessableEntityError("Cannot reschedule interviews in terminal status");
+        }
 
-      // Check conditional validations based on current mode
-      if (interview.mode === InterviewMode.ONLINE && !parsedInput.meetingLink) {
-        throw new ValidationError("ONLINE interview requires meetingLink");
-      }
-      if (interview.mode === InterviewMode.ONSITE && !parsedInput.location) {
-        throw new ValidationError("ONSITE interview requires location");
-      }
+        // Check conditional validations based on current mode
+        if (interview.mode === InterviewMode.ONLINE && !parsedInput.meetingLink) {
+          throw new ValidationError("ONLINE interview requires meetingLink");
+        }
+        if (interview.mode === InterviewMode.ONSITE && !parsedInput.location) {
+          throw new ValidationError("ONSITE interview requires location");
+        }
 
-      // Check interviewer availability conflicts (excluding this interview)
-      const interviewerIds = interview.interviewers.map((i: { interviewerId: string }) => i.interviewerId);
-      const conflict = await interviewRepository.findInterviewerConflicts(
-        interviewerIds,
-        new Date(parsedInput.scheduledDate),
-        new Date(parsedInput.startTime),
-        new Date(parsedInput.endTime),
-        id,
-        tx
-      );
-      if (conflict) {
-        throw new ConflictError(INTERVIEW_MESSAGES.INTERVIEWER_CONFLICT);
-      }
+        // Check interviewer availability conflicts (excluding this interview)
+        const interviewerIds = interview.interviewers.map(
+          (i: { interviewerId: string }) => i.interviewerId
+        );
+        const conflict = await interviewRepository.findInterviewerConflicts(
+          interviewerIds,
+          new Date(parsedInput.scheduledDate),
+          new Date(parsedInput.startTime),
+          new Date(parsedInput.endTime),
+          id,
+          tx
+        );
+        if (conflict) {
+          throw new ConflictError(INTERVIEW_MESSAGES.INTERVIEWER_CONFLICT);
+        }
 
-      return await interviewRepository.update(
-        id,
-        {
-          scheduledDate: new Date(parsedInput.scheduledDate),
-          startTime: new Date(parsedInput.startTime),
-          endTime: new Date(parsedInput.endTime),
-          timeZone: parsedInput.timeZone,
-          meetingLink: parsedInput.meetingLink,
-          location: parsedInput.location,
-          notes: parsedInput.notes,
-          updatedBy: currentUser.id,
-        },
-        tx
-      );
-    }, {
-      timeout: 20000,
-    });
+        return await interviewRepository.update(
+          id,
+          {
+            scheduledDate: new Date(parsedInput.scheduledDate),
+            startTime: new Date(parsedInput.startTime),
+            endTime: new Date(parsedInput.endTime),
+            timeZone: parsedInput.timeZone,
+            meetingLink: parsedInput.meetingLink,
+            location: parsedInput.location,
+            notes: parsedInput.notes,
+            updatedBy: currentUser.id,
+          },
+          tx
+        );
+      },
+      {
+        timeout: 20000,
+      }
+    );
 
     logger.info("Interview Rescheduled", {
       interviewId: result.id,
@@ -322,35 +448,42 @@ export const interviewService = {
     return result;
   },
 
-  cancelInterview: async (id: string, input: CancelInterviewInput, currentUser: AuthenticatedUser) => {
+  cancelInterview: async (
+    id: string,
+    input: CancelInterviewInput,
+    currentUser: AuthenticatedUser
+  ) => {
     verifyNoImmutableFields(input);
     enforceWriterRole(currentUser);
 
     const parsedInput = cancelSchema.parse(input);
 
-    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      const interview = await getInterviewAndValidateAccess(id, currentUser, tx);
+    const result = await prisma.$transaction(
+      async (tx: Prisma.TransactionClient) => {
+        const interview = await getInterviewAndValidateAccess(id, currentUser, tx);
 
-      const currentStatus = interview.status;
-      const allowed = STATUS_TRANSITION_RULES[currentStatus as InterviewStatus] || [];
-      if (!allowed.includes(InterviewStatus.CANCELLED)) {
-        throw new UnprocessableEntityError(INTERVIEW_MESSAGES.INVALID_STATUS_TRANSITION);
+        const currentStatus = interview.status;
+        const allowed = STATUS_TRANSITION_RULES[currentStatus as InterviewStatus] || [];
+        if (!allowed.includes(InterviewStatus.CANCELLED)) {
+          throw new UnprocessableEntityError(INTERVIEW_MESSAGES.INVALID_STATUS_TRANSITION);
+        }
+
+        return await interviewRepository.update(
+          id,
+          {
+            status: InterviewStatus.CANCELLED,
+            cancellationReason: parsedInput.cancellationReason,
+            cancelledById: currentUser.id,
+            cancelledAt: new Date(),
+            updatedBy: currentUser.id,
+          },
+          tx
+        );
+      },
+      {
+        timeout: 20000,
       }
-
-      return await interviewRepository.update(
-        id,
-        {
-          status: InterviewStatus.CANCELLED,
-          cancellationReason: parsedInput.cancellationReason,
-          cancelledById: currentUser.id,
-          cancelledAt: new Date(),
-          updatedBy: currentUser.id,
-        },
-        tx
-      );
-    }, {
-      timeout: 20000,
-    });
+    );
 
     logger.info("Interview Cancelled", {
       interviewId: result.id,
@@ -371,33 +504,56 @@ export const interviewService = {
 
     const parsedInput = updateStatusSchema.parse(input);
 
-    return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      const interview = await getInterviewAndValidateAccess(id, currentUser, tx);
+    return await prisma.$transaction(
+      async (tx: Prisma.TransactionClient) => {
+        const interview = await getInterviewAndValidateAccess(id, currentUser, tx);
 
-      const currentStatus = interview.status;
-      const nextStatus = parsedInput.status;
+        const currentStatus = interview.status;
+        const nextStatus = parsedInput.status;
 
-      if (currentStatus === nextStatus) {
-        return interview;
+        if (currentStatus === nextStatus) {
+          return interview;
+        }
+
+        const allowed = STATUS_TRANSITION_RULES[currentStatus as InterviewStatus] || [];
+        if (!allowed.includes(nextStatus)) {
+          throw new UnprocessableEntityError(INTERVIEW_MESSAGES.INVALID_STATUS_TRANSITION);
+        }
+
+        const updated = await interviewRepository.update(
+          id,
+          {
+            status: nextStatus,
+            completedAt: nextStatus === InterviewStatus.COMPLETED ? new Date() : undefined,
+            updatedBy: currentUser.id,
+          },
+          tx
+        );
+
+        // Create timeline event if COMPLETED
+        if (nextStatus === InterviewStatus.COMPLETED) {
+          const pipeline = await tx.hiringPipeline.findFirst({
+            where: { applicationId: interview.applicationId, deletedAt: null },
+          });
+          if (pipeline && !pipeline.isCompleted) {
+            await tx.pipelineTimeline.create({
+              data: {
+                pipelineId: pipeline.id,
+                eventType: PipelineTimelineEventType.INTERVIEW_COMPLETED,
+                title: `Interview Completed (${interview.round})`,
+                description: `The scheduled ${interview.round} interview round has been marked completed.`,
+                createdById: currentUser.id,
+              },
+            });
+          }
+        }
+
+        return updated;
+      },
+      {
+        timeout: 20000,
       }
-
-      const allowed = STATUS_TRANSITION_RULES[currentStatus as InterviewStatus] || [];
-      if (!allowed.includes(nextStatus)) {
-        throw new UnprocessableEntityError(INTERVIEW_MESSAGES.INVALID_STATUS_TRANSITION);
-      }
-
-      return await interviewRepository.update(
-        id,
-        {
-          status: nextStatus,
-          completedAt: nextStatus === InterviewStatus.COMPLETED ? new Date() : undefined,
-          updatedBy: currentUser.id,
-        },
-        tx
-      );
-    }, {
-      timeout: 20000,
-    });
+    );
   },
 
   recordOutcome: async (id: string, input: OutcomeInput, currentUser: AuthenticatedUser) => {
@@ -406,25 +562,28 @@ export const interviewService = {
 
     const parsedInput = outcomeSchema.parse(input);
 
-    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      const interview = await getInterviewAndValidateAccess(id, currentUser, tx);
+    const result = await prisma.$transaction(
+      async (tx: Prisma.TransactionClient) => {
+        const interview = await getInterviewAndValidateAccess(id, currentUser, tx);
 
-      if (interview.status !== InterviewStatus.COMPLETED) {
-        throw new UnprocessableEntityError(INTERVIEW_MESSAGES.OUTCOME_NOT_ALLOWED);
+        if (interview.status !== InterviewStatus.COMPLETED) {
+          throw new UnprocessableEntityError(INTERVIEW_MESSAGES.OUTCOME_NOT_ALLOWED);
+        }
+
+        return await interviewRepository.update(
+          id,
+          {
+            outcome: parsedInput.outcome,
+            resultNotes: parsedInput.resultNotes,
+            updatedBy: currentUser.id,
+          },
+          tx
+        );
+      },
+      {
+        timeout: 20000,
       }
-
-      return await interviewRepository.update(
-        id,
-        {
-          outcome: parsedInput.outcome,
-          resultNotes: parsedInput.resultNotes,
-          updatedBy: currentUser.id,
-        },
-        tx
-      );
-    }, {
-      timeout: 20000,
-    });
+    );
 
     logger.info("Interview Outcome Recorded", {
       interviewId: result.id,
@@ -439,55 +598,69 @@ export const interviewService = {
     return result;
   },
 
-  assignInterviewers: async (id: string, input: AssignInterviewersInput, currentUser: AuthenticatedUser) => {
+  assignInterviewers: async (
+    id: string,
+    input: AssignInterviewersInput,
+    currentUser: AuthenticatedUser
+  ) => {
     verifyNoImmutableFields(input);
     enforceWriterRole(currentUser);
 
     const parsedInput = assignInterviewersSchema.parse(input);
     const companyId = currentUser.companyId!;
 
-    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      const interview = await getInterviewAndValidateAccess(id, currentUser, tx);
+    const result = await prisma.$transaction(
+      async (tx: Prisma.TransactionClient) => {
+        const interview = await getInterviewAndValidateAccess(id, currentUser, tx);
 
-      if (
-        interview.status === InterviewStatus.COMPLETED ||
-        interview.status === InterviewStatus.CANCELLED ||
-        interview.status === InterviewStatus.NO_SHOW
-      ) {
-        throw new UnprocessableEntityError("Cannot modify interviewers on terminal interviews");
-      }
-
-      // Validate new interviewers belong to same company
-      const interviewers = await interviewRepository.findUsersCompany(parsedInput.interviewers, tx);
-      if (interviewers.length !== parsedInput.interviewers.length) {
-        throw new UnprocessableEntityError("One or more assigned interviewers not found");
-      }
-      for (const interviewer of interviewers) {
-        if (interviewer.companyId !== companyId) {
-          throw new UnprocessableEntityError("Assigned interviewers must belong to the same company");
+        if (
+          interview.status === InterviewStatus.COMPLETED ||
+          interview.status === InterviewStatus.CANCELLED ||
+          interview.status === InterviewStatus.NO_SHOW
+        ) {
+          throw new UnprocessableEntityError("Cannot modify interviewers on terminal interviews");
         }
-        if (interviewer.role !== Role.RECRUITER && interviewer.role !== Role.COMPANY_ADMIN) {
-          throw new UnprocessableEntityError("Assigned interviewers must have recruiter or company admin roles");
+
+        // Validate new interviewers belong to same company
+        const interviewers = await interviewRepository.findUsersCompany(
+          parsedInput.interviewers,
+          tx
+        );
+        if (interviewers.length !== parsedInput.interviewers.length) {
+          throw new UnprocessableEntityError("One or more assigned interviewers not found");
         }
-      }
+        for (const interviewer of interviewers) {
+          if (interviewer.companyId !== companyId) {
+            throw new UnprocessableEntityError(
+              "Assigned interviewers must belong to the same company"
+            );
+          }
+          if (interviewer.role !== Role.RECRUITER && interviewer.role !== Role.COMPANY_ADMIN) {
+            throw new UnprocessableEntityError(
+              "Assigned interviewers must have recruiter or company admin roles"
+            );
+          }
+        }
 
-      // Check conflict for new list at current scheduled times
-      const conflict = await interviewRepository.findInterviewerConflicts(
-        parsedInput.interviewers,
-        interview.scheduledDate,
-        interview.startTime,
-        interview.endTime,
-        id,
-        tx
-      );
-      if (conflict) {
-        throw new ConflictError(INTERVIEW_MESSAGES.INTERVIEWER_CONFLICT);
-      }
+        // Check conflict for new list at current scheduled times
+        const conflict = await interviewRepository.findInterviewerConflicts(
+          parsedInput.interviewers,
+          interview.scheduledDate,
+          interview.startTime,
+          interview.endTime,
+          id,
+          tx
+        );
+        if (conflict) {
+          throw new ConflictError(INTERVIEW_MESSAGES.INTERVIEWER_CONFLICT);
+        }
 
-      return await interviewRepository.updateInterviewers(id, parsedInput.interviewers, tx);
-    }, {
-      timeout: 20000,
-    });
+        return await interviewRepository.updateInterviewers(id, parsedInput.interviewers, tx);
+      },
+      {
+        timeout: 20000,
+      }
+    );
 
     if (!result) {
       throw new NotFoundError(INTERVIEW_MESSAGES.INTERVIEW_NOT_FOUND);

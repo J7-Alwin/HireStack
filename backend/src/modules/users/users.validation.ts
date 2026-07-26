@@ -3,7 +3,7 @@ import { Role } from "../../shared/enums/role.enum";
 import { AccountStatus } from "../../shared/enums/status.enum";
 
 // Helper to preprocess numeric query params
-const numericPreprocess = (defaultValue: number) => 
+const numericPreprocess = (defaultValue: number) =>
   z.preprocess((val) => {
     if (typeof val === "string") {
       const parsed = parseInt(val, 10);

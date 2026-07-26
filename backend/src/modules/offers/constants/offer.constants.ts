@@ -15,7 +15,8 @@ export const OFFER_MESSAGES = {
   OFFER_WITHDRAWN: "Offer withdrawn successfully",
   OFFER_REVISED: "Offer revision created successfully",
   OFFER_DELETED: "Offer soft-deleted successfully",
-  APPLICATION_NOT_ELIGIBLE: "Application is not eligible for offer scheduling. It must be ACTIVE and have completed the interview process",
+  APPLICATION_NOT_ELIGIBLE:
+    "Application is not eligible for offer scheduling. It must be ACTIVE and have completed the interview process",
   DUPLICATE_ACTIVE_OFFER: "An active offer already exists for this application",
   INVALID_STATUS_TRANSITION: "Invalid offer status transition",
   IMMUTABLE_FIELD_UPDATE: "Immutable fields cannot be updated",
@@ -41,4 +42,3 @@ export const STATUS_TRANSITION_RULES: Record<OfferStatus, OfferStatus[]> = {
   [OfferStatus.EXPIRED]: [],
   [OfferStatus.WITHDRAWN]: [],
 };
-

@@ -34,10 +34,16 @@ async function assertThrows(
   const err = caughtError as Error & { details?: Record<string, unknown> };
 
   if (err.constructor.name !== errorClass.name && !(err instanceof errorClass)) {
-    throw new Error(`Expected error of type ${errorClass.name}, but got ${err.constructor.name}: ${err.message}`, { cause: err });
+    throw new Error(
+      `Expected error of type ${errorClass.name}, but got ${err.constructor.name}: ${err.message}`,
+      { cause: err }
+    );
   }
   if (expectedMessage && !err.message.includes(expectedMessage)) {
-    throw new Error(`Expected error message to contain "${expectedMessage}", but got "${err.message}"`, { cause: err });
+    throw new Error(
+      `Expected error message to contain "${expectedMessage}", but got "${err.message}"`,
+      { cause: err }
+    );
   }
   if (expectedDetails) {
     const details = err.details;
@@ -46,7 +52,10 @@ async function assertThrows(
     }
     for (const key of Object.keys(expectedDetails)) {
       if (details[key] !== expectedDetails[key]) {
-        throw new Error(`Expected detail key "${key}" to be "${expectedDetails[key]}", but got "${details[key]}"`, { cause: err });
+        throw new Error(
+          `Expected detail key "${key}" to be "${expectedDetails[key]}", but got "${details[key]}"`,
+          { cause: err }
+        );
       }
     }
   }
@@ -221,11 +230,7 @@ async function runTests() {
     console.log("🧪 Test 3: Verifying company isolation on write/update...");
     await assertThrows(
       async () =>
-        await jobService.updateJob(
-          draftJob.id,
-          { title: "Malicious Title Change" },
-          contextAdminB
-        ),
+        await jobService.updateJob(draftJob.id, { title: "Malicious Title Change" }, contextAdminB),
       Error,
       "Cross-company access"
     );
@@ -240,7 +245,10 @@ async function runTests() {
       { description: "Develop and scale cool products" },
       contextRecruiterA1
     );
-    assert(updatedJob.description === "Develop and scale cool products", "Description should be updated");
+    assert(
+      updatedJob.description === "Develop and scale cool products",
+      "Description should be updated"
+    );
 
     console.log("🧪 Test 4b: Verifying unassigned recruiter is rejected...");
     await assertThrows(
@@ -290,7 +298,9 @@ async function runTests() {
     // ----------------------------------------------------
     // TEST 7: Invalid Transition Details
     // ----------------------------------------------------
-    console.log("🧪 Test 7: Verifying invalid lifecycle transition throws structured error payload...");
+    console.log(
+      "🧪 Test 7: Verifying invalid lifecycle transition throws structured error payload..."
+    );
     await assertThrows(
       async () => await jobService.openJob(draftJob.id, contextAdminA),
       Error,
@@ -333,7 +343,8 @@ async function runTests() {
 
     // Verify Read-Only archived job
     await assertThrows(
-      async () => await jobService.updateJob(draftJob.id, { title: "Archived Edit" }, contextAdminA),
+      async () =>
+        await jobService.updateJob(draftJob.id, { title: "Archived Edit" }, contextAdminA),
       Error,
       "Archived jobs are read-only"
     );

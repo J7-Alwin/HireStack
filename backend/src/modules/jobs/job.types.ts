@@ -115,4 +115,3 @@ export interface SafeJob {
   createdAt: Date;
   updatedAt: Date;
 }
-

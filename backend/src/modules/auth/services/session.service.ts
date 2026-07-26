@@ -40,11 +40,7 @@ export const sessionService = {
     });
   },
 
-  rotateSession: async (
-    oldToken: string,
-    newToken: string,
-    expiresAt?: Date
-  ): Promise<Session> => {
+  rotateSession: async (oldToken: string, newToken: string, expiresAt?: Date): Promise<Session> => {
     const oldHash = sessionService.hashToken(oldToken);
     const newHash = sessionService.hashToken(newToken);
     const expiry = expiresAt || getSessionExpiryDate();

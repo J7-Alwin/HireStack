@@ -72,7 +72,7 @@ export const usersService = {
       if (!currentUser.companyId) {
         throw new ForbiddenError(USERS_MESSAGES.COMPANY_ISOLATION_VIOLATION);
       }
-      
+
       // Override any requested companyId filter to restrict to their own company
       queryFilters.companyId = currentUser.companyId;
 
@@ -165,7 +165,10 @@ export const usersService = {
     currentUser: AuthenticatedUser
   ): Promise<SafeUser> => {
     // Prevent self status suspension or deactivation
-    if (id === currentUser.id && (status === AccountStatus.SUSPENDED || status === AccountStatus.INACTIVE)) {
+    if (
+      id === currentUser.id &&
+      (status === AccountStatus.SUSPENDED || status === AccountStatus.INACTIVE)
+    ) {
       throw new ValidationError("You cannot deactivate or suspend your own account");
     }
 
@@ -184,7 +187,7 @@ export const usersService = {
       if (!currentUser.companyId || currentUser.companyId !== user.companyId) {
         throw new ForbiddenError(USERS_MESSAGES.COMPANY_ISOLATION_VIOLATION);
       }
-      
+
       // COMPANY_ADMIN cannot modify a SUPER_ADMIN user
       if (user.role === Role.SUPER_ADMIN) {
         throw new ForbiddenError(USERS_MESSAGES.FORBIDDEN_ACCESS);

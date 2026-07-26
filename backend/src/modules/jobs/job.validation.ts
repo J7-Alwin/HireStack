@@ -15,9 +15,12 @@ const futureDateSchema = z.preprocess(
     if (typeof val === "string" && val !== "") return new Date(val);
     return val;
   },
-  z.date().refine((val) => val > new Date(), {
-    message: "Closing date must be in the future",
-  }).optional()
+  z
+    .date()
+    .refine((val) => val > new Date(), {
+      message: "Closing date must be in the future",
+    })
+    .optional()
 );
 
 export const createJobSchema = z
@@ -57,11 +60,25 @@ export const createJobSchema = z
     workplaceType: z.nativeEnum(WorkplaceType, {
       message: "Invalid workplace type",
     }),
-    experienceMin: z.number().int().nonnegative("Minimum experience must be non-negative").optional(),
-    experienceMax: z.number().int().nonnegative("Maximum experience must be non-negative").optional(),
+    experienceMin: z
+      .number()
+      .int()
+      .nonnegative("Minimum experience must be non-negative")
+      .optional(),
+    experienceMax: z
+      .number()
+      .int()
+      .nonnegative("Maximum experience must be non-negative")
+      .optional(),
     salaryMin: z.number().nonnegative("Minimum salary must be non-negative").optional(),
     salaryMax: z.number().nonnegative("Maximum salary must be non-negative").optional(),
-    currency: z.string().trim().length(3, "Currency must be a 3-letter ISO code").toUpperCase().optional().or(z.literal("")),
+    currency: z
+      .string()
+      .trim()
+      .length(3, "Currency must be a 3-letter ISO code")
+      .toUpperCase()
+      .optional()
+      .or(z.literal("")),
     location: z.string().trim().optional().or(z.literal("")),
     openings: z.number().int().min(1, "Openings must be at least 1"),
     visibility: z.nativeEnum(Visibility).optional().default(Visibility.PUBLIC),
@@ -130,11 +147,25 @@ export const updateJobSchema = z
     departmentId: z.string().min(1, "Department ID must be valid").optional(),
     employmentType: z.nativeEnum(EmploymentType).optional(),
     workplaceType: z.nativeEnum(WorkplaceType).optional(),
-    experienceMin: z.number().int().nonnegative("Minimum experience must be non-negative").optional(),
-    experienceMax: z.number().int().nonnegative("Maximum experience must be non-negative").optional(),
+    experienceMin: z
+      .number()
+      .int()
+      .nonnegative("Minimum experience must be non-negative")
+      .optional(),
+    experienceMax: z
+      .number()
+      .int()
+      .nonnegative("Maximum experience must be non-negative")
+      .optional(),
     salaryMin: z.number().nonnegative("Minimum salary must be non-negative").optional(),
     salaryMax: z.number().nonnegative("Maximum salary must be non-negative").optional(),
-    currency: z.string().trim().length(3, "Currency must be a 3-letter ISO code").toUpperCase().optional().or(z.literal("")),
+    currency: z
+      .string()
+      .trim()
+      .length(3, "Currency must be a 3-letter ISO code")
+      .toUpperCase()
+      .optional()
+      .or(z.literal("")),
     location: z.string().trim().optional().or(z.literal("")),
     openings: z.number().int().min(1, "Openings must be at least 1").optional(),
     visibility: z.nativeEnum(Visibility).optional(),
@@ -170,7 +201,9 @@ export const updateJobSchema = z
 
 export const assignRecruitersSchema = z
   .object({
-    recruiterIds: z.array(z.string().min(1, "Recruiter ID is required")).min(1, "At least one recruiter ID is required"),
+    recruiterIds: z
+      .array(z.string().min(1, "Recruiter ID is required"))
+      .min(1, "At least one recruiter ID is required"),
   })
   .strict();
 

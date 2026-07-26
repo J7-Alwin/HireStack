@@ -11,16 +11,14 @@ const fileFilter = (
   file: Express.Multer.File,
   callback: multer.FileFilterCallback
 ) => {
-  const mimeAllowed = ([
-    ...ALLOWED_MIME_TYPES.DOCUMENTS,
-    ...ALLOWED_MIME_TYPES.IMAGES,
-  ] as string[]).includes(file.mimetype);
+  const mimeAllowed = (
+    [...ALLOWED_MIME_TYPES.DOCUMENTS, ...ALLOWED_MIME_TYPES.IMAGES] as string[]
+  ).includes(file.mimetype);
 
   const ext = file.originalname.substring(file.originalname.lastIndexOf(".")).toLowerCase();
-  const extAllowed = ([
-    ...ALLOWED_EXTENSIONS.DOCUMENTS,
-    ...ALLOWED_EXTENSIONS.IMAGES,
-  ] as string[]).includes(ext);
+  const extAllowed = (
+    [...ALLOWED_EXTENSIONS.DOCUMENTS, ...ALLOWED_EXTENSIONS.IMAGES] as string[]
+  ).includes(ext);
 
   if (mimeAllowed && extAllowed) {
     callback(null, true);

@@ -9,7 +9,7 @@ export const usersRepository = {
     if (!includeDeleted) {
       where.deletedAt = null;
     }
-    
+
     return await prisma.user.findFirst({
       where,
       select: safeUserSelect,

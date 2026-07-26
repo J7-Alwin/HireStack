@@ -17,10 +17,7 @@ const router = Router();
 router.use(authMiddleware);
 
 // GET /users/me - Retrieve current authenticated user
-router.get(
-  "/me",
-  asyncHandler(usersController.getMe)
-);
+router.get("/me", asyncHandler(usersController.getMe));
 
 // GET /users - List users with query filters (SUPER_ADMIN and COMPANY_ADMIN only)
 router.get(

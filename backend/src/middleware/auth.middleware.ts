@@ -4,7 +4,11 @@ import { UnauthorizedError } from "../shared/errors/UnauthorizedError";
 import { AccountStatus } from "../shared/enums/status.enum";
 import { AuthenticatedUser } from "../shared/types/api.types";
 
-export const authMiddleware: RequestHandler = (req: Request, _res: Response, next: NextFunction): void => {
+export const authMiddleware: RequestHandler = (
+  req: Request,
+  _res: Response,
+  next: NextFunction
+): void => {
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith("Bearer ")) {

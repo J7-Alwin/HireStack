@@ -2,12 +2,7 @@ import { jobRepository } from "./job.repository";
 import { departmentsRepository } from "../departments/departments.repository";
 import { recruiterRepository } from "../recruiters/recruiter.repository";
 import { Role, JobStatus, Visibility, Prisma } from "@prisma/client";
-import {
-  JobQueryFilters,
-  JobCreateInput,
-  JobUpdateInput,
-  SafeJob,
-} from "./job.types";
+import { JobQueryFilters, JobCreateInput, JobUpdateInput, SafeJob } from "./job.types";
 import { AuthenticatedUser, PaginatedResult } from "../../shared/types";
 import { NotFoundError } from "../../shared/errors/NotFoundError";
 import { ForbiddenError } from "../../shared/errors/ForbiddenError";
@@ -83,10 +78,7 @@ async function validateJobExists(id: string, includeDeleted = false): Promise<Sa
 }
 
 export const jobService = {
-  createJob: async (
-    input: JobCreateInput,
-    currentUser: AuthenticatedUser
-  ): Promise<SafeJob> => {
+  createJob: async (input: JobCreateInput, currentUser: AuthenticatedUser): Promise<SafeJob> => {
     if (currentUser.role !== Role.COMPANY_ADMIN && currentUser.role !== Role.RECRUITER) {
       throw new ForbiddenError(JOBS_MESSAGES.FORBIDDEN_ACCESS);
     }
@@ -299,8 +291,10 @@ export const jobService = {
       {
         title: input.title !== undefined ? input.title.trim() : undefined,
         description: input.description !== undefined ? input.description.trim() : undefined,
-        responsibilities: input.responsibilities !== undefined ? input.responsibilities.trim() || null : undefined,
-        requirements: input.requirements !== undefined ? input.requirements.trim() || null : undefined,
+        responsibilities:
+          input.responsibilities !== undefined ? input.responsibilities.trim() || null : undefined,
+        requirements:
+          input.requirements !== undefined ? input.requirements.trim() || null : undefined,
         benefits: input.benefits !== undefined ? input.benefits.trim() || null : undefined,
         departmentId: input.departmentId,
         employmentType: input.employmentType,

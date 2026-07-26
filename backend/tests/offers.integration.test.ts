@@ -2,9 +2,23 @@ import "dotenv/config";
 import { prisma } from "../src/config/prisma";
 import { ZodError } from "zod";
 import { offerService } from "../src/modules/offers/services/offer.service";
-import { Role, OfferStatus, Currency, EmploymentType, JobStatus, ApplicationStage, ApplicationStatus } from "@prisma/client";
+import {
+  Role,
+  OfferStatus,
+  Currency,
+  EmploymentType,
+  JobStatus,
+  ApplicationStage,
+  ApplicationStatus,
+} from "@prisma/client";
 import { AuthenticatedUser } from "../src/shared/types";
-import { ConflictError, ForbiddenError, ValidationError, UnprocessableEntityError, NotFoundError } from "../src/shared/errors";
+import {
+  ConflictError,
+  ForbiddenError,
+  ValidationError,
+  UnprocessableEntityError,
+  NotFoundError,
+} from "../src/shared/errors";
 
 // Helper assertions
 function assert(condition: boolean, message: string) {
@@ -34,10 +48,14 @@ async function assertThrows(
   const err = caughtError as Error & { constructor: { name: string } };
 
   if (err.constructor.name !== errorClass.name && !(err instanceof errorClass)) {
-    throw new Error(`Expected error of type ${errorClass.name}, but got ${err.constructor.name}: ${err.message}`);
+    throw new Error(
+      `Expected error of type ${errorClass.name}, but got ${err.constructor.name}: ${err.message}`
+    );
   }
   if (expectedMessage && !err.message.includes(expectedMessage)) {
-    throw new Error(`Expected error message to contain "${expectedMessage}", but got "${err.message}"`);
+    throw new Error(
+      `Expected error message to contain "${expectedMessage}", but got "${err.message}"`
+    );
   }
 }
 
@@ -335,7 +353,11 @@ async function runTests() {
   // Attempting to update immutable fields
   await assertThrows(
     async () => {
-      await offerService.updateDraft(offerDraft.id, { offerCode: "NEWCODE" } as unknown as UpdateOfferInput, authRecruiterA1);
+      await offerService.updateDraft(
+        offerDraft.id,
+        { offerCode: "NEWCODE" } as unknown as UpdateOfferInput,
+        authRecruiterA1
+      );
     },
     ValidationError,
     "Immutable fields cannot be updated"
@@ -345,7 +367,10 @@ async function runTests() {
   // Test Case 7: Submit for Approval
   console.log("🧪 Test Case 7: Submit for Approval...");
   const submittedOffer = await offerService.submitForApproval(offerDraft.id, authRecruiterA1);
-  assert(submittedOffer.status === OfferStatus.PENDING_APPROVAL, "Expected status PENDING_APPROVAL");
+  assert(
+    submittedOffer.status === OfferStatus.PENDING_APPROVAL,
+    "Expected status PENDING_APPROVAL"
+  );
 
   // Edit draft after submission should fail
   await assertThrows(

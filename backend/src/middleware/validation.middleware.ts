@@ -17,7 +17,10 @@ export function validateRequest(schemas: ValidationSchemas): RequestHandler {
         req.query = schemas.query.parse(req.query) as Record<string, unknown> as typeof req.query;
       }
       if (schemas.params) {
-        req.params = schemas.params.parse(req.params) as Record<string, unknown> as typeof req.params;
+        req.params = schemas.params.parse(req.params) as Record<
+          string,
+          unknown
+        > as typeof req.params;
       }
       next();
     } catch (error) {

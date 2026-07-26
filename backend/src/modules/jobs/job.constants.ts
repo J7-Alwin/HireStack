@@ -28,7 +28,8 @@ export const JOBS_MESSAGES = {
   RECRUITER_ALREADY_ASSIGNED: "Recruiter is already assigned to this job",
   RECRUITER_NOT_ASSIGNED: "Recruiter is not assigned to this job",
   INVALID_LIFECYCLE_TRANSITION: "Invalid job status transition",
-  PUBLISH_VALIDATION_FAILED: "Publishing requires Title, Description, Employment Type, Workplace Type, Department, Openings > 0, and at least one assigned recruiter",
+  PUBLISH_VALIDATION_FAILED:
+    "Publishing requires Title, Description, Employment Type, Workplace Type, Department, Openings > 0, and at least one assigned recruiter",
   ARCHIVED_JOB_READONLY: "Archived jobs are read-only and cannot be modified",
   CLOSED_JOB_APPLICATIONS_REJECTED: "Closed jobs cannot accept new applications",
   CANNOT_RESTORE_ACTIVE: "Job is already active",

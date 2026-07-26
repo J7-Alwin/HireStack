@@ -240,7 +240,11 @@ export const interviewRepository = {
     });
   },
 
-  update: async (id: string, data: Prisma.InterviewUncheckedUpdateInput, tx?: Prisma.TransactionClient) => {
+  update: async (
+    id: string,
+    data: Prisma.InterviewUncheckedUpdateInput,
+    tx?: Prisma.TransactionClient
+  ) => {
     const client = tx || prisma;
     return await client.interview.update({
       where: { id },
@@ -249,7 +253,11 @@ export const interviewRepository = {
     });
   },
 
-  updateInterviewers: async (id: string, interviewerIds: string[], tx?: Prisma.TransactionClient) => {
+  updateInterviewers: async (
+    id: string,
+    interviewerIds: string[],
+    tx?: Prisma.TransactionClient
+  ) => {
     const client = tx || prisma;
     await client.interviewInterviewer.deleteMany({
       where: { interviewId: id },
@@ -275,7 +283,13 @@ export const interviewRepository = {
     });
   },
 
-  findMany: async (companyId: string, filters: InterviewQueryFilters, skip: number, take: number, tx?: Prisma.TransactionClient) => {
+  findMany: async (
+    companyId: string,
+    filters: InterviewQueryFilters,
+    skip: number,
+    take: number,
+    tx?: Prisma.TransactionClient
+  ) => {
     const client = tx || prisma;
 
     const where: Prisma.InterviewWhereInput = {
@@ -361,7 +375,8 @@ export const interviewRepository = {
       ];
     }
 
-    let orderBy: Prisma.InterviewOrderByWithRelationInput | Prisma.InterviewOrderByWithRelationInput[] = {
+    let orderBy:
+      Prisma.InterviewOrderByWithRelationInput | Prisma.InterviewOrderByWithRelationInput[] = {
       scheduledDate: "asc",
     };
 

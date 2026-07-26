@@ -27,9 +27,9 @@ export const applicationController = {
       currentUser
     );
 
-    res.status(HTTP_STATUS.CREATED).json(
-      successResponse(APPLICATIONS_MESSAGES.APPLICATION_CREATED, result)
-    );
+    res
+      .status(HTTP_STATUS.CREATED)
+      .json(successResponse(APPLICATIONS_MESSAGES.APPLICATION_CREATED, result));
   },
 
   listApplications: async (req: Request, res: Response): Promise<void> => {
@@ -41,9 +41,11 @@ export const applicationController = {
       currentUser
     );
 
-    res.status(HTTP_STATUS.OK).json(
-      paginationResponse(APPLICATIONS_MESSAGES.APPLICATIONS_RETRIEVED, result.data, result.meta)
-    );
+    res
+      .status(HTTP_STATUS.OK)
+      .json(
+        paginationResponse(APPLICATIONS_MESSAGES.APPLICATIONS_RETRIEVED, result.data, result.meta)
+      );
   },
 
   getApplicationById: async (req: Request, res: Response): Promise<void> => {
@@ -53,9 +55,9 @@ export const applicationController = {
     const { id } = applicationIdParamSchema.parse(req.params);
     const result = await applicationService.getApplicationById(id, currentUser);
 
-    res.status(HTTP_STATUS.OK).json(
-      successResponse(APPLICATIONS_MESSAGES.APPLICATION_RETRIEVED, result)
-    );
+    res
+      .status(HTTP_STATUS.OK)
+      .json(successResponse(APPLICATIONS_MESSAGES.APPLICATION_RETRIEVED, result));
   },
 
   updateApplication: async (req: Request, res: Response): Promise<void> => {
@@ -69,9 +71,9 @@ export const applicationController = {
       currentUser
     );
 
-    res.status(HTTP_STATUS.OK).json(
-      successResponse(APPLICATIONS_MESSAGES.APPLICATION_UPDATED, result)
-    );
+    res
+      .status(HTTP_STATUS.OK)
+      .json(successResponse(APPLICATIONS_MESSAGES.APPLICATION_UPDATED, result));
   },
 
   assignRecruiter: async (req: Request, res: Response): Promise<void> => {
@@ -85,9 +87,9 @@ export const applicationController = {
       currentUser
     );
 
-    res.status(HTTP_STATUS.OK).json(
-      successResponse(APPLICATIONS_MESSAGES.RECRUITER_ASSIGNED, result)
-    );
+    res
+      .status(HTTP_STATUS.OK)
+      .json(successResponse(APPLICATIONS_MESSAGES.RECRUITER_ASSIGNED, result));
   },
 
   updateStage: async (req: Request, res: Response): Promise<void> => {
@@ -101,9 +103,9 @@ export const applicationController = {
       currentUser
     );
 
-    res.status(HTTP_STATUS.OK).json(
-      successResponse(APPLICATIONS_MESSAGES.APPLICATION_STAGE_UPDATED, result)
-    );
+    res
+      .status(HTTP_STATUS.OK)
+      .json(successResponse(APPLICATIONS_MESSAGES.APPLICATION_STAGE_UPDATED, result));
   },
 
   updateStatus: async (req: Request, res: Response): Promise<void> => {
@@ -117,9 +119,9 @@ export const applicationController = {
       currentUser
     );
 
-    res.status(HTTP_STATUS.OK).json(
-      successResponse(APPLICATIONS_MESSAGES.APPLICATION_STATUS_UPDATED, result)
-    );
+    res
+      .status(HTTP_STATUS.OK)
+      .json(successResponse(APPLICATIONS_MESSAGES.APPLICATION_STATUS_UPDATED, result));
   },
 
   rejectApplication: async (req: Request, res: Response): Promise<void> => {
@@ -133,9 +135,9 @@ export const applicationController = {
       currentUser
     );
 
-    res.status(HTTP_STATUS.OK).json(
-      successResponse(APPLICATIONS_MESSAGES.APPLICATION_REJECTED, result)
-    );
+    res
+      .status(HTTP_STATUS.OK)
+      .json(successResponse(APPLICATIONS_MESSAGES.APPLICATION_REJECTED, result));
   },
 
   withdrawApplication: async (req: Request, res: Response): Promise<void> => {
@@ -149,9 +151,9 @@ export const applicationController = {
       currentUser
     );
 
-    res.status(HTTP_STATUS.OK).json(
-      successResponse(APPLICATIONS_MESSAGES.APPLICATION_WITHDRAWN, result)
-    );
+    res
+      .status(HTTP_STATUS.OK)
+      .json(successResponse(APPLICATIONS_MESSAGES.APPLICATION_WITHDRAWN, result));
   },
 
   softDeleteApplication: async (req: Request, res: Response): Promise<void> => {
@@ -161,9 +163,9 @@ export const applicationController = {
     const { id } = applicationIdParamSchema.parse(req.params);
     const result = await applicationService.softDeleteApplication(id, currentUser);
 
-    res.status(HTTP_STATUS.OK).json(
-      successResponse(APPLICATIONS_MESSAGES.APPLICATION_DELETED, result)
-    );
+    res
+      .status(HTTP_STATUS.OK)
+      .json(successResponse(APPLICATIONS_MESSAGES.APPLICATION_DELETED, result));
   },
 
   restoreApplication: async (req: Request, res: Response): Promise<void> => {
@@ -173,8 +175,8 @@ export const applicationController = {
     const { id } = applicationIdParamSchema.parse(req.params);
     const result = await applicationService.restoreApplication(id, currentUser);
 
-    res.status(HTTP_STATUS.OK).json(
-      successResponse(APPLICATIONS_MESSAGES.APPLICATION_RESTORED, result)
-    );
+    res
+      .status(HTTP_STATUS.OK)
+      .json(successResponse(APPLICATIONS_MESSAGES.APPLICATION_RESTORED, result));
   },
 };

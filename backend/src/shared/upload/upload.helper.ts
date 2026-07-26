@@ -1,4 +1,3 @@
-
 export const uploadHelper = {
   isValidSize: (fileSize: number, maxSize: number): boolean => {
     return fileSize <= maxSize;

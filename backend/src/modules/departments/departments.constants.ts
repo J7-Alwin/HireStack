@@ -9,7 +9,8 @@ export const DEPARTMENTS_MESSAGES = {
   DEPARTMENT_DELETED: "Department soft-deleted successfully",
   DEPARTMENT_RESTORED: "Department restored successfully",
   COMPANY_NOT_FOUND: "Associated company does not exist",
-  CROSS_COMPANY_ACCESS_FORBIDDEN: "Cross-company access to another company's department is not permitted",
+  CROSS_COMPANY_ACCESS_FORBIDDEN:
+    "Cross-company access to another company's department is not permitted",
   FORBIDDEN_MODIFICATION: "Only SUPER_ADMIN and COMPANY_ADMIN can modify departments",
   FORBIDDEN_ACCESS: "You do not have permission to perform this action",
   DELETE_PREVENTED_RECRUITERS: "Cannot delete department while active recruiters are assigned",

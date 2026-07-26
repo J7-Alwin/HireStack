@@ -49,8 +49,8 @@ export const STAGE_TRANSITION_RULES: Record<string, string[]> = {
 // Transition matrix for application statuses
 export const STATUS_TRANSITION_RULES: Record<string, string[]> = {
   ACTIVE: ["HIRED", "REJECTED", "WITHDRAWN", "ARCHIVED"],
-  HIRED: [],      // Terminal
-  REJECTED: [],   // Terminal
-  WITHDRAWN: [],  // Terminal
-  ARCHIVED: [],   // Terminal
+  HIRED: [], // Terminal
+  REJECTED: [], // Terminal
+  WITHDRAWN: [], // Terminal
+  ARCHIVED: [], // Terminal
 };

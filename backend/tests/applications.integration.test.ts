@@ -2,9 +2,21 @@ import "dotenv/config";
 import { prisma } from "../src/config/prisma";
 import { applicationService } from "../src/modules/applications/application.service";
 import { ApplicationUpdateInput } from "../src/modules/applications/application.types";
-import { Role, ApplicationStage, ApplicationStatus, CandidateSource, JobStatus, CandidateStatus } from "@prisma/client";
+import {
+  Role,
+  ApplicationStage,
+  ApplicationStatus,
+  CandidateSource,
+  JobStatus,
+  CandidateStatus,
+} from "@prisma/client";
 import { AuthenticatedUser } from "../src/shared/types";
-import { ConflictError, ForbiddenError, UnprocessableEntityError, ValidationError } from "../src/shared/errors";
+import {
+  ConflictError,
+  ForbiddenError,
+  UnprocessableEntityError,
+  ValidationError,
+} from "../src/shared/errors";
 
 // Standard assertion helpers
 function assert(condition: boolean, message: string) {
@@ -34,10 +46,14 @@ async function assertThrows(
   const err = caughtError as Error & { constructor: { name: string } };
 
   if (err.constructor.name !== errorClass.name && !(err instanceof errorClass)) {
-    throw new Error(`Expected error of type ${errorClass.name}, but got ${err.constructor.name}: ${err.message}`);
+    throw new Error(
+      `Expected error of type ${errorClass.name}, but got ${err.constructor.name}: ${err.message}`
+    );
   }
   if (expectedMessage && !err.message.includes(expectedMessage)) {
-    throw new Error(`Expected error message to contain "${expectedMessage}", but got "${err.message}"`);
+    throw new Error(
+      `Expected error message to contain "${expectedMessage}", but got "${err.message}"`
+    );
   }
 }
 
@@ -278,8 +294,14 @@ async function runTests() {
   );
 
   assert(app1 !== null, "Application should be created");
-  assert(app1.applicationCode.startsWith("APP-"), `Code should start with APP-, got ${app1.applicationCode}`);
-  assert(app1.applicationCode === "APP-000001", `First code should be APP-000001, got ${app1.applicationCode}`);
+  assert(
+    app1.applicationCode.startsWith("APP-"),
+    `Code should start with APP-, got ${app1.applicationCode}`
+  );
+  assert(
+    app1.applicationCode === "APP-000001",
+    `First code should be APP-000001, got ${app1.applicationCode}`
+  );
   assert(app1.stage === ApplicationStage.APPLIED, "Initial stage should be APPLIED");
   assert(app1.status === ApplicationStatus.ACTIVE, "Initial status should be ACTIVE");
   assert(app1.source === CandidateSource.LINKEDIN, "Source should match input");
@@ -437,27 +459,45 @@ async function runTests() {
   assert(listAll.meta.total === 2, "Meta count should be 2");
 
   // Filter by candidate
-  const filterCand = await applicationService.listApplications({ candidate: candidateE.id }, authAdminA);
+  const filterCand = await applicationService.listApplications(
+    { candidate: candidateE.id },
+    authAdminA
+  );
   assert(filterCand.data.length === 1, "Should filter down to 1 application");
   assert(filterCand.data[0].id === app2.id, "Filtered application ID mismatch");
 
   // Filter by recruiter
-  const filterRec = await applicationService.listApplications({ recruiter: recruiterA2User.id }, authAdminA);
+  const filterRec = await applicationService.listApplications(
+    { recruiter: recruiterA2User.id },
+    authAdminA
+  );
   assert(filterRec.data.length === 1, "Should filter by recruiter to 1 application");
-  assert(filterRec.data[0].assignedRecruiterId === recruiterA2User.id, "Assigned recruiter ID mismatch");
+  assert(
+    filterRec.data[0].assignedRecruiterId === recruiterA2User.id,
+    "Assigned recruiter ID mismatch"
+  );
 
   // Search by application code
-  const searchCode = await applicationService.listApplications({ search: app1.applicationCode }, authAdminA);
+  const searchCode = await applicationService.listApplications(
+    { search: app1.applicationCode },
+    authAdminA
+  );
   assert(searchCode.data.length === 1, "Should find 1 application by code");
   assert(searchCode.data[0].id === app1.id, "Code search ID mismatch");
 
   // Search by candidate name
   const searchName = await applicationService.listApplications({ search: "johnson" }, authAdminA);
   assert(searchName.data.length === 1, "Should search by candidate name case-insensitively");
-  assert(searchName.data[0].candidate.firstName === "Bob", `Expected Bob, got ${searchName.data[0].candidate.firstName}`); // candidateE's name is Bob Johnson
+  assert(
+    searchName.data[0].candidate.firstName === "Bob",
+    `Expected Bob, got ${searchName.data[0].candidate.firstName}`
+  ); // candidateE's name is Bob Johnson
 
   // Sorting: sort by Candidate Name ASC
-  const sortedName = await applicationService.listApplications({ sortBy: "candidateName", sortOrder: "asc" }, authAdminA);
+  const sortedName = await applicationService.listApplications(
+    { sortBy: "candidateName", sortOrder: "asc" },
+    authAdminA
+  );
   // Bob Johnson (Bob) should come before John Doe (John)
   assert(sortedName.data[0].candidate.firstName === "Bob", "Sorting candidate name asc failed");
 
@@ -474,7 +514,10 @@ async function runTests() {
     { assignedRecruiterId: recruiterA2User.id },
     authAdminA
   );
-  assert(appReassigned.assignedRecruiterId === recruiterA2User.id, "Assigned recruiter should be updated");
+  assert(
+    appReassigned.assignedRecruiterId === recruiterA2User.id,
+    "Assigned recruiter should be updated"
+  );
 
   // Recruiter A1 attempts to reassign recruiter -> Throws ForbiddenError
   await assertThrows(
@@ -503,7 +546,10 @@ async function runTests() {
     { stage: ApplicationStage.SCREENING },
     authRecruiterA2
   );
-  assert(stageScreening.stage === ApplicationStage.SCREENING, "Stage should be updated to SCREENING");
+  assert(
+    stageScreening.stage === ApplicationStage.SCREENING,
+    "Stage should be updated to SCREENING"
+  );
 
   // Transition SCREENING to INTERVIEW (not allowed by matrix) -> Throws UnprocessableEntityError
   await assertThrows(
@@ -545,7 +591,10 @@ async function runTests() {
 
   assert(rejectedApp.status === ApplicationStatus.REJECTED, "Status should be REJECTED");
   assert(rejectedApp.rejectionReasonCode === "SKILL_MISMATCH", "Reason code mismatch");
-  assert(rejectedApp.rejectionReasonNote === "Lacked Postgres architecture experience", "Reason note mismatch");
+  assert(
+    rejectedApp.rejectionReasonNote === "Lacked Postgres architecture experience",
+    "Reason note mismatch"
+  );
 
   // Terminal state status updates (cannot transition back) -> Throws UnprocessableEntityError
   await assertThrows(
@@ -595,7 +644,10 @@ async function runTests() {
 
   // Excluded from query list
   const listFiltered = await applicationService.listApplications({}, authAdminA);
-  assert(listFiltered.data.length === 1, `List should exclude soft-deleted applications, got ${listFiltered.data.length}`);
+  assert(
+    listFiltered.data.length === 1,
+    `List should exclude soft-deleted applications, got ${listFiltered.data.length}`
+  );
 
   // Restore application -> SUCCESS
   const restored = await applicationService.restoreApplication(application1Id, authAdminA);
@@ -611,7 +663,7 @@ async function runTests() {
   // TEST CASE 7: Immutable Fields Validation
   // ----------------------------------------------------
   console.log("🧪 Test Case 7: Immutable Fields Validation...");
-  
+
   // Try to update jobId -> Throws ValidationError
   await assertThrows(
     async () => {
@@ -730,7 +782,13 @@ async function runTests() {
     where: { companyId: { in: [companyA.id, companyB.id] } },
   });
 
-  const testCandIds = [candidateA.id, candidateB.id, candidateArchived.id, candidateBlacklisted.id, candidateE.id];
+  const testCandIds = [
+    candidateA.id,
+    candidateB.id,
+    candidateArchived.id,
+    candidateBlacklisted.id,
+    candidateE.id,
+  ];
   await prisma.candidate.deleteMany({
     where: { id: { in: testCandIds } },
   });
@@ -740,7 +798,14 @@ async function runTests() {
     where: { id: { in: testJobIds } },
   });
 
-  const testUserIds = [adminAUser.id, adminBUser.id, recruiterA1User.id, recruiterA2User.id, recruiterB1User.id, superAdminUser.id];
+  const testUserIds = [
+    adminAUser.id,
+    adminBUser.id,
+    recruiterA1User.id,
+    recruiterA2User.id,
+    recruiterB1User.id,
+    superAdminUser.id,
+  ];
   await prisma.user.deleteMany({
     where: { id: { in: testUserIds } },
   });

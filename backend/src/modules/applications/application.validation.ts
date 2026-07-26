@@ -85,15 +85,7 @@ export const queryApplicationsSchema = z.object({
   appliedDate: z.string().optional(),
   createdDate: z.string().optional(),
   sortBy: z
-    .enum([
-      "appliedAt",
-      "createdAt",
-      "updatedAt",
-      "candidateName",
-      "jobTitle",
-      "stage",
-      "status",
-    ])
+    .enum(["appliedAt", "createdAt", "updatedAt", "candidateName", "jobTitle", "stage", "status"])
     .optional(),
   sortOrder: z.enum(["asc", "desc"]).optional(),
 });

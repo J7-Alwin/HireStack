@@ -156,53 +156,63 @@ export function toOfferDto(raw: RawOffer | null | undefined): OfferDto {
     offerLetterUrl: raw.offerLetterUrl || null,
     offerLetterFileName: raw.offerLetterFileName || null,
     approvedBy: raw.approvedBy || null,
-    approvedAt: raw.approvedAt instanceof Date ? raw.approvedAt.toISOString() : (raw.approvedAt || null),
-    sentAt: raw.sentAt instanceof Date ? raw.sentAt.toISOString() : (raw.sentAt || null),
-    viewedAt: raw.viewedAt instanceof Date ? raw.viewedAt.toISOString() : (raw.viewedAt || null),
-    respondedAt: raw.respondedAt instanceof Date ? raw.respondedAt.toISOString() : (raw.respondedAt || null),
+    approvedAt:
+      raw.approvedAt instanceof Date ? raw.approvedAt.toISOString() : raw.approvedAt || null,
+    sentAt: raw.sentAt instanceof Date ? raw.sentAt.toISOString() : raw.sentAt || null,
+    viewedAt: raw.viewedAt instanceof Date ? raw.viewedAt.toISOString() : raw.viewedAt || null,
+    respondedAt:
+      raw.respondedAt instanceof Date ? raw.respondedAt.toISOString() : raw.respondedAt || null,
     createdAt: raw.createdAt instanceof Date ? raw.createdAt.toISOString() : raw.createdAt,
     updatedAt: raw.updatedAt instanceof Date ? raw.updatedAt.toISOString() : raw.updatedAt,
-    deletedAt: raw.deletedAt instanceof Date ? raw.deletedAt.toISOString() : (raw.deletedAt || null),
-    application: raw.application ? {
-      id: raw.application.id,
-      applicationCode: raw.application.applicationCode,
-      stage: raw.application.stage,
-      status: raw.application.status,
-      assignedRecruiterId: raw.application.assignedRecruiterId,
-      assignedRecruiter: raw.application.assignedRecruiter ? {
-        id: raw.application.assignedRecruiter.id,
-        name: raw.application.assignedRecruiter.name,
-        firstName: raw.application.assignedRecruiter.firstName,
-        lastName: raw.application.assignedRecruiter.lastName,
-        email: raw.application.assignedRecruiter.email,
-      } : null,
-      candidate: {
-        id: raw.application.candidate.id,
-        candidateCode: raw.application.candidate.candidateCode,
-        firstName: raw.application.candidate.firstName,
-        lastName: raw.application.candidate.lastName,
-        email: raw.application.candidate.email,
-        phone: raw.application.candidate.phone,
-      },
-      job: {
-        id: raw.application.job.id,
-        jobCode: raw.application.job.jobCode,
-        title: raw.application.job.title,
-      },
-    } : undefined,
-    recruiter: raw.recruiter ? {
-      id: raw.recruiter.id,
-      name: raw.recruiter.name,
-      firstName: raw.recruiter.firstName,
-      lastName: raw.recruiter.lastName,
-      email: raw.recruiter.email,
-    } : undefined,
-    approver: raw.approver ? {
-      id: raw.approver.id,
-      name: raw.approver.name,
-      firstName: raw.approver.firstName,
-      lastName: raw.approver.lastName,
-      email: raw.approver.email,
-    } : null,
+    deletedAt: raw.deletedAt instanceof Date ? raw.deletedAt.toISOString() : raw.deletedAt || null,
+    application: raw.application
+      ? {
+          id: raw.application.id,
+          applicationCode: raw.application.applicationCode,
+          stage: raw.application.stage,
+          status: raw.application.status,
+          assignedRecruiterId: raw.application.assignedRecruiterId,
+          assignedRecruiter: raw.application.assignedRecruiter
+            ? {
+                id: raw.application.assignedRecruiter.id,
+                name: raw.application.assignedRecruiter.name,
+                firstName: raw.application.assignedRecruiter.firstName,
+                lastName: raw.application.assignedRecruiter.lastName,
+                email: raw.application.assignedRecruiter.email,
+              }
+            : null,
+          candidate: {
+            id: raw.application.candidate.id,
+            candidateCode: raw.application.candidate.candidateCode,
+            firstName: raw.application.candidate.firstName,
+            lastName: raw.application.candidate.lastName,
+            email: raw.application.candidate.email,
+            phone: raw.application.candidate.phone,
+          },
+          job: {
+            id: raw.application.job.id,
+            jobCode: raw.application.job.jobCode,
+            title: raw.application.job.title,
+          },
+        }
+      : undefined,
+    recruiter: raw.recruiter
+      ? {
+          id: raw.recruiter.id,
+          name: raw.recruiter.name,
+          firstName: raw.recruiter.firstName,
+          lastName: raw.recruiter.lastName,
+          email: raw.recruiter.email,
+        }
+      : undefined,
+    approver: raw.approver
+      ? {
+          id: raw.approver.id,
+          name: raw.approver.name,
+          firstName: raw.approver.firstName,
+          lastName: raw.approver.lastName,
+          email: raw.approver.email,
+        }
+      : null,
   };
 }
