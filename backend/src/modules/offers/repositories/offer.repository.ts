@@ -1,6 +1,7 @@
 import { Prisma, OfferStatus } from "@prisma/client";
 import { prisma } from "../../../config/prisma";
 import { CreateOfferInput, OfferQueryFilters } from "../types/offer.types";
+import { toOfferDto, OfferDto } from "../types/offer.dto";
 
 export const RecruiterSelect = {
   id: true,
@@ -79,6 +80,21 @@ export const OfferSelect = {
   },
 } as const;
 
+export const offerSummarySelect = {
+  id: true,
+  offerCode: true,
+  status: true,
+  salary: true,
+  currency: true,
+  employmentType: true,
+  joiningDate: true,
+  expiryDate: true,
+  createdAt: true,
+  updatedAt: true,
+} as const;
+
+export const offerListSelect = OfferSelect;
+export const offerDetailSelect = OfferSelect;
 const buildDateRange = (dateStr: string) => {
   const date = new Date(dateStr);
   const startOfDay = new Date(date);
@@ -100,9 +116,9 @@ export const offerRepository = {
     input: CreateOfferInput,
     recruiterId: string,
     tx?: Prisma.TransactionClient
-  ) => {
+  ): Promise<OfferDto> => {
     const client = tx || prisma;
-    return await client.offer.create({
+    const raw = await client.offer.create({
       data: {
         offerCode,
         companyId,
@@ -121,24 +137,26 @@ export const offerRepository = {
         offerLetterUrl: input.offerLetterUrl,
         offerLetterFileName: input.offerLetterFileName,
       },
-      select: OfferSelect,
+      select: offerDetailSelect,
     });
+    return toOfferDto(raw);
   },
 
-  findById: async (id: string, includeDeleted = false, tx?: Prisma.TransactionClient) => {
+  findById: async (id: string, includeDeleted = false, tx?: Prisma.TransactionClient): Promise<OfferDto | null> => {
     const client = tx || prisma;
-    return await client.offer.findFirst({
+    const raw = await client.offer.findFirst({
       where: {
         id,
         ...(includeDeleted ? {} : { deletedAt: null }),
       },
-      select: OfferSelect,
+      select: offerDetailSelect,
     });
+    return toOfferDto(raw);
   },
 
-  findActiveOfferByApplication: async (applicationId: string, tx?: Prisma.TransactionClient) => {
+  findActiveOfferByApplication: async (applicationId: string, tx?: Prisma.TransactionClient): Promise<OfferDto | null> => {
     const client = tx || prisma;
-    return await client.offer.findFirst({
+    const raw = await client.offer.findFirst({
       where: {
         applicationId,
         deletedAt: null,
@@ -152,36 +170,57 @@ export const offerRepository = {
           ],
         },
       },
-      select: OfferSelect,
+      select: offerDetailSelect,
     });
+    return toOfferDto(raw);
   },
 
-  incrementOfferCounter: async (companyId: string, tx?: Prisma.TransactionClient) => {
-    const client = tx || prisma;
-    const counter = await client.companyOfferCounter.upsert({
+  lock: async (id: string, tx: Prisma.TransactionClient): Promise<void> => {
+    await tx.$queryRaw`SELECT id FROM "Offer" WHERE id = ${id} FOR UPDATE`;
+  },
+
+  incrementOfferCounter: async (companyId: string, tx: Prisma.TransactionClient): Promise<number> => {
+    await tx.companyOfferCounter.upsert({
       where: { companyId },
-      update: { count: { increment: 1 } },
-      create: { companyId, count: 1 },
+      update: {},
+      create: { companyId, count: 0 },
     });
-    return counter.count;
+
+    const rows = await tx.$queryRaw<Array<{ count: number }>>`
+      SELECT count FROM "CompanyOfferCounter"
+      WHERE "companyId" = ${companyId}
+      FOR UPDATE
+    `;
+
+    const currentCount = rows[0]?.count ?? 0;
+    const nextCount = currentCount + 1;
+
+    await tx.companyOfferCounter.update({
+      where: { companyId },
+      data: { count: nextCount },
+    });
+
+    return nextCount;
   },
 
-  update: async (id: string, data: Prisma.OfferUncheckedUpdateInput, tx?: Prisma.TransactionClient) => {
+  update: async (id: string, data: Prisma.OfferUncheckedUpdateInput, tx?: Prisma.TransactionClient): Promise<OfferDto> => {
     const client = tx || prisma;
-    return await client.offer.update({
+    const raw = await client.offer.update({
       where: { id },
       data,
-      select: OfferSelect,
+      select: offerDetailSelect,
     });
+    return toOfferDto(raw);
   },
 
-  softDelete: async (id: string, tx?: Prisma.TransactionClient) => {
+  softDelete: async (id: string, tx?: Prisma.TransactionClient): Promise<OfferDto> => {
     const client = tx || prisma;
-    return await client.offer.update({
+    const raw = await client.offer.update({
       where: { id },
       data: { deletedAt: new Date() },
-      select: OfferSelect,
+      select: offerDetailSelect,
     });
+    return toOfferDto(raw);
   },
 
   findActiveApplication: async (id: string, tx?: Prisma.TransactionClient) => {
@@ -202,9 +241,7 @@ export const offerRepository = {
     });
   },
 
-  findMany: async (companyId: string, filters: OfferQueryFilters, skip: number, take: number, tx?: Prisma.TransactionClient) => {
-    const client = tx || prisma;
-
+  buildOfferWhereClause: (companyId: string, filters: OfferQueryFilters): Prisma.OfferWhereInput => {
     const where: Prisma.OfferWhereInput = {
       companyId,
       deletedAt: null,
@@ -264,29 +301,47 @@ export const offerRepository = {
       ];
     }
 
+    return where;
+  },
+
+  buildOfferSorting: (sortBy?: string, sortOrder?: "asc" | "desc"): Prisma.OfferOrderByWithRelationInput => {
     let orderBy: Prisma.OfferOrderByWithRelationInput = {
       createdAt: "desc",
     };
 
-    if (filters.sortBy) {
-      const order = filters.sortOrder || "desc";
-      if (filters.sortBy === "createdAt") {
+    if (sortBy) {
+      const order = sortOrder || "desc";
+      if (sortBy === "createdAt") {
         orderBy = { createdAt: order };
-      } else if (filters.sortBy === "updatedAt") {
+      } else if (sortBy === "updatedAt") {
         orderBy = { updatedAt: order };
-      } else if (filters.sortBy === "salary") {
+      } else if (sortBy === "salary") {
         orderBy = { salary: order };
-      } else if (filters.sortBy === "joiningDate") {
+      } else if (sortBy === "joiningDate") {
         orderBy = { joiningDate: order };
-      } else if (filters.sortBy === "expiryDate") {
+      } else if (sortBy === "expiryDate") {
         orderBy = { expiryDate: order };
       }
     }
 
+    return orderBy;
+  },
+
+  findMany: async (
+    companyId: string,
+    filters: OfferQueryFilters,
+    skip: number,
+    take: number,
+    tx?: Prisma.TransactionClient
+  ): Promise<{ data: OfferDto[]; total: number }> => {
+    const client = tx || prisma;
+    const where = offerRepository.buildOfferWhereClause(companyId, filters);
+    const orderBy = offerRepository.buildOfferSorting(filters.sortBy, filters.sortOrder);
+
     const [data, total] = await Promise.all([
       client.offer.findMany({
         where,
-        select: OfferSelect,
+        select: offerListSelect,
         orderBy,
         skip,
         take,
@@ -297,8 +352,9 @@ export const offerRepository = {
     ]);
 
     return {
-      data,
+      data: data.map(toOfferDto),
       total,
     };
   },
 };
+

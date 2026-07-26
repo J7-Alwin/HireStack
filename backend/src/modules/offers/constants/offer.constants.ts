@@ -34,10 +34,11 @@ export const STATUS_TRANSITION_RULES: Record<OfferStatus, OfferStatus[]> = {
   [OfferStatus.DRAFT]: [OfferStatus.PENDING_APPROVAL],
   [OfferStatus.PENDING_APPROVAL]: [OfferStatus.APPROVED],
   [OfferStatus.APPROVED]: [OfferStatus.SENT, OfferStatus.WITHDRAWN],
-  [OfferStatus.SENT]: [OfferStatus.VIEWED, OfferStatus.EXPIRED],
-  [OfferStatus.VIEWED]: [OfferStatus.ACCEPTED, OfferStatus.DECLINED],
+  [OfferStatus.SENT]: [OfferStatus.VIEWED, OfferStatus.EXPIRED, OfferStatus.WITHDRAWN],
+  [OfferStatus.VIEWED]: [OfferStatus.ACCEPTED, OfferStatus.DECLINED, OfferStatus.WITHDRAWN],
   [OfferStatus.ACCEPTED]: [],
   [OfferStatus.DECLINED]: [],
   [OfferStatus.EXPIRED]: [],
   [OfferStatus.WITHDRAWN]: [],
 };
+
