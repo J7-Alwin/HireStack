@@ -1,0 +1,51 @@
+const commonSchemas = {
+    ErrorResponse: {
+        type: "object",
+        properties: {
+            success: {
+                type: "boolean",
+                example: false,
+            },
+            message: {
+                type: "string",
+                example: "Something went wrong",
+            },
+        },
+    },
+
+    ValidationError: {
+        type: "object",
+        properties: {
+            success: {
+                type: "boolean",
+                example: false,
+            },
+            message: {
+                type: "string",
+                example: "Validation failed",
+            },
+            errors: {
+                type: "array",
+                items: {
+                    type: "object",
+                },
+            },
+        },
+    },
+
+    UnauthorizedError: {
+        type: "object",
+        properties: {
+            success: {
+                type: "boolean",
+                example: false,
+            },
+            message: {
+                type: "string",
+                example: "Unauthorized",
+            },
+        },
+    },
+};
+
+export default commonSchemas;

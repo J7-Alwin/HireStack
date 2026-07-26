@@ -1,4 +1,6 @@
 import express from "express";
+import swaggerUi from "swagger-ui-express";
+import swaggerSpec from "./swagger";
 import {
   requestIdMiddleware,
   requestTimeMiddleware,
@@ -39,6 +41,13 @@ app.use(generalLimiter);
 // 4. Body Parser
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Swagger Documentation
+app.use(
+  "/api-docs",
+  swaggerUi.serve,
+  swaggerUi.setup(swaggerSpec)
+);
 
 // 5. Maintenance Mode Check
 app.use(maintenanceMiddleware);
