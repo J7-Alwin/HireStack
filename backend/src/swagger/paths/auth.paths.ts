@@ -1,5 +1,47 @@
 /**
  * @openapi
+ * /api/auth/login:
+ *   post:
+ *     tags:
+ *       - Authentication
+ *     summary: Login User
+ *     description: Authenticates a user using email and password and returns access and refresh tokens.
+ *     operationId: loginUser
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/LoginRequest'
+ *     responses:
+ *       200:
+ *         description: Login successful.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/LoginResponse'
+ *       400:
+ *         description: Validation failed.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ValidationError'
+ *       401:
+ *         description: Invalid email or password.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/UnauthorizedError'
+ *       500:
+ *         description: Internal server error.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+
+/**
+ * @openapi
  * /api/auth/logout:
  *   post:
  *     tags:
