@@ -1,6 +1,6 @@
 /**
  * @openapi
- * /api/departments:
+ * /departments:
  *   post:
  *     tags:
  *       - Departments
@@ -46,7 +46,7 @@
 
 /**
  * @openapi
- * /api/departments:
+ * /departments:
  *   get:
  *     tags:
  *       - Departments
@@ -134,7 +134,7 @@
 
 /**
  * @openapi
- * /api/departments/{id}:
+ * /departments/{id}:
  *   get:
  *     tags:
  *       - Departments
@@ -183,7 +183,7 @@
 
 /**
  * @openapi
- * /api/departments/{id}:
+ * /departments/{id}:
  *   patch:
  *     tags:
  *       - Departments
@@ -237,7 +237,7 @@
  */
 /**
  * @openapi
- * /api/departments/{id}/status:
+ * /departments/{id}/status:
  *   patch:
  *     tags:
  *       - Departments
@@ -292,7 +292,7 @@
 
 /**
  * @openapi
- * /api/departments/{id}:
+ * /departments/{id}:
  *   delete:
  *     tags:
  *       - Departments
@@ -335,7 +335,7 @@
 
 /**
  * @openapi
- * /api/departments/{id}/restore:
+ * /departments/{id}/restore:
  *   patch:
  *     tags:
  *       - Departments

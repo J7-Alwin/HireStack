@@ -1,6 +1,6 @@
 /**
  * @openapi
- * /api/pipeline/dashboard:
+ * /pipeline/dashboard:
  *   get:
  *     tags:
  *       - Pipeline
@@ -32,7 +32,7 @@
 
 /**
  * @openapi
- * /api/pipeline/dashboard/company:
+ * /pipeline/dashboard/company:
  *   get:
  *     tags:
  *       - Pipeline
@@ -62,7 +62,7 @@
 
 /**
  * @openapi
- * /api/pipeline/dashboard/recruiter:
+ * /pipeline/dashboard/recruiter:
  *   get:
  *     tags:
  *       - Pipeline
@@ -96,7 +96,7 @@
 
 /**
  * @openapi
- * /api/pipeline:
+ * /pipeline:
  *   post:
  *     tags:
  *       - Pipeline
@@ -140,7 +140,7 @@
 
 /**
  * @openapi
- * /api/pipeline:
+ * /pipeline:
  *   get:
  *     tags:
  *       - Pipeline
@@ -265,7 +265,7 @@
 
 /**
  * @openapi
- * /api/pipeline/{id}:
+ * /pipeline/{id}:
  *   get:
  *     tags:
  *       - Pipeline
@@ -299,7 +299,7 @@
 
 /**
  * @openapi
- * /api/pipeline/{id}:
+ * /pipeline/{id}:
  *   delete:
  *     tags:
  *       - Pipeline
@@ -332,7 +332,7 @@
  */
 /**
  * @openapi
- * /api/pipeline/{id}/stage:
+ * /pipeline/{id}/stage:
  *   patch:
  *     tags:
  *       - Pipeline
@@ -385,7 +385,7 @@
 
 /**
  * @openapi
- * /api/pipeline/{id}/notes:
+ * /pipeline/{id}/notes:
  *   post:
  *     tags:
  *       - Pipeline
@@ -438,7 +438,7 @@
 
 /**
  * @openapi
- * /api/pipeline/{id}/history:
+ * /pipeline/{id}/history:
  *   get:
  *     tags:
  *       - Pipeline
@@ -479,7 +479,7 @@
 
 /**
  * @openapi
- * /api/pipeline/{id}/timeline:
+ * /pipeline/{id}/timeline:
  *   get:
  *     tags:
  *       - Pipeline

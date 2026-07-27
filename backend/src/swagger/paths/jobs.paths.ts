@@ -1,6 +1,6 @@
 /**
  * @openapi
- * /api/jobs:
+ * /jobs:
  *   get:
  *     tags:
  *       - Jobs
@@ -105,7 +105,7 @@
 
 /**
  * @openapi
- * /api/jobs:
+ * /jobs:
  *   post:
  *     tags:
  *       - Jobs
@@ -151,7 +151,7 @@
 
 /**
  * @openapi
- * /api/jobs/{id}:
+ * /jobs/{id}:
  *   get:
  *     tags:
  *       - Jobs
@@ -192,7 +192,7 @@
 
 /**
  * @openapi
- * /api/jobs/{id}:
+ * /jobs/{id}:
  *   patch:
  *     tags:
  *       - Jobs
@@ -245,7 +245,7 @@
 
 /**
  * @openapi
- * /api/jobs/{id}:
+ * /jobs/{id}:
  *   delete:
  *     tags:
  *       - Jobs
@@ -286,7 +286,7 @@
 
 /**
  * @openapi
- * /api/jobs/{id}/restore:
+ * /jobs/{id}/restore:
  *   patch:
  *     tags:
  *       - Jobs
@@ -326,7 +326,7 @@
  */
 /**
  * @openapi
- * /api/jobs/{id}/publish:
+ * /jobs/{id}/publish:
  *   patch:
  *     tags:
  *       - Jobs
@@ -367,7 +367,7 @@
 
 /**
  * @openapi
- * /api/jobs/{id}/open:
+ * /jobs/{id}/open:
  *   patch:
  *     tags:
  *       - Jobs
@@ -408,7 +408,7 @@
 
 /**
  * @openapi
- * /api/jobs/{id}/pause:
+ * /jobs/{id}/pause:
  *   patch:
  *     tags:
  *       - Jobs
@@ -449,7 +449,7 @@
 
 /**
  * @openapi
- * /api/jobs/{id}/reopen:
+ * /jobs/{id}/reopen:
  *   patch:
  *     tags:
  *       - Jobs
@@ -490,7 +490,7 @@
 
 /**
  * @openapi
- * /api/jobs/{id}/close:
+ * /jobs/{id}/close:
  *   patch:
  *     tags:
  *       - Jobs
@@ -531,7 +531,7 @@
 
 /**
  * @openapi
- * /api/jobs/{id}/archive:
+ * /jobs/{id}/archive:
  *   patch:
  *     tags:
  *       - Jobs
@@ -571,7 +571,7 @@
  */
 /**
  * @openapi
- * /api/jobs/{id}/recruiters:
+ * /jobs/{id}/recruiters:
  *   post:
  *     tags:
  *       - Jobs
@@ -626,7 +626,7 @@
 
 /**
  * @openapi
- * /api/jobs/{id}/recruiters/{recruiterId}:
+ * /jobs/{id}/recruiters/{recruiterId}:
  *   delete:
  *     tags:
  *       - Jobs

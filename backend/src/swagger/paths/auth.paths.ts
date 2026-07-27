@@ -1,6 +1,6 @@
 /**
  * @openapi
- * /api/auth/login:
+ * /auth/login:
  *   post:
  *     tags:
  *       - Authentication
@@ -42,7 +42,7 @@
 
 /**
  * @openapi
- * /api/auth/logout:
+ * /auth/logout:
  *   post:
  *     tags:
  *       - Authentication
@@ -74,7 +74,7 @@
 
 /**
  * @openapi
- * /api/auth/refresh-token:
+ * /auth/refresh-token:
  *   post:
  *     tags:
  *       - Authentication
@@ -115,7 +115,7 @@
  */
 /**
  * @openapi
- * /api/auth/forgot-password:
+ * /auth/forgot-password:
  *   post:
  *     tags:
  *       - Authentication
@@ -147,7 +147,7 @@
 
 /**
  * @openapi
- * /api/auth/reset-password:
+ * /auth/reset-password:
  *   post:
  *     tags:
  *       - Authentication
@@ -185,7 +185,7 @@
 
 /**
  * @openapi
- * /api/auth/verify-email:
+ * /auth/verify-email:
  *   post:
  *     tags:
  *       - Authentication
@@ -222,7 +222,7 @@
  */
 /**
  * @openapi
- * /api/auth/change-password:
+ * /auth/change-password:
  *   post:
  *     tags:
  *       - Authentication
@@ -262,7 +262,7 @@
 
 /**
  * @openapi
- * /api/auth/resend-verification:
+ * /auth/resend-verification:
  *   post:
  *     tags:
  *       - Authentication
@@ -290,7 +290,7 @@
 
 /**
  * @openapi
- * /api/auth/me:
+ * /auth/me:
  *   get:
  *     tags:
  *       - Authentication

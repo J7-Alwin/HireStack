@@ -1,6 +1,6 @@
 /**
  * @openapi
- * /api/interviews:
+ * /interviews:
  *   post:
  *     tags:
  *       - Interviews
@@ -46,7 +46,7 @@
 
 /**
  * @openapi
- * /api/interviews:
+ * /interviews:
  *   get:
  *     tags:
  *       - Interviews
@@ -178,7 +178,7 @@
 
 /**
  * @openapi
- * /api/interviews/{id}:
+ * /interviews/{id}:
  *   get:
  *     tags:
  *       - Interviews
@@ -219,7 +219,7 @@
 
 /**
  * @openapi
- * /api/interviews/{id}:
+ * /interviews/{id}:
  *   patch:
  *     tags:
  *       - Interviews
@@ -272,7 +272,7 @@
 
 /**
  * @openapi
- * /api/interviews/{id}:
+ * /interviews/{id}:
  *   delete:
  *     tags:
  *       - Interviews
@@ -312,7 +312,7 @@
  */
 /**
  * @openapi
- * /api/interviews/{id}/status:
+ * /interviews/{id}/status:
  *   patch:
  *     tags:
  *       - Interviews
@@ -365,7 +365,7 @@
 
 /**
  * @openapi
- * /api/interviews/{id}/reschedule:
+ * /interviews/{id}/reschedule:
  *   patch:
  *     tags:
  *       - Interviews
@@ -418,7 +418,7 @@
 
 /**
  * @openapi
- * /api/interviews/{id}/outcome:
+ * /interviews/{id}/outcome:
  *   patch:
  *     tags:
  *       - Interviews
@@ -471,7 +471,7 @@
 
 /**
  * @openapi
- * /api/interviews/{id}/cancel:
+ * /interviews/{id}/cancel:
  *   patch:
  *     tags:
  *       - Interviews
@@ -524,7 +524,7 @@
 
 /**
  * @openapi
- * /api/interviews/{id}/interviewers:
+ * /interviews/{id}/interviewers:
  *   patch:
  *     tags:
  *       - Interviews

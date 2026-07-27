@@ -1,6 +1,6 @@
 /**
  * @openapi
- * /api/applications:
+ * /applications:
  *   post:
  *     tags:
  *       - Applications
@@ -46,7 +46,7 @@
 
 /**
  * @openapi
- * /api/applications:
+ * /applications:
  *   get:
  *     tags:
  *       - Applications
@@ -175,7 +175,7 @@
 
 /**
  * @openapi
- * /api/applications/{id}:
+ * /applications/{id}:
  *   get:
  *     tags:
  *       - Applications
@@ -216,7 +216,7 @@
 
 /**
  * @openapi
- * /api/applications/{id}:
+ * /applications/{id}:
  *   patch:
  *     tags:
  *       - Applications
@@ -269,7 +269,7 @@
 
 /**
  * @openapi
- * /api/applications/{id}:
+ * /applications/{id}:
  *   delete:
  *     tags:
  *       - Applications
@@ -310,7 +310,7 @@
 
 /**
  * @openapi
- * /api/applications/{id}/restore:
+ * /applications/{id}/restore:
  *   patch:
  *     tags:
  *       - Applications
@@ -350,7 +350,7 @@
  */
 /**
  * @openapi
- * /api/applications/{id}/assign:
+ * /applications/{id}/assign:
  *   patch:
  *     tags:
  *       - Applications
@@ -405,7 +405,7 @@
 
 /**
  * @openapi
- * /api/applications/{id}/stage:
+ * /applications/{id}/stage:
  *   patch:
  *     tags:
  *       - Applications
@@ -458,7 +458,7 @@
 
 /**
  * @openapi
- * /api/applications/{id}/status:
+ * /applications/{id}/status:
  *   patch:
  *     tags:
  *       - Applications
@@ -511,7 +511,7 @@
 
 /**
  * @openapi
- * /api/applications/{id}/reject:
+ * /applications/{id}/reject:
  *   patch:
  *     tags:
  *       - Applications
@@ -564,7 +564,7 @@
 
 /**
  * @openapi
- * /api/applications/{id}/withdraw:
+ * /applications/{id}/withdraw:
  *   patch:
  *     tags:
  *       - Applications

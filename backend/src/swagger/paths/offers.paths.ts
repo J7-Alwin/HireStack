@@ -1,6 +1,6 @@
 /**
  * @openapi
- * /api/offers:
+ * /offers:
  *   post:
  *     tags:
  *       - Offers
@@ -46,7 +46,7 @@
 
 /**
  * @openapi
- * /api/offers:
+ * /offers:
  *   get:
  *     tags:
  *       - Offers
@@ -164,7 +164,7 @@
 
 /**
  * @openapi
- * /api/offers/{id}:
+ * /offers/{id}:
  *   get:
  *     tags:
  *       - Offers
@@ -205,7 +205,7 @@
 
 /**
  * @openapi
- * /api/offers/{id}:
+ * /offers/{id}:
  *   put:
  *     tags:
  *       - Offers
@@ -258,7 +258,7 @@
 
 /**
  * @openapi
- * /api/offers/{id}:
+ * /offers/{id}:
  *   delete:
  *     tags:
  *       - Offers
@@ -298,7 +298,7 @@
  */
 /**
  * @openapi
- * /api/offers/{id}/submit:
+ * /offers/{id}/submit:
  *   post:
  *     tags:
  *       - Offers
@@ -335,7 +335,7 @@
 
 /**
  * @openapi
- * /api/offers/{id}/approve:
+ * /offers/{id}/approve:
  *   post:
  *     tags:
  *       - Offers
@@ -374,7 +374,7 @@
 
 /**
  * @openapi
- * /api/offers/{id}/send:
+ * /offers/{id}/send:
  *   post:
  *     tags:
  *       - Offers
@@ -413,7 +413,7 @@
 
 /**
  * @openapi
- * /api/offers/{id}/view:
+ * /offers/{id}/view:
  *   post:
  *     tags:
  *       - Offers
@@ -450,7 +450,7 @@
 
 /**
  * @openapi
- * /api/offers/{id}/accept:
+ * /offers/{id}/accept:
  *   post:
  *     tags:
  *       - Offers
@@ -487,7 +487,7 @@
 
 /**
  * @openapi
- * /api/offers/{id}/decline:
+ * /offers/{id}/decline:
  *   post:
  *     tags:
  *       - Offers
@@ -524,7 +524,7 @@
 
 /**
  * @openapi
- * /api/offers/{id}/withdraw:
+ * /offers/{id}/withdraw:
  *   post:
  *     tags:
  *       - Offers
@@ -563,7 +563,7 @@
 
 /**
  * @openapi
- * /api/offers/{id}/revision:
+ * /offers/{id}/revision:
  *   post:
  *     tags:
  *       - Offers

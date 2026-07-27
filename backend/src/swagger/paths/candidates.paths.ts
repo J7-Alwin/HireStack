@@ -1,6 +1,6 @@
 /**
  * @openapi
- * /api/candidates:
+ * /candidates:
  *   post:
  *     tags:
  *       - Candidates
@@ -46,7 +46,7 @@
 
 /**
  * @openapi
- * /api/candidates:
+ * /candidates:
  *   get:
  *     tags:
  *       - Candidates
@@ -128,7 +128,7 @@
 
 /**
  * @openapi
- * /api/candidates/{id}:
+ * /candidates/{id}:
  *   get:
  *     tags:
  *       - Candidates
@@ -177,7 +177,7 @@
 
 /**
  * @openapi
- * /api/candidates/{id}:
+ * /candidates/{id}:
  *   patch:
  *     tags:
  *       - Candidates
@@ -232,7 +232,7 @@
 
 /**
  * @openapi
- * /api/candidates/{id}:
+ * /candidates/{id}:
  *   delete:
  *     tags:
  *       - Candidates
@@ -275,7 +275,7 @@
 
 /**
  * @openapi
- * /api/candidates/{id}/restore:
+ * /candidates/{id}/restore:
  *   patch:
  *     tags:
  *       - Candidates
@@ -318,7 +318,7 @@
 
 /**
  * @openapi
- * /api/candidates/{id}/skills:
+ * /candidates/{id}/skills:
  *   post:
  *     tags:
  *       - Candidate Skills
@@ -356,7 +356,7 @@
 
 /**
  * @openapi
- * /api/candidates/{id}/skills/{skillId}:
+ * /candidates/{id}/skills/{skillId}:
  *   patch:
  *     tags:
  *       - Candidate Skills
@@ -399,7 +399,7 @@
 
 /**
  * @openapi
- * /api/candidates/{id}/skills/{skillId}:
+ * /candidates/{id}/skills/{skillId}:
  *   delete:
  *     tags:
  *       - Candidate Skills
@@ -434,7 +434,7 @@
 
 /**
  * @openapi
- * /api/candidates/{id}/education:
+ * /candidates/{id}/education:
  *   post:
  *     tags:
  *       - Candidate Education
@@ -472,7 +472,7 @@
 
 /**
  * @openapi
- * /api/candidates/{id}/education/{educationId}:
+ * /candidates/{id}/education/{educationId}:
  *   patch:
  *     tags:
  *       - Candidate Education
@@ -515,7 +515,7 @@
 
 /**
  * @openapi
- * /api/candidates/{id}/education/{educationId}:
+ * /candidates/{id}/education/{educationId}:
  *   delete:
  *     tags:
  *       - Candidate Education
@@ -550,7 +550,7 @@
 
 /**
  * @openapi
- * /api/candidates/{id}/experience:
+ * /candidates/{id}/experience:
  *   post:
  *     tags:
  *       - Candidate Experience
@@ -589,7 +589,7 @@
 
 /**
  * @openapi
- * /api/candidates/{id}/experience/{experienceId}:
+ * /candidates/{id}/experience/{experienceId}:
  *   patch:
  *     tags:
  *       - Candidate Experience
@@ -634,7 +634,7 @@
 
 /**
  * @openapi
- * /api/candidates/{id}/experience/{experienceId}:
+ * /candidates/{id}/experience/{experienceId}:
  *   delete:
  *     tags:
  *       - Candidate Experience
@@ -670,7 +670,7 @@
  */
 /**
  * @openapi
- * /api/candidates/{id}/documents:
+ * /candidates/{id}/documents:
  *   post:
  *     tags:
  *       - Candidate Documents
@@ -723,7 +723,7 @@
 
 /**
  * @openapi
- * /api/candidates/{id}/documents/{documentId}:
+ * /candidates/{id}/documents/{documentId}:
  *   delete:
  *     tags:
  *       - Candidate Documents
@@ -769,7 +769,7 @@
  */
 /**
  * @openapi
- * /api/candidates/{id}/notes:
+ * /candidates/{id}/notes:
  *   post:
  *     tags:
  *       - Candidate Notes
@@ -822,7 +822,7 @@
 
 /**
  * @openapi
- * /api/candidates/{id}/notes/{noteId}:
+ * /candidates/{id}/notes/{noteId}:
  *   patch:
  *     tags:
  *       - Candidate Notes
@@ -881,7 +881,7 @@
 
 /**
  * @openapi
- * /api/candidates/{id}/notes/{noteId}:
+ * /candidates/{id}/notes/{noteId}:
  *   delete:
  *     tags:
  *       - Candidate Notes
@@ -928,7 +928,7 @@
 
 /**
  * @openapi
- * /api/candidates/{id}/tags:
+ * /candidates/{id}/tags:
  *   post:
  *     tags:
  *       - Candidate Tags
@@ -981,7 +981,7 @@
 
 /**
  * @openapi
- * /api/candidates/{id}/tags/{tagId}:
+ * /candidates/{id}/tags/{tagId}:
  *   delete:
  *     tags:
  *       - Candidate Tags

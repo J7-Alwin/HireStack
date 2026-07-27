@@ -1,6 +1,6 @@
 /**
  * @openapi
- * /api/companies:
+ * /companies:
  *   post:
  *     tags:
  *       - Companies
@@ -46,7 +46,7 @@
 
 /**
  * @openapi
- * /api/companies:
+ * /companies:
  *   get:
  *     tags:
  *       - Companies
@@ -134,7 +134,7 @@
 
 /**
  * @openapi
- * /api/companies/{id}:
+ * /companies/{id}:
  *   get:
  *     tags:
  *       - Companies
@@ -183,7 +183,7 @@
 
 /**
  * @openapi
- * /api/companies/{id}:
+ * /companies/{id}:
  *   patch:
  *     tags:
  *       - Companies
@@ -238,7 +238,7 @@
 
 /**
  * @openapi
- * /api/companies/{id}/status:
+ * /companies/{id}/status:
  *   patch:
  *     tags:
  *       - Companies
@@ -293,7 +293,7 @@
 
 /**
  * @openapi
- * /api/companies/{id}:
+ * /companies/{id}:
  *   delete:
  *     tags:
  *       - Companies
@@ -336,7 +336,7 @@
 
 /**
  * @openapi
- * /api/companies/{id}/restore:
+ * /companies/{id}/restore:
  *   patch:
  *     tags:
  *       - Companies

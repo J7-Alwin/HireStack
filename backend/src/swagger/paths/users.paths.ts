@@ -1,6 +1,6 @@
 /**
  * @openapi
- * /api/users/me:
+ * /users/me:
  *   get:
  *     tags:
  *       - Users
@@ -32,7 +32,7 @@
 
 /**
  * @openapi
- * /api/users:
+ * /users:
  *   get:
  *     tags:
  *       - Users
@@ -117,7 +117,7 @@
 
 /**
  * @openapi
- * /api/users/{id}:
+ * /users/{id}:
  *   get:
  *     tags:
  *       - Users
@@ -165,7 +165,7 @@
  */
 /**
  * @openapi
- * /api/users/{id}/status:
+ * /users/{id}/status:
  *   patch:
  *     tags:
  *       - Users
@@ -220,7 +220,7 @@
 
 /**
  * @openapi
- * /api/users/{id}:
+ * /users/{id}:
  *   delete:
  *     tags:
  *       - Users
@@ -263,7 +263,7 @@
 
 /**
  * @openapi
- * /api/users/{id}/restore:
+ * /users/{id}/restore:
  *   patch:
  *     tags:
  *       - Users

@@ -1,6 +1,6 @@
 /**
  * @openapi
- * /api/recruiters:
+ * /recruiters:
  *   post:
  *     tags:
  *       - Recruiters
@@ -46,7 +46,7 @@
 
 /**
  * @openapi
- * /api/recruiters:
+ * /recruiters:
  *   get:
  *     tags:
  *       - Recruiters
@@ -136,7 +136,7 @@
 
 /**
  * @openapi
- * /api/recruiters/{id}:
+ * /recruiters/{id}:
  *   get:
  *     tags:
  *       - Recruiters
@@ -185,7 +185,7 @@
 
 /**
  * @openapi
- * /api/recruiters/{id}:
+ * /recruiters/{id}:
  *   patch:
  *     tags:
  *       - Recruiters
@@ -240,7 +240,7 @@
 
 /**
  * @openapi
- * /api/recruiters/{id}/department:
+ * /recruiters/{id}/department:
  *   patch:
  *     tags:
  *       - Recruiters
@@ -295,7 +295,7 @@
 
 /**
  * @openapi
- * /api/recruiters/{id}/activate:
+ * /recruiters/{id}/activate:
  *   patch:
  *     tags:
  *       - Recruiters
@@ -337,7 +337,7 @@
  */
 /**
  * @openapi
- * /api/recruiters/{id}/deactivate:
+ * /recruiters/{id}/deactivate:
  *   patch:
  *     tags:
  *       - Recruiters
@@ -380,7 +380,7 @@
 
 /**
  * @openapi
- * /api/recruiters/{id}:
+ * /recruiters/{id}:
  *   delete:
  *     tags:
  *       - Recruiters
@@ -423,7 +423,7 @@
 
 /**
  * @openapi
- * /api/recruiters/{id}/restore:
+ * /recruiters/{id}/restore:
  *   patch:
  *     tags:
  *       - Recruiters
