@@ -38,7 +38,7 @@ export const usersController = {
       throw new UnauthorizedError("Unauthenticated");
     }
 
-    const filters = req.query as unknown as UserQueryFilters;
+    const filters = res.locals.query as UserQueryFilters;
     const result = await usersService.listUsers(filters, currentUser);
 
     res

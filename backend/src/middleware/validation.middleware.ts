@@ -13,15 +13,15 @@ export function validateRequest(schemas: ValidationSchemas): RequestHandler {
       if (schemas.body) {
         req.body = schemas.body.parse(req.body);
       }
+
       if (schemas.query) {
-        req.query = schemas.query.parse(req.query) as Record<string, unknown> as typeof req.query;
+        _res.locals.query = schemas.query.parse(req.query);
       }
+
       if (schemas.params) {
-        req.params = schemas.params.parse(req.params) as Record<
-          string,
-          unknown
-        > as typeof req.params;
+        _res.locals.params = schemas.params.parse(req.params);
       }
+
       next();
     } catch (error) {
       next(error);

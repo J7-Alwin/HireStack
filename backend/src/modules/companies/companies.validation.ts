@@ -102,7 +102,9 @@ export const listCompaniesQuerySchema = z.object({
 });
 
 export const companyIdParamSchema = z.object({
-  id: z.string().min(1, "Company ID is required"),
+  id: z.string().cuid({
+    message: "Invalid company ID",
+  }),
 });
 
 export const updateCompanyStatusSchema = z.object({

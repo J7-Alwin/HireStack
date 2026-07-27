@@ -31,7 +31,7 @@ export const companiesController = {
       throw new UnauthorizedError("Unauthenticated");
     }
 
-    const filters = req.query as unknown as CompanyQueryFilters;
+    const filters = res.locals.query as CompanyQueryFilters;
     const result = await companiesService.listCompanies(filters, currentUser);
 
     res

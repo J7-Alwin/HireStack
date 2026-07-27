@@ -66,6 +66,10 @@ export const usersService = {
     }
 
     const queryFilters = { ...filters };
+    console.log("filters =", filters);
+    console.log("queryFilters =", queryFilters);
+    console.log("page =", queryFilters.page, typeof queryFilters.page);
+    console.log("limit =", queryFilters.limit, typeof queryFilters.limit);
 
     // Enforce company isolation for COMPANY_ADMIN
     if (currentUser.role === Role.COMPANY_ADMIN) {
@@ -271,8 +275,7 @@ export const usersService = {
     }
 
     if (!user.deletedAt) {
-      // User is not deleted, nothing to restore
-      return user;
+      throw new ValidationError("User is not deleted");
     }
 
     const restoredUser = await usersRepository.restore(id);

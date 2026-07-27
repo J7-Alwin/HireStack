@@ -9,7 +9,7 @@ import { ConflictError } from "../../shared/errors/ConflictError";
 import { auditLogger } from "../../shared/logger/audit.logger";
 import { COMPANIES_MESSAGES } from "./companies.constants";
 import { Prisma } from "@prisma/client";
-
+import { ValidationError } from "../../shared/errors/ValidationError";
 export const companiesService = {
   getCompanyById: async (id: string, currentUser: AuthenticatedUser): Promise<SafeCompany> => {
     const includeDeleted = currentUser.role === Role.SUPER_ADMIN;
@@ -238,7 +238,7 @@ export const companiesService = {
     }
 
     if (!company.deletedAt) {
-      return company;
+      throw new ValidationError("Company is not deleted");
     }
 
     const restoredCompany = await companiesRepository.restore(id);

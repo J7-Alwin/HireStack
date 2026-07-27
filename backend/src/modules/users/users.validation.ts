@@ -34,7 +34,9 @@ export const listUsersQuerySchema = z.object({
 });
 
 export const userIdParamSchema = z.object({
-  id: z.string().min(1, "User ID must not be empty"),
+  id: z.cuid({
+    message: "Invalid user ID",
+  }),
 });
 
 export const updateStatusBodySchema = z.object({
