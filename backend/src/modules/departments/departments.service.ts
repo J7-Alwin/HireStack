@@ -359,7 +359,7 @@ export const departmentsService = {
     }
 
     if (!department.deletedAt) {
-      return department; // already restored
+      throw new ValidationError("Department is not deleted");// already restored
     }
 
     // 3. Verify company still exists

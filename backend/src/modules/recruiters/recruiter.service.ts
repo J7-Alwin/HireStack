@@ -16,6 +16,7 @@ import { ForbiddenError } from "../../shared/errors/ForbiddenError";
 import { ConflictError } from "../../shared/errors/ConflictError";
 import { UnprocessableEntityError } from "../../shared/errors/UnprocessableEntityError";
 import { RECRUITERS_MESSAGES } from "./recruiter.constants";
+import { ValidationError } from "../../shared/errors/ValidationError";
 import { Prisma } from "@prisma/client";
 
 // Private module helpers
@@ -142,8 +143,11 @@ export const recruiterService = {
     const where: Prisma.UserWhereInput = {
       role: Role.RECRUITER as unknown as "RECRUITER",
       companyId,
-      deletedAt: null, // Scoped to non-deleted records only
     };
+
+    if (!filters.showDeleted) {
+      where.deletedAt = null;
+    }
 
     // Additional Filters
     if (filters.department) {
@@ -332,7 +336,7 @@ export const recruiterService = {
     validateRecruiterOwnership(recruiter.companyId, currentUser);
 
     if (!recruiter.deletedAt) {
-      return recruiter;
+      throw new ValidationError("Recruiter is not deleted");
     }
 
     return await recruiterRepository.restore(id);

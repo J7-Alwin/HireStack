@@ -29,7 +29,7 @@ router.post(
 // GET /departments - Search and list departments
 router.get(
   "/",
-  authorizeRoles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.RECRUITER),
+  authorizeRoles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN),
   validateRequest({ query: listDepartmentsQuerySchema }),
   asyncHandler(departmentsController.listDepartments)
 );
@@ -37,7 +37,7 @@ router.get(
 // GET /departments/:id - Get a department profile
 router.get(
   "/:id",
-  authorizeRoles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.RECRUITER),
+  authorizeRoles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN),
   validateRequest({ params: departmentIdParamSchema }),
   asyncHandler(departmentsController.getDepartmentById)
 );

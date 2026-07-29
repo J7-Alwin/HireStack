@@ -32,7 +32,7 @@ export const departmentsController = {
       throw new UnauthorizedError("Unauthenticated");
     }
 
-    const filters = req.query as unknown as DepartmentQueryFilters;
+    const filters = res.locals.query as DepartmentQueryFilters;
     const result = await departmentsService.listDepartments(filters, currentUser);
 
     res

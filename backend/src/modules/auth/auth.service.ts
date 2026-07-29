@@ -53,7 +53,7 @@ export const authService = {
       email: user.email,
       role: user.role as unknown as Role,
       status: user.status as unknown as AccountStatus,
-      companyId: null, // to be populated in future phases
+      companyId: user.companyId,
       recruiterId: null,
     };
 
@@ -76,6 +76,7 @@ export const authService = {
         email: user.email,
         role: user.role as unknown as Role,
         status: user.status as unknown as AccountStatus,
+        companyId: user.companyId,
       },
       accessToken,
       refreshToken,

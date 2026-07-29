@@ -7,6 +7,7 @@ export interface LoginResponseData {
     email: string;
     role: Role;
     status: AccountStatus;
+    companyId: string | null;
   };
   accessToken: string;
   refreshToken: string;

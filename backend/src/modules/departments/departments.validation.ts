@@ -64,5 +64,7 @@ export const changeStatusSchema = z.object({
 });
 
 export const departmentIdParamSchema = z.object({
-  id: z.string().min(1, "Department ID is required"),
+  id: z.string().cuid({
+    message: "Invalid department ID",
+  }),
 });

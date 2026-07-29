@@ -121,5 +121,7 @@ export const listRecruitersQuerySchema = z
   .strict();
 
 export const recruiterIdParamSchema = z.object({
-  id: z.string().min(1, "Recruiter ID is required"),
+  id: z.string().cuid({
+    message: "Invalid recruiter ID",
+  }),
 });
