@@ -297,7 +297,7 @@ export const pipelineService = {
       throw new ForbiddenError(PIPELINE_MESSAGES.FORBIDDEN_ACCESS);
     }
     const pipeline = await ensurePipelineExists(id);
-    validateCompanyAccess(pipeline.companyId, currentUser);
+    validatePipelineAccess(pipeline, currentUser);
     return pipeline;
   },
 
@@ -332,13 +332,13 @@ export const pipelineService = {
 
   getHistory: async (id: string, currentUser: AuthenticatedUser) => {
     const pipeline = await ensurePipelineExists(id);
-    validateCompanyAccess(pipeline.companyId, currentUser);
+    validatePipelineAccess(pipeline, currentUser);
     return await pipelineRepository.findHistoryByPipelineId(id);
   },
 
   getTimeline: async (id: string, currentUser: AuthenticatedUser) => {
     const pipeline = await ensurePipelineExists(id);
-    validateCompanyAccess(pipeline.companyId, currentUser);
+    validatePipelineAccess(pipeline, currentUser);
     return await pipelineRepository.findTimelineByPipelineId(id);
   },
 

@@ -287,6 +287,10 @@ export const interviewService = {
     const companyId = currentUser.companyId!;
     const parsedQuery = queryInterviewsSchema.parse(query);
 
+    // Recruiters can only view interviews assigned to their own applications
+    if (currentUser.role === Role.RECRUITER) {
+      parsedQuery.recruiterId = currentUser.id;
+    }
     const { skip, take } = paginationHelper.getPrismaOptions({
       page: parsedQuery.page,
       limit: parsedQuery.limit,
@@ -313,6 +317,13 @@ export const interviewService = {
       throw new NotFoundError(INTERVIEW_MESSAGES.INTERVIEW_NOT_FOUND);
     }
     validateCompanyAccess(interview.companyId, currentUser);
+    // Recruiters can only view interviews assigned to their own applications
+    if (
+      currentUser.role === Role.RECRUITER &&
+      interview.application.assignedRecruiterId !== currentUser.id
+    ) {
+      throw new ForbiddenError(INTERVIEW_MESSAGES.FORBIDDEN_ACCESS);
+    }
     return interview;
   },
 
@@ -338,19 +349,14 @@ export const interviewService = {
           throw new UnprocessableEntityError("Cannot update interviews in terminal status");
         }
 
-        // If mode is updated to ONLINE, require meetingLink
-        if (parsedInput.mode === InterviewMode.ONLINE && !interview.meetingLink) {
-          throw new ValidationError("ONLINE interview requires meetingLink");
-        }
-        // If mode is updated to ONSITE, require location
-        if (parsedInput.mode === InterviewMode.ONSITE && !interview.location) {
-          throw new ValidationError("ONSITE interview requires location");
-        }
+
 
         return await interviewRepository.update(
           id,
           {
             mode: parsedInput.mode,
+            meetingLink: parsedInput.meetingLink,
+            location: parsedInput.location,
             notes: parsedInput.notes,
             updatedBy: currentUser.id,
           },

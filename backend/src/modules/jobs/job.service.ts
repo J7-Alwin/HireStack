@@ -153,6 +153,14 @@ export const jobService = {
 
     const job = await validateJobExists(id);
     validateJobOwnership(job.companyId, currentUser);
+    if (
+      currentUser.role === Role.RECRUITER &&
+      !isRecruiterAssigned(job, currentUser.id)
+    ) {
+      throw new ForbiddenError(
+        JOBS_MESSAGES.FORBIDDEN_MODIFICATION
+      );
+    }
 
     return job;
   },
@@ -175,6 +183,13 @@ export const jobService = {
       companyId,
       deletedAt: null,
     };
+    if (currentUser.role === Role.RECRUITER) {
+      where.recruiters = {
+        some: {
+          recruiterId: currentUser.id,
+        },
+      };
+    }
 
     if (filters.department) {
       where.departmentId = filters.department;

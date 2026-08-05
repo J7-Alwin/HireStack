@@ -37,7 +37,7 @@ export const applicationController = {
     if (!currentUser) throw new UnauthorizedError("Unauthenticated");
 
     const result = await applicationService.listApplications(
-      req.query as unknown as ApplicationQueryFilters,
+      req.query as ApplicationQueryFilters,
       currentUser
     );
 

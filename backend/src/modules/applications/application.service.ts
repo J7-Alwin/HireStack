@@ -319,6 +319,10 @@ export const applicationService = {
     const companyId = currentUser.companyId!;
 
     const parsedQuery = queryApplicationsSchema.parse(query);
+    // Recruiters can only see applications assigned to them
+    if (currentUser.role === Role.RECRUITER) {
+      parsedQuery.recruiter = currentUser.id;
+    }
 
     const { skip, take } = paginationHelper.getPrismaOptions({
       page: parsedQuery.page,
@@ -346,6 +350,13 @@ export const applicationService = {
       throw new NotFoundError(APPLICATIONS_MESSAGES.APPLICATION_NOT_FOUND);
     }
     validateCompanyAccess(application.companyId, currentUser);
+    // Recruiters can only view their own applications
+    if (
+      currentUser.role === Role.RECRUITER &&
+      application.assignedRecruiterId !== currentUser.id
+    ) {
+      throw new ForbiddenError(APPLICATIONS_MESSAGES.FORBIDDEN_ACCESS);
+    }
     return application;
   },
 

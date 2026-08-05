@@ -670,7 +670,9 @@ export const offerService = {
     }
     const companyId = currentUser.companyId!;
     const parsedQuery = queryOffersSchema.parse(query);
-
+    if (currentUser.role === Role.RECRUITER) {
+      parsedQuery.recruiterId = currentUser.id;
+    }
     const { skip, take } = paginationHelper.getPrismaOptions({
       page: parsedQuery.page,
       limit: parsedQuery.limit,

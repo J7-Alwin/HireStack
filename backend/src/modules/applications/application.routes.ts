@@ -4,7 +4,18 @@ import { authMiddleware } from "../../middleware/auth.middleware";
 import { authorizeRoles } from "../../middleware/role.middleware";
 import { Role } from "../../shared/enums/role.enum";
 import { applicationController } from "./application.controller";
-
+import { validateRequest } from "../../middleware/validation.middleware";
+import {
+  createApplicationSchema,
+  updateApplicationSchema,
+  assignRecruiterSchema,
+  updateStageSchema,
+  updateStatusSchema,
+  rejectApplicationSchema,
+  withdrawApplicationSchema,
+  queryApplicationsSchema,
+  applicationIdParamSchema,
+} from "./application.validation";
 const router = Router();
 
 // Enforce authentication on all application routes
@@ -14,6 +25,7 @@ router.use(authMiddleware);
 router.post(
   "/",
   authorizeRoles(Role.COMPANY_ADMIN, Role.RECRUITER),
+  validateRequest({ body: createApplicationSchema }),
   asyncHandler(applicationController.createApplication)
 );
 
@@ -21,6 +33,7 @@ router.post(
 router.get(
   "/",
   authorizeRoles(Role.COMPANY_ADMIN, Role.RECRUITER),
+  validateRequest({ query: queryApplicationsSchema }),
   asyncHandler(applicationController.listApplications)
 );
 
@@ -28,6 +41,7 @@ router.get(
 router.get(
   "/:id",
   authorizeRoles(Role.COMPANY_ADMIN, Role.RECRUITER),
+  validateRequest({ params: applicationIdParamSchema }),
   asyncHandler(applicationController.getApplicationById)
 );
 
@@ -35,6 +49,10 @@ router.get(
 router.patch(
   "/:id",
   authorizeRoles(Role.COMPANY_ADMIN, Role.RECRUITER),
+  validateRequest({
+    params: applicationIdParamSchema,
+    body: updateApplicationSchema,
+  }),
   asyncHandler(applicationController.updateApplication)
 );
 
@@ -42,6 +60,10 @@ router.patch(
 router.patch(
   "/:id/assign",
   authorizeRoles(Role.COMPANY_ADMIN),
+  validateRequest({
+    params: applicationIdParamSchema,
+    body: assignRecruiterSchema,
+  }),
   asyncHandler(applicationController.assignRecruiter)
 );
 
@@ -49,6 +71,10 @@ router.patch(
 router.patch(
   "/:id/stage",
   authorizeRoles(Role.COMPANY_ADMIN, Role.RECRUITER),
+  validateRequest({
+    params: applicationIdParamSchema,
+    body: updateStageSchema,
+  }),
   asyncHandler(applicationController.updateStage)
 );
 
@@ -56,6 +82,10 @@ router.patch(
 router.patch(
   "/:id/status",
   authorizeRoles(Role.COMPANY_ADMIN, Role.RECRUITER),
+  validateRequest({
+    params: applicationIdParamSchema,
+    body: updateStatusSchema,
+  }),
   asyncHandler(applicationController.updateStatus)
 );
 
@@ -63,6 +93,10 @@ router.patch(
 router.patch(
   "/:id/reject",
   authorizeRoles(Role.COMPANY_ADMIN, Role.RECRUITER),
+  validateRequest({
+    params: applicationIdParamSchema,
+    body: rejectApplicationSchema,
+  }),
   asyncHandler(applicationController.rejectApplication)
 );
 
@@ -70,6 +104,10 @@ router.patch(
 router.patch(
   "/:id/withdraw",
   authorizeRoles(Role.COMPANY_ADMIN, Role.RECRUITER),
+  validateRequest({
+    params: applicationIdParamSchema,
+    body: withdrawApplicationSchema,
+  }),
   asyncHandler(applicationController.withdrawApplication)
 );
 
@@ -77,6 +115,9 @@ router.patch(
 router.delete(
   "/:id",
   authorizeRoles(Role.COMPANY_ADMIN),
+  validateRequest({
+    params: applicationIdParamSchema,
+  }),
   asyncHandler(applicationController.softDeleteApplication)
 );
 
@@ -84,6 +125,9 @@ router.delete(
 router.patch(
   "/:id/restore",
   authorizeRoles(Role.COMPANY_ADMIN),
+  validateRequest({
+    params: applicationIdParamSchema,
+  }),
   asyncHandler(applicationController.restoreApplication)
 );
 
