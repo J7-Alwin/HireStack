@@ -68,3 +68,12 @@ export const departmentIdParamSchema = z.object({
     message: "Invalid department ID",
   }),
 });
+
+export const getDepartmentOptionsQuerySchema = z.object({
+  companyId: z
+    .string()
+    .cuid({
+      message: "Invalid company ID",
+    })
+    .optional(),
+});

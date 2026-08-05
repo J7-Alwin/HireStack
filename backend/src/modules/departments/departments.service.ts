@@ -16,6 +16,7 @@ import { UnprocessableEntityError } from "../../shared/errors/UnprocessableEntit
 import { DEPARTMENTS_MESSAGES } from "./departments.constants";
 import { auditLogger } from "../../shared/logger/audit.logger";
 import { Prisma } from "@prisma/client";
+import { prisma } from "../../config/prisma";
 
 export const departmentsService = {
   createDepartment: async (
@@ -359,7 +360,7 @@ export const departmentsService = {
     }
 
     if (!department.deletedAt) {
-      throw new ValidationError("Department is not deleted");// already restored
+      throw new ValidationError("Department is not deleted"); // already restored
     }
 
     // 3. Verify company still exists
@@ -399,5 +400,45 @@ export const departmentsService = {
     });
 
     return restored;
+  },
+
+  getDepartmentOptions: async (
+    query: { companyId?: string },
+    currentUser: AuthenticatedUser
+  ): Promise<{ id: string; name: string }[]> => {
+    if (
+      currentUser.role !== Role.SUPER_ADMIN &&
+      currentUser.role !== Role.COMPANY_ADMIN &&
+      currentUser.role !== Role.RECRUITER
+    ) {
+      throw new ForbiddenError(DEPARTMENTS_MESSAGES.FORBIDDEN_ACCESS);
+    }
+
+    const where: Prisma.DepartmentWhereInput = {
+      isActive: true,
+      deletedAt: null,
+    };
+
+    if (currentUser.role === Role.SUPER_ADMIN) {
+      if (query.companyId) {
+        where.companyId = query.companyId;
+      }
+    } else {
+      if (!currentUser.companyId) {
+        throw new ForbiddenError(DEPARTMENTS_MESSAGES.FORBIDDEN_ACCESS);
+      }
+      where.companyId = currentUser.companyId;
+    }
+
+    return await prisma.department.findMany({
+      where,
+      select: {
+        id: true,
+        name: true,
+      },
+      orderBy: {
+        name: "asc",
+      },
+    });
   },
 };

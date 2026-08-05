@@ -134,6 +134,51 @@
 
 /**
  * @openapi
+ * /departments/options:
+ *   get:
+ *     tags:
+ *       - Departments
+ *     summary: Get Department Options
+ *     description: Provide a lightweight list of active departments for dropdowns, filters and selectors. Allowed roles - SUPER_ADMIN, COMPANY_ADMIN, RECRUITER.
+ *     operationId: getDepartmentOptions
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: companyId
+ *         required: false
+ *         description: Company ID (Only used by SUPER_ADMIN)
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Department options retrieved successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/DepartmentOptionsResponse'
+ *       400:
+ *         description: Validation failed (e.g. invalid companyId format).
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ValidationError'
+ *       401:
+ *         description: Unauthorized.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/UnauthorizedError'
+ *       403:
+ *         description: Forbidden.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+
+/**
+ * @openapi
  * /departments/{id}:
  *   get:
  *     tags:
@@ -375,5 +420,3 @@
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
-
-

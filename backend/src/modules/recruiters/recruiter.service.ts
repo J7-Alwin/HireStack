@@ -176,8 +176,8 @@ export const recruiterService = {
       }
     }
 
-    const page = filters.page || 1;
-    const limit = filters.limit || 10;
+    const page = Number(filters.page) || 1;
+    const limit = Number(filters.limit) || 10;
     const skip = (page - 1) * limit;
 
     const sortBy = filters.sortBy || "createdAt";
@@ -284,7 +284,9 @@ export const recruiterService = {
     if (recruiter.deletedAt) {
       throw new UnprocessableEntityError(RECRUITERS_MESSAGES.ACTIVATE_DELETED_REJECTED);
     }
-
+    if (recruiter.isActive) {
+      throw new ValidationError("Recruiter is already active");
+    }
     // Verify company is active
     const company = await companiesRepository.findById(recruiter.companyId!);
     if (!company || company.status !== AccountStatus.ACTIVE) {
@@ -310,6 +312,9 @@ export const recruiterService = {
     const recruiter = await validateRecruiterExists(id);
 
     validateRecruiterOwnership(recruiter.companyId, currentUser);
+    if (!recruiter.isActive) {
+      throw new ValidationError("Recruiter is already inactive");
+    }
 
     return await recruiterRepository.updateStatus(id, false);
   },
@@ -319,10 +324,12 @@ export const recruiterService = {
       throw new ForbiddenError(RECRUITERS_MESSAGES.FORBIDDEN_MODIFICATION);
     }
 
-    const recruiter = await validateRecruiterExists(id);
+    const recruiter = await validateRecruiterExists(id, true);
 
     validateRecruiterOwnership(recruiter.companyId, currentUser);
-
+    if (recruiter.deletedAt) {
+      throw new ValidationError("Recruiter is already deleted");
+    }
     return await recruiterRepository.softDelete(id);
   },
 

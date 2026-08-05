@@ -113,4 +113,20 @@ export const departmentsController = {
       .status(HTTP_STATUS.OK)
       .json(successResponse(DEPARTMENTS_MESSAGES.DEPARTMENT_RESTORED, department));
   },
+
+  getDepartmentOptions: async (req: Request, res: Response): Promise<void> => {
+    const currentUser = req.user;
+    if (!currentUser) {
+      throw new UnauthorizedError("Unauthenticated");
+    }
+
+    const query = res.locals.query as { companyId?: string };
+    const data = await departmentsService.getDepartmentOptions(query, currentUser);
+
+    res.status(HTTP_STATUS.OK).json({
+      success: true,
+      message: "Department options retrieved successfully",
+      data,
+    });
+  },
 };

@@ -11,6 +11,7 @@ import {
   listDepartmentsQuerySchema,
   changeStatusSchema,
   departmentIdParamSchema,
+  getDepartmentOptionsQuerySchema,
 } from "./departments.validation";
 
 const router = Router();
@@ -32,6 +33,14 @@ router.get(
   authorizeRoles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN),
   validateRequest({ query: listDepartmentsQuerySchema }),
   asyncHandler(departmentsController.listDepartments)
+);
+
+// GET /departments/options - Lightweight list of active departments
+router.get(
+  "/options",
+  authorizeRoles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.RECRUITER),
+  validateRequest({ query: getDepartmentOptionsQuerySchema }),
+  asyncHandler(departmentsController.getDepartmentOptions)
 );
 
 // GET /departments/:id - Get a department profile
