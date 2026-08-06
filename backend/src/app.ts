@@ -23,7 +23,7 @@ import { applicationRouter } from "./modules/applications";
 import { interviewRouter } from "./modules/interviews";
 import { offerRouter } from "./modules/offers";
 import { pipelineRouter } from "./modules/pipeline";
-
+import { aiRoutes } from "./modules/ai";
 const app = express();
 
 // 1. Request ID and Timing Metadata
@@ -64,6 +64,7 @@ app.use("/api/applications", applicationRouter);
 app.use("/api/interviews", interviewRouter);
 app.use("/api/offers", offerRouter);
 app.use("/api/pipeline", pipelineRouter);
+app.use("/api/v1/ai", aiRoutes);
 
 app.get("/", (_req, res) => {
   res.status(200).json({
@@ -75,5 +76,6 @@ app.get("/", (_req, res) => {
 // 7. Not Found and Global Error Handling
 app.use(notFoundMiddleware);
 app.use(errorMiddleware);
+
 
 export default app;
