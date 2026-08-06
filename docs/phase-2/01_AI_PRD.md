@@ -407,4 +407,4 @@ Upcoming
 - Job Matching
 - AI Recommendations
 - Interview Assistant
-- AI Insights
+- AI Insightsgit add .
