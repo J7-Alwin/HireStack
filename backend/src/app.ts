@@ -1,4 +1,5 @@
 import express from "express";
+import path from "path";
 import swaggerUi from "swagger-ui-express";
 import swaggerSpec from "./swagger";
 import {
@@ -41,6 +42,7 @@ app.use(generalLimiter);
 // 4. Body Parser
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
 // Swagger Documentation
 app.use(

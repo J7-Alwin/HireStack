@@ -12,6 +12,12 @@ const router = Router();
 
 router.use(authMiddleware);
 
+router.get(
+    "/health",
+    authorizeRoles(Role.COMPANY_ADMIN, Role.RECRUITER),
+    asyncHandler(aiController.healthCheck)
+);
+
 router.post(
     "/resume/parse",
     authorizeRoles(Role.COMPANY_ADMIN, Role.RECRUITER),

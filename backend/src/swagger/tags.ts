@@ -67,6 +67,10 @@ const tags = [
         name: "Pipeline",
         description: "Hiring pipeline APIs",
     },
+    {
+        name: "AI",
+        description: "AI capability APIs (Health, Resume Parsing, etc.)",
+    },
 ];
 
 export default tags;
