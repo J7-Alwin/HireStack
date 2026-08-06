@@ -61,6 +61,63 @@ Unlike cloud-based AI services, HireStack performs all inference locally using O
 
 src/modules/ai
 
+clients/
+- ollama.client.ts
+- index.ts
+
+config/
+- ai.config.ts
+- index.ts
+
+constants/
+- ai.constants.ts
+
+controllers/
+- ai.controller.ts
+
+dto/
+
+hooks/
+- ai.hooks.ts
+
+prompts/
+- resume.prompt.ts
+- ats-score.prompt.ts
+- job-matching.prompt.ts
+- interview.prompt.ts
+
+routes/
+- ai.routes.ts
+
+schemas/
+- resume.schema.ts
+
+services/
+- ai.service.ts
+- resume-parser.service.ts
+- ats-score.service.ts
+- job-matching.service.ts
+- interview.service.ts
+
+swagger/
+
+types/
+- resume.types.ts
+- ats.types.ts
+- matching.types.ts
+
+utils/
+- pdf-extractor.ts
+- json-parser.ts
+- prompt-builder.ts
+- upload.ts
+
+validation/
+
+index.ts
+
+src/modules/ai
+
 controller/
 - ai.controller.ts
 
@@ -119,11 +176,16 @@ AI Controller
 
 ↓
 
-AI Service
+Feature Service
+(ResumeParserService / AtsScoreService / etc.)
 
 ↓
 
-Prompt Builder
+AiService
+
+↓
+
+Ollama Client
 
 ↓
 
@@ -143,7 +205,7 @@ JSON Parser
 
 ↓
 
-Zod Validation
+Schema Validation
 
 ↓
 
@@ -181,7 +243,11 @@ Extract JSON
 
 ↓
 
-Validate Schema
+ResumeSchema Validation
+
+↓
+
+Reuse Candidate Service
 
 ↓
 
@@ -189,7 +255,7 @@ Create Candidate
 
 ↓
 
-Store Database
+Store Resume Metadata
 
 ↓
 

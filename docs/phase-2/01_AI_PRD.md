@@ -396,7 +396,14 @@ Completed
 - Llama 3.2 Integration
 - LangChain Integration
 - AI Health Endpoint
-
+- AI Client
+- AI Service
+- Prompt Builder
+- JSON Parser
+- PDF Extractor
+- Upload Middleware
+- Resume Schema
+- Resume Parser Service
 In Progress
 
 - Resume Parser
