@@ -34,6 +34,7 @@ const options: Options = {
 
     apis: [
         "./src/swagger/paths/*.ts",
+        "./src/modules/ai/swagger/*.ts",
     ],
 };
 

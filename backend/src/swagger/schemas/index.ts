@@ -10,6 +10,7 @@ import applicationSchemas from "./application.schema";
 import interviewSchemas from "./interview.schema";
 import offerSchemas from "./offer.schema";
 import pipelineSchemas from "./pipeline.schema";
+import { aiSwaggerSchemas } from "../../modules/ai/swagger/ai.schemas";
 
 
 const schemas = {
@@ -25,6 +26,7 @@ const schemas = {
     ...interviewSchemas,
     ...offerSchemas,
     ...pipelineSchemas,
+    ...aiSwaggerSchemas,
 };
 
 export default schemas;
