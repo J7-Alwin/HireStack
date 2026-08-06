@@ -7,14 +7,18 @@ import { AuthenticatedUser } from "../../../shared/types";
 import { SkillProficiency, DocumentType } from "@prisma/client";
 import { logger } from "../../../shared/logger/logger";
 import { ValidationError } from "../../../shared/errors";
+import { SafeCandidate } from "../../candidates/candidate.types";
 
 import { PdfExtractor } from "../utils/pdf-extractor";
 import { PromptBuilder } from "../utils/prompt-builder";
 import { JsonParser } from "../utils/json-parser";
-import { RESUME_PARSER_PROMPT } from "../prompts/resume.prompt";
+import { RESUME_PARSER_PROMPT_CONFIG } from "../prompts/resume.prompt";
 import { aiService } from "./ai.service";
-import { ResumeData } from "../types/resume.types";
+import { ResumeData, ResumeSkill, ResumeExperience, ResumeEducation } from "../types/resume.types";
 import { ResumeSchema } from "../schemas/resume.schema";
+
+// File-level constant for storage path configuration (mitigates magic strings)
+const UPLOAD_SUBDIR = "../../../../uploads/resumes";
 
 // Helper to safely parse dates from AI into valid ISO 8601 datetime strings
 function parseDateToISO(dateStr: string | null | undefined): string | null {
@@ -84,7 +88,7 @@ function mapProficiency(level: string | null | undefined): SkillProficiency {
 }
 
 export class ResumeParserService {
-    async parseResume(file: Express.Multer.File, currentUser: AuthenticatedUser): Promise<any> {
+    async parseResume(file: Express.Multer.File, currentUser: AuthenticatedUser): Promise<SafeCandidate> {
         logger.info("Resume Upload Started", {
             fileName: file.originalname,
             fileSize: file.size,
@@ -105,10 +109,10 @@ export class ResumeParserService {
         }
 
         // Step 2: Build the Prompt
-        const prompt = PromptBuilder.build(RESUME_PARSER_PROMPT, resumeText);
+        const prompt = PromptBuilder.build(RESUME_PARSER_PROMPT_CONFIG.template, resumeText);
 
         // Step 3: Call AI Service
-        let response;
+        let response: { content: string; responseTime: number };
         try {
             response = await aiService.generate(prompt);
             logger.info(`AI Response Time: ${response.responseTime}ms`);
@@ -131,7 +135,7 @@ export class ResumeParserService {
         }
 
         // Step 5: Validate JSON against Zod schema
-        let validated;
+        let validated: ResumeData;
         try {
             validated = ResumeSchema.parse(parsed);
         } catch (error) {
@@ -141,108 +145,12 @@ export class ResumeParserService {
         }
 
         // Step 6: Save the uploaded file to disk
-        let uniqueFileName: string;
-        try {
-            const fileExtension = path.extname(file.originalname);
-            uniqueFileName = `${uuidv4()}${fileExtension}`;
-            const uploadDir = path.join(__dirname, "../../../../uploads/resumes");
-            
-            await fs.promises.mkdir(uploadDir, { recursive: true });
-            const filePath = path.join(uploadDir, uniqueFileName);
-            await fs.promises.writeFile(filePath, file.buffer);
-            logger.info(`[ResumeParserService] File saved locally to: ${filePath}`);
-        } catch (error) {
-            logger.error("Parsing Errors", { error: error instanceof Error ? error.message : "File storage failure" });
-            throw new ValidationError("Failed to store uploaded resume file.");
-        }
+        const uniqueFileName = await this.saveResumeFile(file);
 
         // Step 7: Map validated JSON details to CreateCandidate schema fields
-        let candidateSkills = [];
-        try {
-            if (validated.skills && validated.skills.length > 0) {
-                for (const skill of validated.skills) {
-                    if (!skill.name) continue;
-                    const normalizedName = skill.name.trim();
-                    if (!normalizedName) continue;
-
-                    let catalogueSkill = await prisma.skill.findUnique({
-                        where: { name: normalizedName },
-                    });
-
-                    if (!catalogueSkill) {
-                        catalogueSkill = await prisma.skill.create({
-                            data: { name: normalizedName },
-                        });
-                    }
-
-                    candidateSkills.push({
-                        skillId: catalogueSkill.id,
-                        proficiency: mapProficiency(skill.level),
-                        experienceYears: null,
-                        experienceMonths: null,
-                        isPrimary: false,
-                    });
-                }
-            }
-        } catch (error) {
-            logger.error("Parsing Errors", { error: error instanceof Error ? error.message : "Skills mapping failure" });
-            throw new ValidationError("Failed to map skills catalogue.");
-        }
-
-        // Map experience and ensure date logic holds (startDate <= endDate)
-        let currentCompany = null;
-        let currentDesignation = null;
-
-        const candidateExperience = validated.experience.map((exp) => {
-            let startDateISO = parseDateToISO(exp.startDate) || new Date().toISOString();
-            let endDateISO = exp.currentlyWorking ? null : parseDateToISO(exp.endDate);
-
-            if (endDateISO && new Date(startDateISO) > new Date(endDateISO)) {
-                startDateISO = endDateISO;
-            }
-
-            if (exp.currentlyWorking || exp.endDate === "Present" || exp.endDate === "current") {
-                currentCompany = exp.company;
-                currentDesignation = exp.position;
-            }
-
-            return {
-                company: exp.company || "Unknown Company",
-                designation: exp.position || "Unknown Role",
-                employmentType: null,
-                startDate: startDateISO,
-                endDate: endDateISO,
-                isCurrent: exp.currentlyWorking || false,
-                description: exp.description || null,
-            };
-        });
-
-        // If no explicit current company is marked, default to the first experience record
-        if (!currentCompany && validated.experience.length > 0) {
-            currentCompany = validated.experience[0].company;
-            currentDesignation = validated.experience[0].position;
-        }
-
-        // Map education records
-        const candidateEducation = validated.education.map((edu) => {
-            let startDateISO = parseDateToISO(edu.startYear);
-            let endDateISO = parseDateToISO(edu.endYear);
-
-            if (startDateISO && endDateISO && new Date(startDateISO) > new Date(endDateISO)) {
-                startDateISO = endDateISO;
-            }
-
-            return {
-                degree: edu.degree || "Unknown Degree",
-                institution: edu.institution || "Unknown Institution",
-                specialization: edu.field || null,
-                startDate: startDateISO,
-                endDate: endDateISO,
-                graduationYear: parseGraduationYear(edu.endYear),
-                grade: null,
-                isHighest: false,
-            };
-        });
+        const candidateSkills = await this.mapSkills(validated.skills);
+        const { candidateExperience, currentCompany, currentDesignation } = this.mapExperience(validated.experience);
+        const candidateEducation = this.mapEducation(validated.education);
 
         // Add PDF document details to createCandidate
         const candidateDocuments = [
@@ -266,7 +174,7 @@ export class ResumeParserService {
         }
 
         // Step 8: Call Candidate Service to persist Candidate profile
-        let newCandidate;
+        let newCandidate: SafeCandidate;
         try {
             newCandidate = await candidateService.createCandidate(
                 {
@@ -313,6 +221,126 @@ export class ResumeParserService {
         logger.info(`Resume Parsing Complete`, { totalTime: totalProcessTime });
 
         return newCandidate;
+    }
+
+    /**
+     * Save the uploaded multer file to local directory.
+     */
+    private async saveResumeFile(file: Express.Multer.File): Promise<string> {
+        try {
+            const fileExtension = path.extname(file.originalname);
+            const uniqueFileName = `${uuidv4()}${fileExtension}`;
+            const uploadDir = path.join(__dirname, UPLOAD_SUBDIR);
+            
+            await fs.promises.mkdir(uploadDir, { recursive: true });
+            const filePath = path.join(uploadDir, uniqueFileName);
+            await fs.promises.writeFile(filePath, file.buffer);
+            logger.info(`[ResumeParserService] File saved locally to: ${filePath}`);
+            return uniqueFileName;
+        } catch (error) {
+            logger.error("Parsing Errors", { error: error instanceof Error ? error.message : "File storage failure" });
+            throw new ValidationError("Failed to store uploaded resume file.");
+        }
+    }
+
+    /**
+     * Map parsed resume skills to target skill database identifiers.
+     */
+    private async mapSkills(skills: ResumeSkill[]): Promise<Array<{ skillId: string; proficiency: SkillProficiency }>> {
+        const candidateSkills = [];
+        try {
+            if (skills && skills.length > 0) {
+                for (const skill of skills) {
+                    if (!skill.name) continue;
+                    const normalizedName = skill.name.trim();
+                    if (!normalizedName) continue;
+
+                    let catalogueSkill = await prisma.skill.findUnique({
+                        where: { name: normalizedName },
+                    });
+
+                    if (!catalogueSkill) {
+                        catalogueSkill = await prisma.skill.create({
+                            data: { name: normalizedName },
+                        });
+                    }
+
+                    candidateSkills.push({
+                        skillId: catalogueSkill.id,
+                        proficiency: mapProficiency(skill.level),
+                    });
+                }
+            }
+        } catch (error) {
+            logger.error("Parsing Errors", { error: error instanceof Error ? error.message : "Skills mapping failure" });
+            throw new ValidationError("Failed to map skills catalogue.");
+        }
+        return candidateSkills;
+    }
+
+    /**
+     * Map parsed resume experience and deduce current employment fields.
+     */
+    private mapExperience(experience: ResumeExperience[]) {
+        let currentCompany = null;
+        let currentDesignation = null;
+
+        const candidateExperience = experience.map((exp) => {
+            let startDateISO = parseDateToISO(exp.startDate) || new Date().toISOString();
+            let endDateISO = exp.currentlyWorking ? null : parseDateToISO(exp.endDate);
+
+            if (endDateISO && new Date(startDateISO) > new Date(endDateISO)) {
+                startDateISO = endDateISO;
+            }
+
+            if (exp.currentlyWorking || exp.endDate === "Present" || exp.endDate === "current") {
+                currentCompany = exp.company;
+                currentDesignation = exp.position;
+            }
+
+            return {
+                company: exp.company || "Unknown Company",
+                designation: exp.position || "Unknown Role",
+                employmentType: null,
+                startDate: startDateISO,
+                endDate: endDateISO,
+                isCurrent: exp.currentlyWorking || false,
+                description: exp.description || null,
+            };
+        });
+
+        // If no explicit current company is marked, default to the first experience record
+        if (!currentCompany && experience.length > 0) {
+            currentCompany = experience[0].company;
+            currentDesignation = experience[0].position;
+        }
+
+        return { candidateExperience, currentCompany, currentDesignation };
+    }
+
+    /**
+     * Map parsed resume education records.
+     */
+    private mapEducation(education: ResumeEducation[]) {
+        return education.map((edu) => {
+            let startDateISO = parseDateToISO(edu.startYear);
+            let endDateISO = parseDateToISO(edu.endYear);
+
+            if (startDateISO && endDateISO && new Date(startDateISO) > new Date(endDateISO)) {
+                startDateISO = endDateISO;
+            }
+
+            return {
+                degree: edu.degree || "Unknown Degree",
+                institution: edu.institution || "Unknown Institution",
+                specialization: edu.field || null,
+                startDate: startDateISO,
+                endDate: endDateISO,
+                graduationYear: parseGraduationYear(edu.endYear),
+                grade: null,
+                isHighest: false,
+            };
+        });
     }
 }
 

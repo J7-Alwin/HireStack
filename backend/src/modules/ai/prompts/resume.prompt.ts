@@ -68,3 +68,10 @@ Return this exact schema:
   "rawText": ""
 }
 `;
+
+export const RESUME_PARSER_PROMPT_CONFIG = {
+    version: "1.0.0",
+    name: "resume-parser-prompt",
+    description: "System prompt for extracting structured JSON from candidate resumes.",
+    template: RESUME_PARSER_PROMPT,
+};
