@@ -6,6 +6,7 @@ import { candidateService } from "../../candidates/candidate.service";
 import { AuthenticatedUser } from "../../../shared/types";
 import { SkillProficiency, DocumentType } from "@prisma/client";
 import { logger } from "../../../shared/logger/logger";
+import { ValidationError } from "../../../shared/errors";
 
 import { PdfExtractor } from "../utils/pdf-extractor";
 import { PromptBuilder } from "../utils/prompt-builder";
@@ -84,73 +85,108 @@ function mapProficiency(level: string | null | undefined): SkillProficiency {
 
 export class ResumeParserService {
     async parseResume(file: Express.Multer.File, currentUser: AuthenticatedUser): Promise<any> {
-        const uploadTimerStart = Date.now();
-        logger.info(`[ResumeParserService] Starting parse for file: ${file.originalname}`, {
+        logger.info("Resume Upload Started", {
             fileName: file.originalname,
             fileSize: file.size,
             userId: currentUser.id,
         });
 
+        logger.info("Resume Parsing Started");
+        const uploadTimerStart = Date.now();
+
         // Step 1: Extract plain text from PDF buffer
-        const resumeText = await PdfExtractor.extract(file.buffer);
+        let resumeText: string;
+        try {
+            resumeText = await PdfExtractor.extract(file.buffer);
+            logger.info("PDF Extraction Complete");
+        } catch (error) {
+            logger.error("Parsing Errors", { error: error instanceof Error ? error.message : "PDF extraction failed" });
+            throw new ValidationError("Failed to extract PDF text. The file might be corrupted or unsupported.");
+        }
 
         // Step 2: Build the Prompt
         const prompt = PromptBuilder.build(RESUME_PARSER_PROMPT, resumeText);
 
-        // Step 3: Call AI Service (Ollama Llama 3.2 via aiService)
-        const response = await aiService.generate(prompt);
-        logger.info(`[ResumeParserService] LLM execution completed in ${response.responseTime}ms`);
+        // Step 3: Call AI Service
+        let response;
+        try {
+            response = await aiService.generate(prompt);
+            logger.info(`AI Response Time: ${response.responseTime}ms`);
+        } catch (error) {
+            logger.error("Parsing Errors", { error: error instanceof Error ? error.message : "LLM failure" });
+            throw new ValidationError("Failed to generate response from AI model.");
+        }
 
         // Step 4: Parse response string to JSON object
-        const parsed = JsonParser.parse<ResumeData>(response.content);
+        let parsed: ResumeData;
+        try {
+            parsed = JsonParser.parse<ResumeData>(response.content);
+        } catch (error) {
+            logger.error("Parsing Errors", { error: error instanceof Error ? error.message : "JSON parsing failed" });
+            throw new ValidationError("Failed to parse response from AI model as valid JSON.");
+        }
 
-        // Inject rawText in case the AI didn't return it
         if (!parsed.rawText) {
             parsed.rawText = resumeText;
         }
 
         // Step 5: Validate JSON against Zod schema
-        const validated = ResumeSchema.parse(parsed);
+        let validated;
+        try {
+            validated = ResumeSchema.parse(parsed);
+        } catch (error) {
+            logger.error("Schema Validation Failure", { error });
+            logger.error("Parsing Errors", { error });
+            throw error; // Rethrow ZodError so it is formatted as Zod validation error by middleware
+        }
 
         // Step 6: Save the uploaded file to disk
-        const fileExtension = path.extname(file.originalname);
-        const uniqueFileName = `${uuidv4()}${fileExtension}`;
-        const uploadDir = path.join(__dirname, "../../../../uploads/resumes");
-        
-        await fs.promises.mkdir(uploadDir, { recursive: true });
-        const filePath = path.join(uploadDir, uniqueFileName);
-        await fs.promises.writeFile(filePath, file.buffer);
-
-        logger.info(`[ResumeParserService] File saved locally to: ${filePath}`);
+        let uniqueFileName: string;
+        try {
+            const fileExtension = path.extname(file.originalname);
+            uniqueFileName = `${uuidv4()}${fileExtension}`;
+            const uploadDir = path.join(__dirname, "../../../../uploads/resumes");
+            
+            await fs.promises.mkdir(uploadDir, { recursive: true });
+            const filePath = path.join(uploadDir, uniqueFileName);
+            await fs.promises.writeFile(filePath, file.buffer);
+            logger.info(`[ResumeParserService] File saved locally to: ${filePath}`);
+        } catch (error) {
+            logger.error("Parsing Errors", { error: error instanceof Error ? error.message : "File storage failure" });
+            throw new ValidationError("Failed to store uploaded resume file.");
+        }
 
         // Step 7: Map validated JSON details to CreateCandidate schema fields
-        
-        // Find or create skills in catalog to get CUIDs
-        const candidateSkills = [];
-        if (validated.skills && validated.skills.length > 0) {
-            for (const skill of validated.skills) {
-                if (!skill.name) continue;
-                const normalizedName = skill.name.trim();
-                if (!normalizedName) continue;
+        let candidateSkills = [];
+        try {
+            if (validated.skills && validated.skills.length > 0) {
+                for (const skill of validated.skills) {
+                    if (!skill.name) continue;
+                    const normalizedName = skill.name.trim();
+                    if (!normalizedName) continue;
 
-                let catalogueSkill = await prisma.skill.findUnique({
-                    where: { name: normalizedName },
-                });
+                    let catalogueSkill = await prisma.skill.findUnique({
+                        where: { name: normalizedName },
+                    });
 
-                if (!catalogueSkill) {
-                    catalogueSkill = await prisma.skill.create({
-                        data: { name: normalizedName },
+                    if (!catalogueSkill) {
+                        catalogueSkill = await prisma.skill.create({
+                            data: { name: normalizedName },
+                        });
+                    }
+
+                    candidateSkills.push({
+                        skillId: catalogueSkill.id,
+                        proficiency: mapProficiency(skill.level),
+                        experienceYears: null,
+                        experienceMonths: null,
+                        isPrimary: false,
                     });
                 }
-
-                candidateSkills.push({
-                    skillId: catalogueSkill.id,
-                    proficiency: mapProficiency(skill.level),
-                    experienceYears: null,
-                    experienceMonths: null,
-                    isPrimary: false,
-                });
             }
+        } catch (error) {
+            logger.error("Parsing Errors", { error: error instanceof Error ? error.message : "Skills mapping failure" });
+            throw new ValidationError("Failed to map skills catalogue.");
         }
 
         // Map experience and ensure date logic holds (startDate <= endDate)
@@ -230,46 +266,51 @@ export class ResumeParserService {
         }
 
         // Step 8: Call Candidate Service to persist Candidate profile
-        const newCandidate = await candidateService.createCandidate(
-            {
-                firstName: validated.firstName?.trim() || "Unknown",
-                lastName: validated.lastName?.trim() || "Candidate",
-                email: validated.email || null,
-                phone: validated.phone || null,
-                alternatePhone: null,
-                gender: null,
-                address: validated.location || null,
-                city: null,
-                state: null,
-                country: null,
-                zipCode: null,
-                currentCompany: currentCompany || null,
-                currentDesignation: currentDesignation || null,
-                experienceYears: null,
-                experienceMonths: null,
-                expectedSalary: null,
-                currentSalary: null,
-                currency: null,
-                noticePeriod: null,
-                employmentStatus: null,
-                source: null,
-                linkedInUrl: null,
-                githubUrl: null,
-                portfolioUrl: null,
-                primaryRecruiterId: currentUser.id,
-                skills: candidateSkills,
-                experience: candidateExperience,
-                education: candidateEducation,
-                documents: candidateDocuments,
-                notes: candidateNotes,
-            },
-            currentUser
-        );
+        let newCandidate;
+        try {
+            newCandidate = await candidateService.createCandidate(
+                {
+                    firstName: validated.firstName?.trim() || "Unknown",
+                    lastName: validated.lastName?.trim() || "Candidate",
+                    email: validated.email || null,
+                    phone: validated.phone || null,
+                    alternatePhone: null,
+                    gender: null,
+                    address: validated.location || null,
+                    city: null,
+                    state: null,
+                    country: null,
+                    zipCode: null,
+                    currentCompany: currentCompany || null,
+                    currentDesignation: currentDesignation || null,
+                    experienceYears: null,
+                    experienceMonths: null,
+                    expectedSalary: null,
+                    currentSalary: null,
+                    currency: null,
+                    noticePeriod: null,
+                    employmentStatus: null,
+                    source: null,
+                    linkedInUrl: null,
+                    githubUrl: null,
+                    portfolioUrl: null,
+                    primaryRecruiterId: currentUser.id,
+                    skills: candidateSkills,
+                    experience: candidateExperience,
+                    education: candidateEducation,
+                    documents: candidateDocuments,
+                    notes: candidateNotes,
+                },
+                currentUser
+            );
+        } catch (error) {
+            logger.error("Parsing Errors", { error: error instanceof Error ? error.message : "Candidate creation failure" });
+            throw error; // Rethrow ConflictError/UnprocessableEntityError so it gets processed standardly
+        }
 
         const totalProcessTime = Date.now() - uploadTimerStart;
-        logger.info(
-            `[ResumeParserService] Candidate created successfully: ${newCandidate.id} in ${totalProcessTime}ms`
-        );
+        logger.info("Candidate Created", { candidateId: newCandidate.id });
+        logger.info(`Resume Parsing Complete`, { totalTime: totalProcessTime });
 
         return newCandidate;
     }
