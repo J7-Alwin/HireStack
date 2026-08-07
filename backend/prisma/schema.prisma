@@ -218,6 +218,7 @@ model Job {
   skills          JobSkill[]
   applications    Application[]
   pipelines       HiringPipeline[]
+  atsScores       ATSScore[]
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
 
@@ -363,6 +364,7 @@ model Candidate {
   applications       Application[]
   offers             Offer[]
   pipelines          HiringPipeline[]
+  atsScores          ATSScore[]
   createdAt          DateTime             @default(now())
   updatedAt          DateTime             @updatedAt
 
@@ -827,5 +829,31 @@ model PipelineTimeline {
 
   @@index([pipelineId])
   @@index([createdById])
+}
+
+model ATSScore {
+  id                   String    @id @default(cuid())
+  candidateId          String
+  candidate            Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  jobId                String
+  job                  Job       @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  overallScore         Int
+  skillScore           Int
+  experienceScore      Int
+  educationScore       Int
+  keywordScore         Int
+  certificationScore   Int
+  strengths            Json
+  weaknesses           Json
+  missingSkills        Json
+  recommendations      Json
+  hiringRecommendation String
+  aiModel              String
+  promptVersion        String
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  @@index([candidateId])
+  @@index([jobId])
 }
 

@@ -33,4 +33,92 @@ export const aiSwaggerSchemas = {
             },
         },
     },
+    ATSScoreRequest: {
+        type: "object",
+        required: ["candidateId", "jobId"],
+        properties: {
+            candidateId: {
+                type: "string",
+                example: "clxyz12340000t3t1cr4a6136",
+            },
+            jobId: {
+                type: "string",
+                example: "clxyz56780000t3t1cr4a6136",
+            },
+        },
+    },
+    ATSScoreResponse: {
+        type: "object",
+        properties: {
+            success: {
+                type: "boolean",
+                example: true,
+            },
+            message: {
+                type: "string",
+                example: "ATS score generated successfully.",
+            },
+            data: {
+                type: "object",
+                properties: {
+                    overallScore: {
+                        type: "integer",
+                        example: 89,
+                    },
+                    skillScore: {
+                        type: "integer",
+                        example: 94,
+                    },
+                    experienceScore: {
+                        type: "integer",
+                        example: 86,
+                    },
+                    educationScore: {
+                        type: "integer",
+                        example: 91,
+                    },
+                    keywordScore: {
+                        type: "integer",
+                        example: 84,
+                    },
+                    certificationScore: {
+                        type: "integer",
+                        example: 72,
+                    },
+                    strengths: {
+                        type: "array",
+                        items: {
+                            type: "string",
+                        },
+                        example: ["Strong React development skills"],
+                    },
+                    weaknesses: {
+                        type: "array",
+                        items: {
+                            type: "string",
+                        },
+                        example: ["Lacks containerization experience"],
+                    },
+                    missingSkills: {
+                        type: "array",
+                        items: {
+                            type: "string",
+                        },
+                        example: ["Docker"],
+                    },
+                    recommendations: {
+                        type: "array",
+                        items: {
+                            type: "string",
+                        },
+                        example: ["Study containerization technologies like Docker"],
+                    },
+                    hiringRecommendation: {
+                        type: "string",
+                        example: "Recommended",
+                    },
+                },
+            },
+        },
+    },
 };

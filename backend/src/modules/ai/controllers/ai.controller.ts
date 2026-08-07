@@ -3,6 +3,7 @@ import { HTTP_STATUS } from "../../../shared/constants/api.constants";
 import { successResponse } from "../../../shared/responses/success.response";
 import { resumeParserService } from "../services/resume-parser.service";
 import { aiService } from "../services/ai.service";
+import { atsScoreService } from "../services/ats-score.service";
 import { ValidationError, UnauthorizedError } from "../../../shared/errors";
 
 export const aiController = {
@@ -28,5 +29,18 @@ export const aiController = {
         res
             .status(HTTP_STATUS.OK)
             .json(successResponse("Resume parsed and candidate created successfully", result));
+    },
+
+    atsScore: async (req: Request, res: Response): Promise<void> => {
+        const currentUser = req.user;
+        if (!currentUser) {
+            throw new UnauthorizedError("Unauthenticated");
+        }
+
+        const result = await atsScoreService.calculateATSScore(req.body, currentUser);
+
+        res
+            .status(HTTP_STATUS.OK)
+            .json(successResponse("ATS score generated successfully.", result));
     },
 };

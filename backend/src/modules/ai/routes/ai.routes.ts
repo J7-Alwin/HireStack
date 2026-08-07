@@ -25,4 +25,10 @@ router.post(
     asyncHandler(aiController.parseResume)
 );
 
+router.post(
+    "/ats-score",
+    authorizeRoles(Role.COMPANY_ADMIN, Role.RECRUITER),
+    asyncHandler(aiController.atsScore)
+);
+
 export default router;
