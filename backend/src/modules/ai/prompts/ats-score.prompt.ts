@@ -14,7 +14,11 @@ Candidate Resume:
 - Skills: {{candidateSkills}}
 - Experience: {{candidateExperience}}
 - Education: {{candidateEducation}}
-- Notes/Summary: {{candidateSummary}}
+- Resume Summary: {{candidateSummary}}
+- Projects: {{candidateProjects}}
+- Certifications: {{candidateCertifications}}
+- Languages: {{candidateLanguages}}
+- Resume Raw Text: {{candidateRawText}}
 
 VS
 
@@ -41,27 +45,24 @@ Return this exact schema:
   "keywordScore": 0,
   "certificationScore": 0,
   "strengths": [
-    "strength description 1",
-    "strength description 2"
+    "strength description 1"
   ],
   "weaknesses": [
-    "weakness description 1",
-    "weakness description 2"
+    "weakness description 1"
   ],
   "missingSkills": [
-    "skill name 1",
-    "skill name 2"
+    "skill name 1"
   ],
   "recommendations": [
-    "recommendation 1",
-    "recommendation 2"
+    "recommendation 1"
   ],
-  "hiringRecommendation": "Recommended/Strongly Recommended/Not Recommended/Neutral"
+  "hiringRecommendation": "STRONGLY_RECOMMENDED/RECOMMENDED/CONSIDER/NOT_RECOMMENDED",
+  "overallReason": "overall reason explanation text"
 }
 `;
 
 export const ATS_SCORE_PROMPT_CONFIG = {
-    version: "1.0.0",
+    version: "1.1.0",
     name: "ats-score-prompt",
     description: "System prompt for generating structured ATS score evaluation comparing candidate resume against job description.",
     template: ATS_SCORE_PROMPT,

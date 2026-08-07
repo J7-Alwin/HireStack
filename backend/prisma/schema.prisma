@@ -848,6 +848,7 @@ model ATSScore {
   missingSkills        Json
   recommendations      Json
   hiringRecommendation String
+  overallReason        String
   aiModel              String
   promptVersion        String
   createdAt            DateTime  @default(now())

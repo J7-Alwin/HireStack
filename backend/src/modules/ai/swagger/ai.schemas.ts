@@ -115,7 +115,12 @@ export const aiSwaggerSchemas = {
                     },
                     hiringRecommendation: {
                         type: "string",
-                        example: "Recommended",
+                        enum: ["STRONGLY_RECOMMENDED", "RECOMMENDED", "CONSIDER", "NOT_RECOMMENDED"],
+                        example: "RECOMMENDED",
+                    },
+                    overallReason: {
+                        type: "string",
+                        example: "Candidate has strong backend development experience with excellent project relevance. Missing Kubernetes and Redis experience, but overall matches most required skills.",
                     },
                 },
             },

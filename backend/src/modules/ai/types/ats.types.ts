@@ -1,3 +1,5 @@
+export type HiringRecommendationType = 'STRONGLY_RECOMMENDED' | 'RECOMMENDED' | 'CONSIDER' | 'NOT_RECOMMENDED';
+
 export interface ATSScoreResponse {
     overallScore: number;
     skillScore: number;
@@ -9,7 +11,8 @@ export interface ATSScoreResponse {
     weaknesses: string[];
     missingSkills: string[];
     recommendations: string[];
-    hiringRecommendation: string;
+    hiringRecommendation: HiringRecommendationType;
+    overallReason: string;
 }
 
 export interface ATSScoreRequest {

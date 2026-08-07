@@ -65,7 +65,8 @@ async function runTests() {
                 weaknesses: ["No cloud experience"],
                 missingSkills: ["AWS"],
                 recommendations: ["Learn AWS"],
-                hiringRecommendation: "Recommended",
+                hiringRecommendation: "RECOMMENDED",
+                overallReason: "Excellent fit",
             }),
             responseTime: 100,
         };
@@ -197,7 +198,8 @@ async function runTests() {
             contextRecruiter
         );
         assert(report.overallScore === 85, "Overall score should be 85");
-        assert(report.hiringRecommendation === "Recommended", "Should recommend candidate");
+        assert(report.hiringRecommendation === "RECOMMENDED", "Should recommend candidate");
+        assert(report.overallReason === "Excellent fit", "Overall reason should match");
         console.log("   ✅ Match succeeded.");
 
         // Test Case 2: Save to DB Verification
@@ -207,6 +209,7 @@ async function runTests() {
         });
         assert(dbScore !== null, "Score record should exist in DB");
         assert(dbScore?.overallScore === 85, "DB overall score should match");
+        assert(dbScore?.overallReason === "Excellent fit", "DB overall reason should match");
         assert((dbScore?.strengths as string[]).includes("Strong backend developer"), "DB strengths should match");
         console.log("   ✅ DB persistence verified.");
 

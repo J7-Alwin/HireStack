@@ -1,3 +1,5 @@
+import * as fs from "fs";
+import * as path from "path";
 import { prisma } from "../../../config/prisma";
 import { candidateService } from "../../candidates/candidate.service";
 import { jobService } from "../../jobs/job.service";
@@ -6,6 +8,7 @@ import { ValidationError } from "../../../shared/errors";
 import { AuthenticatedUser } from "../../../shared/types";
 import { PromptBuilder } from "../utils/prompt-builder";
 import { JsonParser } from "../utils/json-parser";
+import { PdfExtractor } from "../utils/pdf-extractor";
 import { aiService } from "./ai.service";
 import { ATS_SCORE_PROMPT_CONFIG } from "../prompts/ats-score.prompt";
 import { AtsScoreSchema, AtsScoreRequestSchema } from "../schemas/ats-score.schema";
@@ -17,15 +20,22 @@ export class AtsScoreService {
         input: ATSScoreRequest,
         currentUser: AuthenticatedUser
     ): Promise<ATSScoreResponse> {
+        // Validate Request Body
+        const parsedInput = AtsScoreRequestSchema.parse(input);
+        return this.evaluateCandidateJob(parsedInput.candidateId, parsedInput.jobId, currentUser);
+    }
+
+    async evaluateCandidateJob(
+        candidateId: string,
+        jobId: string,
+        currentUser: AuthenticatedUser
+    ): Promise<ATSScoreResponse> {
         logger.info("ATS Scoring Started");
 
         try {
-            // Validate Request Body
-            const parsedInput = AtsScoreRequestSchema.parse(input);
-
             // Load Candidate
             const candidate = await candidateService.getCandidateById(
-                parsedInput.candidateId,
+                candidateId,
                 currentUser
             );
             logger.info("Candidate Loaded");
@@ -51,13 +61,32 @@ export class AtsScoreService {
             }
 
             // Load Job
-            const job = await jobService.getJobById(parsedInput.jobId, currentUser);
+            const job = await jobService.getJobById(jobId, currentUser);
             logger.info("Job Loaded");
 
             // Validate Job Description
             if (!job.description || !job.description.trim()) {
                 logger.error("ATS Scoring Failed");
                 throw new ValidationError("Job description is missing.");
+            }
+
+            // Try to extract raw text from resume PDF
+            let rawText: string | null = null;
+            try {
+                let filePath: string;
+                if (resumeDoc.fileUrl.startsWith("http")) {
+                    const filename = path.basename(resumeDoc.fileUrl);
+                    filePath = path.join(__dirname, "../../../../uploads/resumes", filename);
+                } else {
+                    filePath = path.join(__dirname, "../../../..", resumeDoc.fileUrl);
+                }
+
+                if (fs.existsSync(filePath)) {
+                    const buffer = await fs.promises.readFile(filePath);
+                    rawText = await PdfExtractor.extract(buffer);
+                }
+            } catch (error) {
+                logger.warn(`Could not extract raw text from PDF file: ${error instanceof Error ? error.message : String(error)}`);
             }
 
             // Build ATS Prompt
@@ -73,21 +102,28 @@ export class AtsScoreService {
                 ? candidate.education.map((edu) => `${edu.degree} in ${edu.specialization || 'General'} from ${edu.institution} (Graduation: ${edu.graduationYear || 'N/A'})`).join("\n")
                 : "None";
 
-            const candidateSummaryString = candidate.notes && candidate.notes.length > 0
-                ? candidate.notes.map((n) => n.content).join("\n")
+            const summaryNote = candidate.notes?.find((n) => n.content.startsWith("Resume Summary:\n"));
+            const candidateSummaryString = summaryNote 
+                ? summaryNote.content.replace("Resume Summary:\n", "").trim()
                 : "None";
 
             const jobSkillsString = job.skills && job.skills.length > 0
                 ? job.skills.map((s) => s.skill.name).join(", ")
                 : "None";
 
-            const userPrompt = `
+            let userPrompt = `
 [CANDIDATE RESUME PROFILE]
 Skills: ${candidateSkillsString}
 Experience: ${candidateExperienceString}
 Education: ${candidateEducationString}
-Documents/Summary: ${candidateSummaryString}
+Resume Summary: ${candidateSummaryString}
+`;
 
+            if (rawText) {
+                userPrompt += `Resume Raw Text: ${rawText}\n`;
+            }
+
+            userPrompt += `
 [JOB DETAILS]
 Title: ${job.title}
 Description: ${job.description}
@@ -142,6 +178,7 @@ Required Skills: ${jobSkillsString}
                     missingSkills: validatedResponse.missingSkills,
                     recommendations: validatedResponse.recommendations,
                     hiringRecommendation: validatedResponse.hiringRecommendation,
+                    overallReason: validatedResponse.overallReason,
                     aiModel: AI_CONFIG.model,
                     promptVersion: ATS_SCORE_PROMPT_CONFIG.version,
                 },

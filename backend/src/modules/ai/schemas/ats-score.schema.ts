@@ -11,7 +11,8 @@ export const AtsScoreSchema = z.object({
     weaknesses: z.array(z.string()),
     missingSkills: z.array(z.string()),
     recommendations: z.array(z.string()),
-    hiringRecommendation: z.string(),
+    hiringRecommendation: z.enum(["STRONGLY_RECOMMENDED", "RECOMMENDED", "CONSIDER", "NOT_RECOMMENDED"]),
+    overallReason: z.string(),
 });
 
 export type AtsScoreSchemaType = z.infer<typeof AtsScoreSchema>;
