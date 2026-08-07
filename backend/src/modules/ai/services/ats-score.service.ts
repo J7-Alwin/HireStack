@@ -30,7 +30,7 @@ export class AtsScoreService {
         jobId: string,
         currentUser: AuthenticatedUser
     ): Promise<ATSScoreResponse> {
-        logger.info("ATS Scoring Started");
+        logger.info(`ATS Scoring Started for candidate ${candidateId} and job ${jobId}`);
 
         try {
             // Load Candidate
@@ -38,15 +38,16 @@ export class AtsScoreService {
                 candidateId,
                 currentUser
             );
-            logger.info("Candidate Loaded");
+            logger.info(`Candidate Loaded (${candidate.id})`);
 
             // Validate Parsed Resume
             const resumeDoc = candidate.documents?.find(
                 (doc) => doc.documentType === "RESUME" && doc.isActive
             );
             if (!resumeDoc) {
-                logger.error("ATS Scoring Failed");
-                throw new ValidationError("Candidate resume is missing.");
+                const error = new ValidationError("Candidate resume is missing.");
+                logger.error("ATS Scoring Failed: Resume Missing", error);
+                throw error;
             }
 
             // Verify Resume Sufficient Info
@@ -56,18 +57,20 @@ export class AtsScoreService {
                 (candidate.education && candidate.education.length > 0);
 
             if (!hasSufficientInfo) {
-                logger.error("ATS Scoring Failed");
-                throw new ValidationError("Resume contains insufficient information for evaluation.");
+                const error = new ValidationError("Resume contains insufficient information for evaluation.");
+                logger.error("ATS Scoring Failed: Resume contains insufficient information", error);
+                throw error;
             }
 
             // Load Job
             const job = await jobService.getJobById(jobId, currentUser);
-            logger.info("Job Loaded");
+            logger.info(`Job Loaded (${job.id})`);
 
             // Validate Job Description
             if (!job.description || !job.description.trim()) {
-                logger.error("ATS Scoring Failed");
-                throw new ValidationError("Job description is missing.");
+                const error = new ValidationError("Job description is missing.");
+                logger.error("ATS Scoring Failed: Job description is missing", error);
+                throw error;
             }
 
             // Try to extract raw text from resume PDF
@@ -144,11 +147,11 @@ Required Skills: ${jobSkillsString}
             logger.info(`AI Response Time: ${response.responseTime}ms`);
 
             // Parse JSON
-            let parsedResponse: any;
+            let parsedResponse: unknown;
             try {
-                parsedResponse = JsonParser.parse<any>(response.content);
+                parsedResponse = JsonParser.parse<unknown>(response.content);
             } catch (error) {
-                logger.error("ATS Scoring Failed");
+                logger.error("ATS Scoring Failed: Invalid JSON", error);
                 throw new ValidationError("Failed to parse response from AI model as valid JSON.");
             }
 
@@ -157,7 +160,7 @@ Required Skills: ${jobSkillsString}
             try {
                 validatedResponse = AtsScoreSchema.parse(parsedResponse);
             } catch (error) {
-                logger.error("ATS Scoring Failed");
+                logger.error("ATS Scoring Failed: Schema Failure", error);
                 throw error;
             }
             logger.info("Schema Validation Passed");
@@ -183,12 +186,12 @@ Required Skills: ${jobSkillsString}
                     promptVersion: ATS_SCORE_PROMPT_CONFIG.version,
                 },
             });
-            logger.info("ATS Score Stored");
-            logger.info("ATS Scoring Completed");
+            logger.info(`ATS Score Stored (${validatedResponse.overallScore})`);
+            logger.info(`ATS Scoring Completed for candidate ${candidateId} and job ${jobId}`);
 
             return validatedResponse;
         } catch (error) {
-            logger.error("ATS Scoring Failed");
+            logger.error("ATS Scoring Failed", error);
             throw error;
         }
     }
