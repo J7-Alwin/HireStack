@@ -15,6 +15,7 @@ import {
     JobMatchDetailsResponse,
     CandidateMatchResponse
 } from "../types/job-matching.types";
+import { HiringRecommendationType } from "../types/ats.types";
 import { AI_CONFIG } from "../config";
 
 export class JobMatchingService {
@@ -51,8 +52,8 @@ export class JobMatchingService {
             // Loop through each applicant candidate
             for (const app of applications) {
                 try {
-                    logger.info(`Candidate Loaded (${app.candidateId})`);
-                    logger.info(`Evaluation Started for candidate ${app.candidateId}`);
+                    logger.info("Candidate Loaded");
+                    logger.info("Evaluation Started");
 
                     const candidate = await candidateService.getCandidateById(
                         app.candidateId,
@@ -84,7 +85,7 @@ export class JobMatchingService {
                         JOB_MATCHING_PROMPT_CONFIG,
                         JobMatchingSchema
                     );
-                    logger.info(`Evaluation Completed for candidate ${app.candidateId}`);
+                    logger.info("Evaluation Completed");
 
                     // Persist new JobMatch record in the database
                     await prisma.jobMatch.create({
@@ -105,7 +106,7 @@ export class JobMatchingService {
                             promptVersion: JOB_MATCHING_PROMPT_CONFIG.version,
                         },
                     });
-                    logger.info(`JobMatch Stored (${evaluation.matchPercentage})`);
+                    logger.info("JobMatch Stored");
 
                     matches.push({
                         candidateId: candidate.id,
@@ -171,7 +172,7 @@ export class JobMatchingService {
             strengths: h.strengths as string[],
             missingSkills: h.missingSkills as string[],
             overallReason: h.overallReason,
-            recommendation: h.recommendation as any,
+            recommendation: h.recommendation as HiringRecommendationType,
             aiModel: h.aiModel,
             promptVersion: h.promptVersion,
             createdAt: h.createdAt.toISOString(),
@@ -214,7 +215,7 @@ export class JobMatchingService {
             strengths: match.strengths as string[],
             missingSkills: match.missingSkills as string[],
             overallReason: match.overallReason,
-            recommendation: match.recommendation as any,
+            recommendation: match.recommendation as HiringRecommendationType,
             aiModel: match.aiModel,
             promptVersion: match.promptVersion,
             createdAt: match.createdAt.toISOString(),

@@ -7,11 +7,13 @@ import { PromptBuilder } from "../utils/prompt-builder";
 import { JsonParser } from "../utils/json-parser";
 import { PdfExtractor } from "../utils/pdf-extractor";
 import { aiService } from "./ai.service";
+import { SafeCandidate } from "../../candidates/candidate.types";
+import { SafeJob } from "../../jobs/job.types";
 
 export class AiEvaluationService {
     async evaluate<T>(
-        candidate: any,
-        job: any,
+        candidate: SafeCandidate,
+        job: SafeJob,
         promptConfig: { template: string; version: string; name: string },
         schema: z.ZodSchema<T>
     ): Promise<T> {
@@ -20,7 +22,7 @@ export class AiEvaluationService {
         try {
             // Find resume document if any
             const resumeDoc = candidate.documents?.find(
-                (doc: any) => doc.documentType === "RESUME" && doc.isActive
+                (doc) => doc.documentType === "RESUME" && doc.isActive
             );
 
             // Try to extract raw text from resume PDF
@@ -46,24 +48,24 @@ export class AiEvaluationService {
 
             // Build ATS/Job Match Prompt input details
             const candidateSkillsString = candidate.skills && candidate.skills.length > 0
-                ? candidate.skills.map((s: any) => `${s.skill.name} (${s.proficiency || 'Intermediate'})`).join(", ")
+                ? candidate.skills.map((s) => `${s.skill.name} (${s.proficiency || 'Intermediate'})`).join(", ")
                 : "None";
 
             const candidateExperienceString = candidate.experience && candidate.experience.length > 0
-                ? candidate.experience.map((e: any) => `${e.designation} at ${e.company} (${e.startDate ? new Date(e.startDate).getFullYear() : ''} - ${e.endDate ? new Date(e.endDate).getFullYear() : 'Present'}): ${e.description || 'No description'}`).join("\n")
+                ? candidate.experience.map((e) => `${e.designation} at ${e.company} (${e.startDate ? new Date(e.startDate).getFullYear() : ''} - ${e.endDate ? new Date(e.endDate).getFullYear() : 'Present'}): ${e.description || 'No description'}`).join("\n")
                 : "None";
 
             const candidateEducationString = candidate.education && candidate.education.length > 0
-                ? candidate.education.map((edu: any) => `${edu.degree} in ${edu.specialization || 'General'} from ${edu.institution} (Graduation: ${edu.graduationYear || 'N/A'})`).join("\n")
+                ? candidate.education.map((edu) => `${edu.degree} in ${edu.specialization || 'General'} from ${edu.institution} (Graduation: ${edu.graduationYear || 'N/A'})`).join("\n")
                 : "None";
 
-            const summaryNote = candidate.notes?.find((n: any) => n.content.startsWith("Resume Summary:\n"));
+            const summaryNote = candidate.notes?.find((n) => n.content.startsWith("Resume Summary:\n"));
             const candidateSummaryString = summaryNote 
                 ? summaryNote.content.replace("Resume Summary:\n", "").trim()
                 : "None";
 
             const jobSkillsString = job.skills && job.skills.length > 0
-                ? job.skills.map((s: any) => s.skill.name).join(", ")
+                ? job.skills.map((s) => s.skill.name).join(", ")
                 : "None";
 
             let userPrompt = `

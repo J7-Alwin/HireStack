@@ -25,7 +25,7 @@ export class AtsScoreService {
         jobId: string,
         currentUser: AuthenticatedUser
     ): Promise<ATSScoreResponse> {
-        logger.info(`ATS Scoring Started for candidate ${candidateId} and job ${jobId}`);
+        logger.info("ATS Started");
 
         try {
             // Load Candidate
@@ -33,7 +33,7 @@ export class AtsScoreService {
                 candidateId,
                 currentUser
             );
-            logger.info(`Candidate Loaded (${candidate.id})`);
+            logger.info("Candidate Loaded");
 
             // Validate Parsed Resume
             const resumeDoc = candidate.documents?.find(
@@ -59,7 +59,7 @@ export class AtsScoreService {
 
             // Load Job
             const job = await jobService.getJobById(jobId, currentUser);
-            logger.info(`Job Loaded (${job.id})`);
+            logger.info("Job Loaded");
 
             // Validate Job Description
             if (!job.description || !job.description.trim()) {
@@ -97,8 +97,8 @@ export class AtsScoreService {
                     promptVersion: ATS_SCORE_PROMPT_CONFIG.version,
                 },
             });
-            logger.info(`ATS Score Stored (${validatedResponse.overallScore})`);
-            logger.info(`ATS Scoring Completed for candidate ${candidateId} and job ${jobId}`);
+            logger.info("ATS Stored");
+            logger.info("ATS Completed");
 
             return validatedResponse;
         } catch (error) {
