@@ -51,13 +51,14 @@ Tasks
 - Response Validation
 - Resume Types
 - AI Constants
+- Shared AI Evaluation Service
 
 Deliverables
 
 - Common AI Utilities
+- Shared AI Evaluation Service
 - Stable LLM Communication
 - Standardized Prompt System
-
 ---
 
 # Stage 2 – Resume Parser
@@ -97,6 +98,7 @@ Evaluate candidate compatibility with jobs.
 Tasks
 
 - ATS Prompt
+- Shared AI Evaluation
 - Skill Comparison
 - Experience Comparison
 - Education Comparison
@@ -120,18 +122,19 @@ Purpose
 Match candidates against jobs.
 
 Tasks
-
-- Job Matching Prompt
-- Match Calculation
-- Missing Skills
-- Hiring Recommendation
-- Save Match Result
+- Load Applications
+- Invoke ATS Score Service
+- Reuse Shared AI Evaluation
+- Rank Candidates
+- Save JobMatch History
+- Return Ranked Results
 
 Deliverables
 
 - Job Matching API
-- Job Match Table
-
+- JobMatch Database
+- Candidate Ranking
+- Historical Match Records
 ---
 
 # Stage 5 – AI Recommendations
@@ -247,7 +250,19 @@ Validation
 
 ↓
 
+Feature Service
+
+↓
+
+Shared AI Evaluation Service
+
+↓
+
 Prompt Builder
+
+↓
+
+AiService
 
 ↓
 

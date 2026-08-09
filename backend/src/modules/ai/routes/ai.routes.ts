@@ -31,4 +31,22 @@ router.post(
     asyncHandler(aiController.atsScore)
 );
 
+router.post(
+    "/job-matching",
+    authorizeRoles(Role.COMPANY_ADMIN, Role.RECRUITER),
+    asyncHandler(aiController.generateJobMatching)
+);
+
+router.get(
+    "/job-matching/:jobId",
+    authorizeRoles(Role.COMPANY_ADMIN, Role.RECRUITER),
+    asyncHandler(aiController.getJobMatchingHistory)
+);
+
+router.get(
+    "/job-matching/:jobId/:candidateId",
+    authorizeRoles(Role.COMPANY_ADMIN, Role.RECRUITER),
+    asyncHandler(aiController.getCandidateMatchDetails)
+);
+
 export default router;

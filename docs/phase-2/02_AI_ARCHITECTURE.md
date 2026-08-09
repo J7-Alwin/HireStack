@@ -22,39 +22,47 @@ Unlike cloud-based AI services, HireStack performs all inference locally using O
 
 # 2. High Level Architecture
 
-                    Recruiter
-                        │
-                        ▼
-               Express REST API
-                        │
-                        ▼
-                 AI Controller
-                        │
-                        ▼
-                  AI Services
-                        │
-                        ▼
-      ┌─────────────────────────────────┐
-      │ Resume Parser                   │
-      │ ATS Score Engine                │
-      │ Job Matching Engine             │
-      │ Recommendation Engine           │
-      │ Interview Assistant             │
-      │ AI Insights                     │
-      └─────────────────────────────────┘
-                        │
-                        ▼
-                  Prompt Builder
-                        │
-                        ▼
-                   LangChain
-                        │
-                        ▼
-                 Ollama Server
-                        │
-                        ▼
-                 Llama 3.2 Model
-
+                                Recruiter
+                    │
+                    ▼
+           Express REST API
+                    │
+                    ▼
+             AI Controller
+                    │
+                    ▼
+            Feature Services
+                    │
+                    ▼
+      ┌──────────────────────────────┐
+      │ Resume Parser Service        │
+      │ ATS Score Service            │
+      │ Job Matching Service         │
+      │ Recommendation Service       │
+      │ Interview Service            │
+      │ AI Insights Service          │
+      └──────────────────────────────┘
+                    │
+                    ▼
+       Shared AI Evaluation Service
+                    │
+                    ▼
+               Prompt Builder
+                    │
+                    ▼
+                 AiService
+                    │
+                    ▼
+               Ollama Client
+                    │
+                    ▼
+                 LangChain
+                    │
+                    ▼
+               Ollama Server
+                    │
+                    ▼
+               Llama 3.2 Model
 ---
 
 # 3. AI Module Structure
@@ -123,6 +131,7 @@ controller/
 
 service/
 - ai.service.ts
+- ai-evaluation.service.ts  
 - resume-parser.service.ts
 - ats-score.service.ts
 - job-matching.service.ts
@@ -177,7 +186,14 @@ AI Controller
 ↓
 
 Feature Service
-(ResumeParserService / AtsScoreService / etc.)
+
+↓
+
+AI Evaluation Service
+
+↓
+
+Prompt Builder
 
 ↓
 
@@ -269,27 +285,19 @@ Candidate Resume
 
 +
 
-Job Description
+Job
 
 ↓
 
-ATS Prompt
+ATS Score Service
 
 ↓
 
-Llama
+AI Evaluation Service
 
 ↓
 
-Skill Comparison
-
-↓
-
-Score Calculation
-
-↓
-
-Recommendations
+Persist ATS Score
 
 ↓
 
@@ -299,37 +307,60 @@ Return ATS Report
 
 # 7. Job Matching Workflow
 
-Candidate Resume
-
-+
-
-Job Description
+Recruiter Selects Job
 
 ↓
 
-AI Matching Prompt
+Load Applications
 
 ↓
 
-Llama
+Loop Candidates
 
 ↓
 
-Similarity Analysis
+ATS Score Service
 
 ↓
 
-Match Percentage
+AI Evaluation Service
 
 ↓
 
-Missing Skills
+Create JobMatch
 
 ↓
 
-Hiring Recommendation
+Repeat
 
----
+↓
+
+Sort By Match Percentage
+
+↓
+
+Return Ranked Candidates
+
+# Shared AI Evaluation Service
+
+The Shared AI Evaluation Service centralizes all AI communication within the HireStack platform.
+
+Responsibilities
+
+- Build prompts
+- Call AiService
+- Parse JSON
+- Validate AI responses
+- Return structured evaluation objects
+
+This service is reused by:
+
+- ATS Score
+- Job Matching
+- Resume Recommendations (future)
+- AI Insights (future)
+
+The goal is to maintain a single AI evaluation implementation across the platform.
 
 # 8. Interview Assistant Workflow
 

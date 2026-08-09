@@ -126,4 +126,173 @@ export const aiSwaggerSchemas = {
             },
         },
     },
+    JobMatchingRequest: {
+        type: "object",
+        required: ["jobId"],
+        properties: {
+            jobId: {
+                type: "string",
+                example: "clxyz56780000t3t1cr4a6136",
+            },
+        },
+    },
+    JobMatchingResponse: {
+        type: "object",
+        properties: {
+            success: {
+                type: "boolean",
+                example: true,
+            },
+            message: {
+                type: "string",
+                example: "Job matching generated successfully.",
+            },
+            data: {
+                type: "object",
+                properties: {
+                    jobId: {
+                        type: "string",
+                        example: "clxyz56780000t3t1cr4a6136",
+                    },
+                    totalCandidates: {
+                        type: "integer",
+                        example: 2,
+                    },
+                    generatedAt: {
+                        type: "string",
+                        example: "2026-08-09T12:00:00Z",
+                    },
+                    matches: {
+                        type: "array",
+                        items: {
+                            type: "object",
+                            properties: {
+                                candidateId: {
+                                    type: "string",
+                                    example: "clxyz12340000t3t1cr4a6136",
+                                },
+                                candidateName: {
+                                    type: "string",
+                                    example: "John Doe",
+                                },
+                                matchPercentage: {
+                                    type: "integer",
+                                    example: 95,
+                                },
+                                recommendation: {
+                                    type: "string",
+                                    enum: ["STRONGLY_RECOMMENDED", "RECOMMENDED", "CONSIDER", "NOT_RECOMMENDED"],
+                                    example: "STRONGLY_RECOMMENDED",
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    },
+    JobMatchHistoryResponse: {
+        type: "object",
+        properties: {
+            success: {
+                type: "boolean",
+                example: true,
+            },
+            message: {
+                type: "string",
+                example: "Job matching history retrieved successfully.",
+            },
+            data: {
+                type: "array",
+                items: {
+                    $ref: "#/components/schemas/JobMatchDetailsResponse",
+                },
+            },
+        },
+    },
+    JobMatchDetailsResponse: {
+        type: "object",
+        properties: {
+            id: {
+                type: "string",
+                example: "clmatch12340000t3t1cr4a6136",
+            },
+            jobId: {
+                type: "string",
+                example: "clxyz56780000t3t1cr4a6136",
+            },
+            candidateId: {
+                type: "string",
+                example: "clxyz12340000t3t1cr4a6136",
+            },
+            candidateName: {
+                type: "string",
+                example: "John Doe",
+                nullable: true,
+            },
+            matchPercentage: {
+                type: "integer",
+                example: 95,
+            },
+            skillMatch: {
+                type: "integer",
+                example: 90,
+            },
+            experienceMatch: {
+                type: "integer",
+                example: 85,
+            },
+            educationMatch: {
+                type: "integer",
+                example: 80,
+            },
+            projectMatch: {
+                type: "integer",
+                example: 95,
+            },
+            keywordMatch: {
+                type: "integer",
+                example: 88,
+            },
+            strengths: {
+                type: "array",
+                items: {
+                    type: "string",
+                },
+                example: ["Strong experience with TypeScript", "Relevant backend projects"],
+            },
+            missingSkills: {
+                type: "array",
+                items: {
+                    type: "string",
+                },
+                example: ["Docker", "Kubernetes"],
+            },
+            overallReason: {
+                type: "string",
+                example: "Candidate is a strong match for backend responsibilities with solid Node.js and TypeScript skills.",
+            },
+            recommendation: {
+                type: "string",
+                enum: ["STRONGLY_RECOMMENDED", "RECOMMENDED", "CONSIDER", "NOT_RECOMMENDED"],
+                example: "STRONGLY_RECOMMENDED",
+            },
+            aiModel: {
+                type: "string",
+                example: "llama3.2",
+            },
+            promptVersion: {
+                type: "string",
+                example: "1.0.0",
+            },
+            createdAt: {
+                type: "string",
+                example: "2026-08-09T12:00:00Z",
+            },
+            updatedAt: {
+                type: "string",
+                example: "2026-08-09T12:00:00Z",
+            },
+        },
+    },
 };

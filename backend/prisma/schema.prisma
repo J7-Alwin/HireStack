@@ -219,6 +219,7 @@ model Job {
   applications    Application[]
   pipelines       HiringPipeline[]
   atsScores       ATSScore[]
+  jobMatches      JobMatch[]
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
 
@@ -365,6 +366,7 @@ model Candidate {
   offers             Offer[]
   pipelines          HiringPipeline[]
   atsScores          ATSScore[]
+  jobMatches         JobMatch[]
   createdAt          DateTime             @default(now())
   updatedAt          DateTime             @updatedAt
 
@@ -857,4 +859,30 @@ model ATSScore {
   @@index([candidateId])
   @@index([jobId])
 }
+
+model JobMatch {
+  id              String    @id @default(cuid())
+  candidateId     String
+  candidate       Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  jobId           String
+  job             Job       @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  matchPercentage Int
+  skillMatch      Int
+  experienceMatch Int
+  educationMatch  Int
+  projectMatch    Int
+  keywordMatch    Int
+  strengths       Json
+  missingSkills   Json
+  overallReason   String
+  recommendation  String
+  aiModel         String
+  promptVersion   String
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([candidateId])
+  @@index([jobId])
+}
+
 
