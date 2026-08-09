@@ -284,6 +284,7 @@ Business Logic
 
 Database
 
+
 ↓
 
 API Response
