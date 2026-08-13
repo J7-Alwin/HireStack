@@ -105,7 +105,7 @@ export class ResumeRecommendationService {
         this.validateResumeInfo(candidate);
 
         // Load & Authorize Job
-        const job = await this.loadAndAuthorizeJob(jobId, candidate.companyId, currentUser);
+        const job = await this.loadAndAuthorizeJob(jobId, candidate.id, candidate.companyId, currentUser);
 
         // Evaluate via Shared AI Evaluation Service
         const evaluated = await aiEvaluationService.evaluate<ResumeRecommendationSchemaType>(
@@ -231,7 +231,7 @@ export class ResumeRecommendationService {
                 throw new ValidationError("Job ID is missing for job-specific recommendation.");
             }
             // Load and authorize job to ensure recruiter is assigned and scoping is correct
-            await this.loadAndAuthorizeJob(record.jobId, candidate.companyId, currentUser);
+            await this.loadAndAuthorizeJob(record.jobId, candidate.id, candidate.companyId, currentUser);
         }
 
         return {
@@ -258,7 +258,7 @@ export class ResumeRecommendationService {
     ): Promise<SafeCandidate> {
         if (currentUser.role === Role.CANDIDATE) {
             const rawCandidate = await prisma.candidate.findFirst({
-                where: { email: currentUser.email, isActive: true },
+                where: { id: candidateId, email: currentUser.email, isActive: true },
                 include: {
                     skills: { include: { skill: true } },
                     education: true,
@@ -267,7 +267,7 @@ export class ResumeRecommendationService {
                     notes: true,
                 },
             });
-            if (!rawCandidate || rawCandidate.id !== candidateId) {
+            if (!rawCandidate) {
                 throw new ForbiddenError("You are not authorized to access this candidate's details");
             }
             return rawCandidate as unknown as SafeCandidate;
@@ -295,6 +295,7 @@ export class ResumeRecommendationService {
 
     private async loadAndAuthorizeJob(
         jobId: string,
+        candidateId: string,
         candidateCompanyId: string,
         currentUser: AuthenticatedUser
     ): Promise<SafeJob> {
@@ -316,7 +317,14 @@ export class ResumeRecommendationService {
         }
 
         // Role-based restrictions
-        if (currentUser.role === Role.RECRUITER) {
+        if (currentUser.role === Role.CANDIDATE) {
+            const hasApplication = await prisma.application.findFirst({
+                where: { candidateId, jobId, deletedAt: null }
+            });
+            if (!hasApplication) {
+                throw new ForbiddenError("You can only request recommendations for jobs you have applied to.");
+            }
+        } else if (currentUser.role === Role.RECRUITER) {
             if (job.companyId !== currentUser.companyId) {
                 throw new ForbiddenError("Cross-company access is forbidden");
             }

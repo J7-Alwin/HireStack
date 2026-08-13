@@ -7,6 +7,7 @@ import { atsScoreService } from "../services/ats-score.service";
 import { jobMatchingService } from "../services/job-matching.service";
 import { resumeRecommendationService } from "../services/resume-recommendation.service";
 import { ValidationError, UnauthorizedError } from "../../../shared/errors";
+import { GetHistoryParamsSchema, GetDetailsParamsSchema } from "../schemas/resume-recommendation.schema";
 
 export const aiController = {
     healthCheck: async (req: Request, res: Response): Promise<void> => {
@@ -121,7 +122,8 @@ export const aiController = {
             throw new UnauthorizedError("Unauthenticated");
         }
 
-        const result = await resumeRecommendationService.getRecommendationsHistory(req.params.candidateId as string, currentUser);
+        const params = GetHistoryParamsSchema.parse(req.params);
+        const result = await resumeRecommendationService.getRecommendationsHistory(params.candidateId, currentUser);
 
         res
             .status(HTTP_STATUS.OK)
@@ -134,7 +136,8 @@ export const aiController = {
             throw new UnauthorizedError("Unauthenticated");
         }
 
-        const result = await resumeRecommendationService.getRecommendationDetails(req.params.id as string, currentUser);
+        const params = GetDetailsParamsSchema.parse(req.params);
+        const result = await resumeRecommendationService.getRecommendationDetails(params.id, currentUser);
 
         res
             .status(HTTP_STATUS.OK)

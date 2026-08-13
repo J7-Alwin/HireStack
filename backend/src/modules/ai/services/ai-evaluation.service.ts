@@ -28,21 +28,23 @@ export class AiEvaluationService {
             // Try to extract raw text from resume PDF
             let rawText: string | null = null;
             if (resumeDoc) {
-                try {
-                    let filePath: string;
-                    if (resumeDoc.fileUrl.startsWith("http")) {
-                        const filename = path.basename(resumeDoc.fileUrl);
-                        filePath = path.join(__dirname, "../../../../uploads/resumes", filename);
-                    } else {
-                        filePath = path.join(__dirname, "../../../..", resumeDoc.fileUrl);
-                    }
+                let filePath: string;
+                if (resumeDoc.fileUrl.startsWith("http")) {
+                    const filename = path.basename(resumeDoc.fileUrl);
+                    filePath = path.join(__dirname, "../../../../uploads/resumes", filename);
+                } else {
+                    filePath = path.join(__dirname, "../../../..", resumeDoc.fileUrl);
+                }
 
-                    if (fs.existsSync(filePath)) {
-                        const buffer = await fs.promises.readFile(filePath);
-                        rawText = await PdfExtractor.extract(buffer);
-                    }
+                if (!fs.existsSync(filePath)) {
+                    throw new ValidationError(`Resume PDF file not found at path: ${filePath}`);
+                }
+
+                try {
+                    const buffer = await fs.promises.readFile(filePath);
+                    rawText = await PdfExtractor.extract(buffer);
                 } catch (error) {
-                    logger.warn(`Could not extract raw text from PDF file: ${error instanceof Error ? error.message : String(error)}`);
+                    throw new ValidationError(`Failed to extract text from resume PDF: ${error instanceof Error ? error.message : String(error)}`);
                 }
             }
 

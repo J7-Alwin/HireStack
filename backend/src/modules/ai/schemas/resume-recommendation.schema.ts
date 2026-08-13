@@ -35,4 +35,12 @@ export const JobSpecificRecommendationRequestSchema = z.object({
     jobId: z.string().cuid("Invalid job ID format"),
 });
 
+export const GetHistoryParamsSchema = z.object({
+    candidateId: z.string().cuid("Invalid candidate ID format"),
+});
+
+export const GetDetailsParamsSchema = z.object({
+    id: z.string().cuid("Invalid recommendation ID format"),
+});
+
 export type ResumeRecommendationSchemaType = z.infer<typeof ResumeRecommendationSchema>;

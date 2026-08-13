@@ -417,7 +417,7 @@ export const aiSwaggerSchemas = {
                     },
                     promptVersion: {
                         type: "string",
-                        example: "1.0.0",
+                        example: "1.1.0",
                     },
                     createdAt: {
                         type: "string",
@@ -475,7 +475,7 @@ export const aiSwaggerSchemas = {
                         },
                         promptVersion: {
                             type: "string",
-                            example: "1.0.0",
+                            example: "1.1.0",
                         },
                         createdAt: {
                             type: "string",
