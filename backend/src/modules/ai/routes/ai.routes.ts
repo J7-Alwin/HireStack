@@ -49,4 +49,29 @@ router.get(
     asyncHandler(aiController.getCandidateMatchDetails)
 );
 
+// Resume Recommendations Endpoints
+router.post(
+    "/resume-recommendations",
+    authorizeRoles(Role.COMPANY_ADMIN, Role.RECRUITER, Role.CANDIDATE),
+    asyncHandler(aiController.generateGeneralRecommendations)
+);
+
+router.post(
+    "/resume-recommendations/job",
+    authorizeRoles(Role.COMPANY_ADMIN, Role.RECRUITER, Role.CANDIDATE),
+    asyncHandler(aiController.generateJobRecommendations)
+);
+
+router.get(
+    "/resume-recommendations/history/:candidateId",
+    authorizeRoles(Role.COMPANY_ADMIN, Role.RECRUITER, Role.CANDIDATE),
+    asyncHandler(aiController.getRecommendationsHistory)
+);
+
+router.get(
+    "/resume-recommendations/:id",
+    authorizeRoles(Role.COMPANY_ADMIN, Role.RECRUITER, Role.CANDIDATE),
+    asyncHandler(aiController.getRecommendationDetails)
+);
+
 export default router;

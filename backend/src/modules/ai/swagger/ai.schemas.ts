@@ -295,4 +295,199 @@ export const aiSwaggerSchemas = {
             },
         },
     },
+    ResumeRecommendationRequest: {
+        type: "object",
+        required: ["candidateId"],
+        properties: {
+            candidateId: {
+                type: "string",
+                example: "clxyz12340000t3t1cr4a6136",
+            },
+        },
+    },
+    JobSpecificResumeRecommendationRequest: {
+        type: "object",
+        required: ["candidateId", "jobId"],
+        properties: {
+            candidateId: {
+                type: "string",
+                example: "clxyz12340000t3t1cr4a6136",
+            },
+            jobId: {
+                type: "string",
+                example: "clxyz56780000t3t1cr4a6136",
+            },
+        },
+    },
+    ResumeRecommendationItem: {
+        type: "object",
+        properties: {
+            category: {
+                type: "string",
+                enum: [
+                    "SUMMARY",
+                    "EXPERIENCE",
+                    "SKILLS",
+                    "EDUCATION",
+                    "PROJECTS",
+                    "CERTIFICATIONS",
+                    "KEYWORDS",
+                    "ATS_OPTIMIZATION",
+                    "FORMATTING_AND_STRUCTURE"
+                ],
+                example: "EXPERIENCE",
+            },
+            priority: {
+                type: "string",
+                enum: ["HIGH", "MEDIUM", "LOW"],
+                example: "HIGH",
+            },
+            currentIssue: {
+                type: "string",
+                example: "Experience descriptions focus mainly on responsibilities.",
+            },
+            recommendation: {
+                type: "string",
+                example: "Highlight measurable outcomes and technical contributions where the candidate has evidence for them.",
+            },
+            reason: {
+                type: "string",
+                example: "Achievement-oriented descriptions make experience easier to understand.",
+            },
+            evidence: {
+                type: "string",
+                example: "Backend development responsibilities are listed without measurable outcomes.",
+            },
+            expectedImprovement: {
+                type: "string",
+                example: "Improves clarity and communicates professional impact more effectively.",
+            },
+            jobRequirement: {
+                type: "string",
+                example: "Backend API development",
+                nullable: true,
+            },
+        },
+    },
+    ResumeRecommendationResponse: {
+        type: "object",
+        properties: {
+            success: {
+                type: "boolean",
+                example: true,
+            },
+            message: {
+                type: "string",
+                example: "Resume recommendations generated successfully.",
+            },
+            data: {
+                type: "object",
+                properties: {
+                    id: {
+                        type: "string",
+                        example: "clrec12340000t3t1cr4a6136",
+                    },
+                    candidateId: {
+                        type: "string",
+                        example: "clxyz12340000t3t1cr4a6136",
+                    },
+                    jobId: {
+                        type: "string",
+                        example: "clxyz56780000t3t1cr4a6136",
+                        nullable: true,
+                    },
+                    mode: {
+                        type: "string",
+                        enum: ["GENERAL", "JOB_SPECIFIC"],
+                        example: "JOB_SPECIFIC",
+                    },
+                    overallSummary: {
+                        type: "string",
+                        example: "The resume aligns well with the backend development requirements but should better emphasize TypeScript and API development experience.",
+                    },
+                    recommendations: {
+                        type: "array",
+                        items: {
+                            $ref: "#/components/schemas/ResumeRecommendationItem",
+                        },
+                    },
+                    aiModel: {
+                        type: "string",
+                        example: "llama3.2",
+                    },
+                    promptVersion: {
+                        type: "string",
+                        example: "1.0.0",
+                    },
+                    createdAt: {
+                        type: "string",
+                        example: "2026-08-09T12:00:00Z",
+                    },
+                    updatedAt: {
+                        type: "string",
+                        example: "2026-08-09T12:00:00Z",
+                    },
+                },
+            },
+        },
+    },
+    ResumeRecommendationHistoryResponse: {
+        type: "object",
+        properties: {
+            success: {
+                type: "boolean",
+                example: true,
+            },
+            message: {
+                type: "string",
+                example: "Resume recommendations history retrieved successfully.",
+            },
+            data: {
+                type: "array",
+                items: {
+                    type: "object",
+                    properties: {
+                        id: {
+                            type: "string",
+                            example: "clrec12340000t3t1cr4a6136",
+                        },
+                        candidateId: {
+                            type: "string",
+                            example: "clxyz12340000t3t1cr4a6136",
+                        },
+                        jobId: {
+                            type: "string",
+                            example: "clxyz56780000t3t1cr4a6136",
+                            nullable: true,
+                        },
+                        mode: {
+                            type: "string",
+                            enum: ["GENERAL", "JOB_SPECIFIC"],
+                            example: "JOB_SPECIFIC",
+                        },
+                        overallSummary: {
+                            type: "string",
+                            example: "The resume aligns well with the backend development requirements but should better emphasize TypeScript and API development experience.",
+                        },
+                        aiModel: {
+                            type: "string",
+                            example: "llama3.2",
+                        },
+                        promptVersion: {
+                            type: "string",
+                            example: "1.0.0",
+                        },
+                        createdAt: {
+                            type: "string",
+                            example: "2026-08-09T12:00:00Z",
+                        },
+                        updatedAt: {
+                            type: "string",
+                            example: "2026-08-09T12:00:00Z",
+                        },
+                    },
+                },
+            },
+        },
+    },
 };

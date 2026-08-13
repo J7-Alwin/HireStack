@@ -220,6 +220,7 @@ model Job {
   pipelines       HiringPipeline[]
   atsScores       ATSScore[]
   jobMatches      JobMatch[]
+  resumeRecommendations ResumeRecommendation[]
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
 
@@ -367,6 +368,7 @@ model Candidate {
   pipelines          HiringPipeline[]
   atsScores          ATSScore[]
   jobMatches         JobMatch[]
+  resumeRecommendations ResumeRecommendation[]
   createdAt          DateTime             @default(now())
   updatedAt          DateTime             @updatedAt
 
@@ -876,6 +878,24 @@ model JobMatch {
   missingSkills   Json
   overallReason   String
   recommendation  String
+  aiModel         String
+  promptVersion   String
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([candidateId])
+  @@index([jobId])
+}
+
+model ResumeRecommendation {
+  id              String    @id @default(cuid())
+  candidateId     String
+  candidate       Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  jobId           String?
+  job             Job?      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  mode            String    // GENERAL or JOB_SPECIFIC
+  overallSummary  String
+  recommendations Json      // array of recommendations
   aiModel         String
   promptVersion   String
   createdAt       DateTime  @default(now())

@@ -337,4 +337,230 @@
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
+
+/**
+ * @openapi
+ * /v1/ai/resume-recommendations:
+ *   post:
+ *     tags:
+ *       - AI
+ *     summary: Generate General Resume Recommendations
+ *     description: Analyzes candidate resume text and details and suggests professional quality and formatting improvements.
+ *     operationId: generateGeneralRecommendations
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/ResumeRecommendationRequest'
+ *     responses:
+ *       200:
+ *         description: Resume recommendations generated successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ResumeRecommendationResponse'
+ *       400:
+ *         description: Bad request (validation errors).
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ValidationError'
+ *       401:
+ *         description: Unauthorized.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/UnauthorizedError'
+ *       403:
+ *         description: Forbidden role or unauthorized access.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: Candidate not found.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       422:
+ *         description: Unprocessable entity (missing resume or insufficient details).
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Internal server error.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+
+/**
+ * @openapi
+ * /v1/ai/resume-recommendations/job:
+ *   post:
+ *     tags:
+ *       - AI
+ *     summary: Generate Job-Specific Resume Recommendations
+ *     description: Compares candidate resume and details against a selected job description to identify alignment gaps and keyword optimization improvements.
+ *     operationId: generateJobRecommendations
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/JobSpecificResumeRecommendationRequest'
+ *     responses:
+ *       200:
+ *         description: Job-specific resume recommendations generated successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ResumeRecommendationResponse'
+ *       400:
+ *         description: Bad request (validation errors).
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ValidationError'
+ *       401:
+ *         description: Unauthorized.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/UnauthorizedError'
+ *       403:
+ *         description: Forbidden role or unauthorized access.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: Candidate or Job not found.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       422:
+ *         description: Unprocessable entity.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Internal server error.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+
+/**
+ * @openapi
+ * /v1/ai/resume-recommendations/history/{candidateId}:
+ *   get:
+ *     tags:
+ *       - AI
+ *     summary: Get Resume Recommendations History
+ *     description: Retrieves the list of historical AI resume recommendation reviews generated for a candidate.
+ *     operationId: getRecommendationsHistory
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: candidateId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: CUID of the Candidate
+ *     responses:
+ *       200:
+ *         description: Resume recommendations history retrieved successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ResumeRecommendationHistoryResponse'
+ *       401:
+ *         description: Unauthorized.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/UnauthorizedError'
+ *       403:
+ *         description: Forbidden role or unauthorized access.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: Candidate not found.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Internal server error.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+
+/**
+ * @openapi
+ * /v1/ai/resume-recommendations/{id}:
+ *   get:
+ *     tags:
+ *       - AI
+ *     summary: Get Resume Recommendation Details
+ *     description: Retrieves the detailed recommendations list and overall summary for a specific historical evaluation ID.
+ *     operationId: getRecommendationDetails
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: CUID of the Resume Recommendation record
+ *     responses:
+ *       200:
+ *         description: Resume recommendation details retrieved successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ResumeRecommendationResponse'
+ *       401:
+ *         description: Unauthorized.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/UnauthorizedError'
+ *       403:
+ *         description: Forbidden role or unauthorized access.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: Recommendation details not found.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Internal server error.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
 export const aiSwaggerPaths = {};

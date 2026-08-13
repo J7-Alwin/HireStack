@@ -13,11 +13,11 @@ import { SafeJob } from "../../jobs/job.types";
 export class AiEvaluationService {
     async evaluate<T>(
         candidate: SafeCandidate,
-        job: SafeJob,
+        job: SafeJob | null | undefined,
         promptConfig: { template: string; version: string; name: string },
         schema: z.ZodSchema<T>
     ): Promise<T> {
-        logger.info(`AI Evaluation Started for candidate ${candidate.id} and job ${job.id}`);
+        logger.info(`AI Evaluation Started for candidate ${candidate.id} and job ${job?.id || "none"}`);
 
         try {
             // Find resume document if any
@@ -64,10 +64,6 @@ export class AiEvaluationService {
                 ? summaryNote.content.replace("Resume Summary:\n", "").trim()
                 : "None";
 
-            const jobSkillsString = job.skills && job.skills.length > 0
-                ? job.skills.map((s) => s.skill.name).join(", ")
-                : "None";
-
             let userPrompt = `
 [CANDIDATE RESUME PROFILE]
 Skills: ${candidateSkillsString}
@@ -80,7 +76,12 @@ Resume Summary: ${candidateSummaryString}
                 userPrompt += `Resume Raw Text: ${rawText}\n`;
             }
 
-            userPrompt += `
+            if (job) {
+                const jobSkillsString = job.skills && job.skills.length > 0
+                    ? job.skills.map((s) => s.skill.name).join(", ")
+                    : "None";
+
+                userPrompt += `
 [JOB DETAILS]
 Title: ${job.title}
 Description: ${job.description}
@@ -90,6 +91,7 @@ Experience Min: ${job.experienceMin !== null ? job.experienceMin : "Not specifie
 Experience Max: ${job.experienceMax !== null ? job.experienceMax : "Not specified"} years
 Required Skills: ${jobSkillsString}
 `;
+            }
 
             const prompt = PromptBuilder.build(promptConfig.template, userPrompt);
             logger.info("Prompt Generated");

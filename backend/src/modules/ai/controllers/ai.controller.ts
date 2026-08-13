@@ -5,6 +5,7 @@ import { resumeParserService } from "../services/resume-parser.service";
 import { aiService } from "../services/ai.service";
 import { atsScoreService } from "../services/ats-score.service";
 import { jobMatchingService } from "../services/job-matching.service";
+import { resumeRecommendationService } from "../services/resume-recommendation.service";
 import { ValidationError, UnauthorizedError } from "../../../shared/errors";
 
 export const aiController = {
@@ -86,5 +87,57 @@ export const aiController = {
         res
             .status(HTTP_STATUS.OK)
             .json(successResponse("Candidate match details retrieved successfully.", result));
+    },
+
+    generateGeneralRecommendations: async (req: Request, res: Response): Promise<void> => {
+        const currentUser = req.user;
+        if (!currentUser) {
+            throw new UnauthorizedError("Unauthenticated");
+        }
+
+        const result = await resumeRecommendationService.generateGeneralRecommendations(req.body, currentUser);
+
+        res
+            .status(HTTP_STATUS.OK)
+            .json(successResponse("General resume recommendations generated successfully.", result));
+    },
+
+    generateJobRecommendations: async (req: Request, res: Response): Promise<void> => {
+        const currentUser = req.user;
+        if (!currentUser) {
+            throw new UnauthorizedError("Unauthenticated");
+        }
+
+        const result = await resumeRecommendationService.generateJobRecommendations(req.body, currentUser);
+
+        res
+            .status(HTTP_STATUS.OK)
+            .json(successResponse("Job-specific resume recommendations generated successfully.", result));
+    },
+
+    getRecommendationsHistory: async (req: Request, res: Response): Promise<void> => {
+        const currentUser = req.user;
+        if (!currentUser) {
+            throw new UnauthorizedError("Unauthenticated");
+        }
+
+        const result = await resumeRecommendationService.getRecommendationsHistory(req.params.candidateId as string, currentUser);
+
+        res
+            .status(HTTP_STATUS.OK)
+            .json(successResponse("Resume recommendations history retrieved successfully.", result));
+    },
+
+    getRecommendationDetails: async (req: Request, res: Response): Promise<void> => {
+        const currentUser = req.user;
+        if (!currentUser) {
+            throw new UnauthorizedError("Unauthenticated");
+        }
+
+        const result = await resumeRecommendationService.getRecommendationDetails(req.params.id as string, currentUser);
+
+        res
+            .status(HTTP_STATUS.OK)
+            .json(successResponse("Resume recommendation details retrieved successfully.", result));
     },
 };
