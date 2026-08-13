@@ -887,19 +887,24 @@ model JobMatch {
   @@index([jobId])
 }
 
+enum ResumeRecommendationMode {
+  GENERAL
+  JOB_SPECIFIC
+}
+
 model ResumeRecommendation {
-  id              String    @id @default(cuid())
+  id              String                   @id @default(cuid())
   candidateId     String
-  candidate       Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  candidate       Candidate                @relation(fields: [candidateId], references: [id], onDelete: Cascade)
   jobId           String?
-  job             Job?      @relation(fields: [jobId], references: [id], onDelete: Cascade)
-  mode            String    // GENERAL or JOB_SPECIFIC
+  job             Job?                     @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  mode            ResumeRecommendationMode
   overallSummary  String
-  recommendations Json      // array of recommendations
+  recommendations Json                     // array of recommendations
   aiModel         String
   promptVersion   String
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
 
   @@index([candidateId])
   @@index([jobId])

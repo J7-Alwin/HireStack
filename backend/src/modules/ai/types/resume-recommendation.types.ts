@@ -22,7 +22,8 @@ export interface ResumeRecommendationItem {
     jobRequirement?: string;
 }
 
-export type ResumeRecommendationMode = "GENERAL" | "JOB_SPECIFIC";
+import { ResumeRecommendationMode } from "@prisma/client";
+export { ResumeRecommendationMode };
 
 export interface ResumeRecommendationResponse {
     id: string;

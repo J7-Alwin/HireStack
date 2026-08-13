@@ -2,11 +2,10 @@ import { prisma } from "../src/config/prisma";
 import { Role, AccountStatus, DocumentType } from "@prisma/client";
 import { resumeRecommendationService } from "../src/modules/ai/services/resume-recommendation.service";
 import { AuthenticatedUser } from "../src/shared/types";
-import { logger } from "../src/shared/logger/logger";
 import { ForbiddenError } from "../src/shared/errors";
 
 async function runSmokeTests() {
-    console.log("=== STARTING RESUME RECOMMENDATION SMOKE TESTS ===");
+    console.log("=== STARTING RESUME RECOMMENDATION SECURITY SMOKE TESTS ===");
 
     // 1. Load seeded base data
     const company = await prisma.company.findFirst({
@@ -19,15 +18,41 @@ async function runSmokeTests() {
     });
     if (!department) throw new Error("Seed department not found.");
 
-    const recruiterUser = await prisma.user.findFirst({
-        where: { email: "24mcab08@kristujayanti.com" }
-    });
-    if (!recruiterUser) throw new Error("Seed recruiter user not found.");
-
     const companyAdminUser = await prisma.user.findFirst({
         where: { email: "j7alwin@gmail.com" }
     });
     if (!companyAdminUser) throw new Error("Seed company admin user not found.");
+
+    // Create Recruiter A & B Users
+    const recruiterAEmail = "recruiter-a@example.com";
+    let recruiterA = await prisma.user.findUnique({ where: { email: recruiterAEmail } });
+    if (!recruiterA) {
+        recruiterA = await prisma.user.create({
+            data: {
+                email: recruiterAEmail,
+                password: "hashedPassword123",
+                name: "Recruiter A",
+                role: Role.RECRUITER,
+                status: AccountStatus.ACTIVE,
+                companyId: company.id,
+            }
+        });
+    }
+
+    const recruiterBEmail = "recruiter-b@example.com";
+    let recruiterB = await prisma.user.findUnique({ where: { email: recruiterBEmail } });
+    if (!recruiterB) {
+        recruiterB = await prisma.user.create({
+            data: {
+                email: recruiterBEmail,
+                password: "hashedPassword123",
+                name: "Recruiter B",
+                role: Role.RECRUITER,
+                status: AccountStatus.ACTIVE,
+                companyId: company.id,
+            }
+        });
+    }
 
     // Create a Candidate User
     const candidateUserEmail = "test-candidate-user@example.com";
@@ -49,14 +74,13 @@ async function runSmokeTests() {
     const candidateCode = "CAN-99999";
     let candidate = await prisma.candidate.findFirst({ where: { candidateCode } });
     if (candidate) {
-        // Clean up previous run if any
         await prisma.candidate.delete({ where: { id: candidate.id } });
     }
 
     candidate = await prisma.candidate.create({
         data: {
             companyId: company.id,
-            primaryRecruiterId: recruiterUser.id,
+            primaryRecruiterId: recruiterB.id,
             candidateCode,
             firstName: "John",
             lastName: "Doe",
@@ -130,86 +154,95 @@ async function runSmokeTests() {
         }
     });
 
-    console.log(`Created Candidate Profile: ${candidate.firstName} ${candidate.lastName} (ID: ${candidate.id})`);
+    console.log(`Created Candidate Profile: ${candidate.firstName} (ID: ${candidate.id})`);
 
-    // 3. Create a Job profile
-    const jobCode = "JOB-99999";
-    let job = await prisma.job.findUnique({ where: { jobCode } });
-    if (job) {
-        await prisma.job.delete({ where: { id: job.id } });
+    // 3. Create Job A (assigned to Recruiter A)
+    const jobACode = "JOB-A-99999";
+    let jobA = await prisma.job.findUnique({ where: { jobCode: jobACode } });
+    if (jobA) {
+        await prisma.job.delete({ where: { id: jobA.id } });
     }
-
-    job = await prisma.job.create({
+    jobA = await prisma.job.create({
         data: {
             companyId: company.id,
             departmentId: department.id,
-            jobCode,
-            title: "Backend Engineer (Node.js & TypeScript)",
-            description: "We are looking for a Node.js and TypeScript backend engineer. Experience building REST APIs and SQL optimization is required. Knowledge of Docker is a plus.",
-            requirements: "TypeScript, Node.js, SQL, REST APIs. Docker is preferred.",
-            responsibilities: "Write clean, performant backend code, write unit tests, design databases.",
+            jobCode: jobACode,
+            title: "Backend Dev Job A",
+            description: "Backend Job A requiring Node.js",
+            requirements: "Node.js",
+            responsibilities: "Write code",
             employmentType: "FULL_TIME",
             workplaceType: "HYBRID",
-            experienceMin: 2,
-            experienceMax: 5,
             openings: 1,
             isActive: true,
             createdBy: companyAdminUser.id,
             recruiters: {
                 create: [
                     {
-                        recruiterId: recruiterUser.id,
+                        recruiterId: recruiterA.id,
                         assignedById: companyAdminUser.id,
-                    }
-                ]
-            },
-            skills: {
-                create: [
-                    {
-                        skill: {
-                            connectOrCreate: {
-                                where: { name: "Node.js" },
-                                create: { name: "Node.js" }
-                            }
-                        }
-                    },
-                    {
-                        skill: {
-                            connectOrCreate: {
-                                where: { name: "TypeScript" },
-                                create: { name: "TypeScript" }
-                            }
-                        }
                     }
                 ]
             }
         }
     });
 
-    console.log(`Created Job Profile: ${job.title} (ID: ${job.id})`);
+    // Create Job B (assigned to Recruiter B)
+    const jobBCode = "JOB-B-99999";
+    let jobB = await prisma.job.findUnique({ where: { jobCode: jobBCode } });
+    if (jobB) {
+        await prisma.job.delete({ where: { id: jobB.id } });
+    }
+    jobB = await prisma.job.create({
+        data: {
+            companyId: company.id,
+            departmentId: department.id,
+            jobCode: jobBCode,
+            title: "Backend Dev Job B",
+            description: "Backend Job B requiring TypeScript",
+            requirements: "TypeScript",
+            responsibilities: "Write code",
+            employmentType: "FULL_TIME",
+            workplaceType: "HYBRID",
+            openings: 1,
+            isActive: true,
+            createdBy: companyAdminUser.id,
+            recruiters: {
+                create: [
+                    {
+                        recruiterId: recruiterB.id,
+                        assignedById: companyAdminUser.id,
+                    }
+                ]
+            }
+        }
+    });
+
+    console.log(`Created Job A: ${jobA.title} (ID: ${jobA.id}, Recruiter A: ${recruiterA.name})`);
+    console.log(`Created Job B: ${jobB.title} (ID: ${jobB.id}, Recruiter B: ${recruiterB.name})`);
 
     // Prepare Auth Users
     const candidateUserAuth: AuthenticatedUser = {
         id: candidateUser.id,
         email: candidateUser.email,
         role: "CANDIDATE",
-        status: "ACTIVE" as any,
+        status: AccountStatus.ACTIVE,
         companyId: company.id,
     };
 
-    const recruiterUserAuth: AuthenticatedUser = {
-        id: recruiterUser.id,
-        email: recruiterUser.email,
+    const recruiterAAuth: AuthenticatedUser = {
+        id: recruiterA.id,
+        email: recruiterA.email,
         role: "RECRUITER",
-        status: "ACTIVE" as any,
+        status: AccountStatus.ACTIVE,
         companyId: company.id,
     };
 
-    const companyAdminUserAuth: AuthenticatedUser = {
-        id: companyAdminUser.id,
-        email: companyAdminUser.email,
-        role: "COMPANY_ADMIN",
-        status: "ACTIVE" as any,
+    const recruiterBAuth: AuthenticatedUser = {
+        id: recruiterB.id,
+        email: recruiterB.email,
+        role: "RECRUITER",
+        status: AccountStatus.ACTIVE,
         companyId: company.id,
     };
 
@@ -221,90 +254,102 @@ async function runSmokeTests() {
         { candidateId: candidate.id },
         candidateUserAuth
     );
-    console.log("TEST 1 PASSED: General Resume recommendations successfully generated:");
+    console.log("TEST 1 PASSED: General Resume recommendations successfully generated.");
     console.log("- Mode:", generalResult.mode);
     console.log("- Overall Summary:", generalResult.overallSummary);
-    console.log("- Total recommendations count:", generalResult.recommendations.length);
-    if (generalResult.recommendations.length > 0) {
-        console.log("- Sample Category:", generalResult.recommendations[0].category);
-        console.log("- Sample Recommendation:", generalResult.recommendations[0].recommendation);
-    }
 
     // -------------------------------------------------------------
-    // TEST 2: Generate JOB_SPECIFIC Recommendations
+    // TEST 2: Generate JOB_SPECIFIC Recommendations for Job B using Recruiter B
     // -------------------------------------------------------------
-    console.log("\n--- TEST 2: Running JOB_SPECIFIC Mode Resume Optimization ---");
-    const jobSpecificResult = await resumeRecommendationService.generateJobRecommendations(
-        { candidateId: candidate.id, jobId: job.id },
-        recruiterUserAuth
+    console.log("\n--- TEST 2: Running JOB_SPECIFIC Mode Resume Optimization for Job B ---");
+    const jobSpecificBResult = await resumeRecommendationService.generateJobRecommendations(
+        { candidateId: candidate.id, jobId: jobB.id },
+        recruiterBAuth
     );
-    console.log("TEST 2 PASSED: Job-Specific Resume recommendations successfully generated:");
-    console.log("- Mode:", jobSpecificResult.mode);
-    console.log("- Overall Summary:", jobSpecificResult.overallSummary);
-    console.log("- Total recommendations count:", jobSpecificResult.recommendations.length);
+    console.log("TEST 2 PASSED: Job B Specific recommendations successfully generated by Recruiter B.");
+    console.log("- Mode:", jobSpecificBResult.mode);
+    console.log("- Recommendations count:", jobSpecificBResult.recommendations.length);
 
     // -------------------------------------------------------------
-    // TEST 3: Retrieve History
+    // TEST 3: Recruiter A attempting to generate recommendations for Job B (should fail)
     // -------------------------------------------------------------
-    console.log("\n--- TEST 3: Fetching Recommendations History ---");
-    const history = await resumeRecommendationService.getRecommendationsHistory(
-        candidate.id,
-        candidateUserAuth
-    );
-    console.log("TEST 3 PASSED: History fetched successfully:");
-    console.log("- Count of historical evaluations:", history.length);
-    for (const h of history) {
-        console.log(`  * ID: ${h.id} | Mode: ${h.mode} | Overall Summary: ${h.overallSummary}`);
-    }
-
-    // -------------------------------------------------------------
-    // TEST 4: Retrieve Details
-    // -------------------------------------------------------------
-    console.log("\n--- TEST 4: Fetching Recommendation Details ---");
-    const latestRec = history[0];
-    const details = await resumeRecommendationService.getRecommendationDetails(
-        latestRec.id,
-        recruiterUserAuth
-    );
-    console.log("TEST 4 PASSED: Details fetched successfully:");
-    console.log("- Mode:", details.mode);
-    console.log("- Recommendations details count:", details.recommendations.length);
-
-    // -------------------------------------------------------------
-    // TEST 5: Enforce Candidate Ownership boundaries
-    // -------------------------------------------------------------
-    console.log("\n--- TEST 5: Enforcing Candidate boundaries ---");
-    const anotherCandidateUserAuth: AuthenticatedUser = {
-        id: "some_other_user_id",
-        email: "other-candidate@example.com",
-        role: "CANDIDATE",
-        status: "ACTIVE" as any,
-        companyId: company.id,
-    };
-
+    console.log("\n--- TEST 3: Recruiter A attempting to generate Job-Specific recommendations for Job B ---");
     try {
-        await resumeRecommendationService.generateGeneralRecommendations(
-            { candidateId: candidate.id },
-            anotherCandidateUserAuth
+        await resumeRecommendationService.generateJobRecommendations(
+            { candidateId: candidate.id, jobId: jobB.id },
+            recruiterAAuth
         );
-        throw new Error("FAIL: Allowed unauthorized candidate to access candidate recommendations!");
+        throw new Error("FAIL: Recruiter A was able to generate recommendations for Job B!");
     } catch (error) {
         if (error instanceof ForbiddenError) {
-            console.log("TEST 5 PASSED: Unauthorized candidate access was successfully blocked:", error.message);
+            console.log("TEST 3 PASSED: Generation blocked as expected:", error.message);
         } else {
             throw error;
         }
     }
 
     // -------------------------------------------------------------
+    // TEST 4: Recruiter A attempting to retrieve details of Job B recommendation (should fail)
+    // -------------------------------------------------------------
+    console.log("\n--- TEST 4: Recruiter A attempting to retrieve details for Job B recommendation ---");
+    try {
+        await resumeRecommendationService.getRecommendationDetails(
+            jobSpecificBResult.id,
+            recruiterAAuth
+        );
+        throw new Error("FAIL: Recruiter A was able to retrieve details for Job B recommendation!");
+    } catch (error) {
+        if (error instanceof ForbiddenError) {
+            console.log("TEST 4 PASSED: Retrieval blocked as expected:", error.message);
+        } else {
+            throw error;
+        }
+    }
+
+    // -------------------------------------------------------------
+    // TEST 5: Recruiter A requesting history of Candidate (should not contain Job B recommendations)
+    // -------------------------------------------------------------
+    console.log("\n--- TEST 5: Recruiter A requesting candidate history ---");
+    const recruiterAHistory = await resumeRecommendationService.getRecommendationsHistory(
+        candidate.id,
+        recruiterAAuth
+    );
+
+    const hasJobBRec = recruiterAHistory.some((h) => h.id === jobSpecificBResult.id);
+    if (hasJobBRec) {
+        throw new Error("FAIL: Candidate history for Recruiter A contained the unauthorized Job B recommendation!");
+    }
+    console.log("TEST 5 PASSED: History fetched for Recruiter A successfully filtered out Job B recommendations.");
+    console.log("- Count of visible reviews for Recruiter A:", recruiterAHistory.length);
+    for (const h of recruiterAHistory) {
+        console.log(`  * ID: ${h.id} | Mode: ${h.mode} | Overall Summary: ${h.overallSummary}`);
+    }
+
+    // Verify Recruiter B history contains both Job B and General recommendations
+    console.log("\n--- TEST 6: Recruiter B requesting candidate history ---");
+    const recruiterBHistory = await resumeRecommendationService.getRecommendationsHistory(
+        candidate.id,
+        recruiterBAuth
+    );
+    const hasJobBRecForB = recruiterBHistory.some((h) => h.id === jobSpecificBResult.id);
+    if (!hasJobBRecForB) {
+        throw new Error("FAIL: Recruiter B history is missing their own Job B recommendation!");
+    }
+    console.log("TEST 6 PASSED: Recruiter B history correctly displays the Job B recommendations.");
+    console.log("- Count of visible reviews for Recruiter B:", recruiterBHistory.length);
+
+    // -------------------------------------------------------------
     // Clean up test data
     // -------------------------------------------------------------
-    console.log("\nCleaning up test data...");
+    console.log("\nCleaning up test database records...");
     await prisma.resumeRecommendation.deleteMany({
         where: { candidateId: candidate.id }
     });
     await prisma.candidate.delete({ where: { id: candidate.id } });
-    await prisma.job.delete({ where: { id: job.id } });
+    await prisma.job.delete({ where: { id: jobA.id } });
+    await prisma.job.delete({ where: { id: jobB.id } });
+    await prisma.user.delete({ where: { id: recruiterA.id } });
+    await prisma.user.delete({ where: { id: recruiterB.id } });
     await prisma.user.delete({ where: { id: candidateUser.id } });
 
     console.log("\n=== ALL RESUME RECOMMENDATION SMOKE TESTS PASSED! ===");

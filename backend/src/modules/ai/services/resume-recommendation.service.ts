@@ -1,5 +1,5 @@
 import { prisma } from "../../../config/prisma";
-import { Role } from "@prisma/client";
+import { Role, ResumeRecommendationMode, ResumeRecommendation, Prisma } from "@prisma/client";
 import { ValidationError, NotFoundError, ForbiddenError } from "../../../shared/errors";
 import { AuthenticatedUser } from "../../../shared/types";
 import { aiEvaluationService } from "./ai-evaluation.service";
@@ -12,11 +12,12 @@ import {
 } from "../schemas/resume-recommendation.schema";
 import {
     ResumeRecommendationResponse,
-    ResumeRecommendationRequest,
     ResumeRecommendationItem
 } from "../types/resume-recommendation.types";
 import { AI_CONFIG } from "../config";
 import { logger } from "../../../shared/logger/logger";
+import { SafeCandidate } from "../../candidates/candidate.types";
+import { SafeJob } from "../../jobs/job.types";
 
 export class ResumeRecommendationService {
     /**
@@ -28,7 +29,6 @@ export class ResumeRecommendationService {
     ): Promise<ResumeRecommendationResponse> {
         logger.info(`Starting General Resume Recommendations for candidate ${input.candidateId}`);
 
-        // Validate Input Schema
         const parsedInput = GeneralRecommendationRequestSchema.parse(input);
         const { candidateId } = parsedInput;
 
@@ -38,10 +38,10 @@ export class ResumeRecommendationService {
         // Validate resume presence & sufficient information
         this.validateResumeInfo(candidate);
 
-        // Evaluate via Shared AI Evaluation Service
+        // Evaluate via Shared AI Evaluation Service (job is undefined in general mode)
         const evaluated = await aiEvaluationService.evaluate<ResumeRecommendationSchemaType>(
             candidate,
-            null, // No job context in General mode
+            undefined,
             RESUME_RECOMMENDATION_PROMPT_CONFIG,
             ResumeRecommendationSchema
         );
@@ -55,27 +55,28 @@ export class ResumeRecommendationService {
             reason: rec.reason,
             evidence: rec.evidence || "",
             expectedImprovement: rec.expectedImprovement,
+            jobRequirement: undefined,
         }));
 
-        // Persist Recommendation in DB
+        // Persist to Database
         const createdRecord = await prisma.resumeRecommendation.create({
             data: {
                 candidateId: candidate.id,
-                mode: "GENERAL",
+                mode: ResumeRecommendationMode.GENERAL,
                 overallSummary: evaluated.overallSummary,
-                recommendations: JSON.parse(JSON.stringify(recommendations)),
+                recommendations: recommendations as unknown as Prisma.InputJsonValue,
                 aiModel: AI_CONFIG.model,
                 promptVersion: RESUME_RECOMMENDATION_PROMPT_CONFIG.version,
             },
         });
 
-        logger.info(`Successfully stored General Resume Recommendation (ID: ${createdRecord.id})`);
+        logger.info(`Successfully saved general recommendations record ${createdRecord.id}`);
 
         return {
             id: createdRecord.id,
             candidateId: createdRecord.candidateId,
             jobId: createdRecord.jobId,
-            mode: createdRecord.mode as any,
+            mode: createdRecord.mode,
             overallSummary: createdRecord.overallSummary,
             recommendations: recommendations,
             aiModel: createdRecord.aiModel,
@@ -94,7 +95,6 @@ export class ResumeRecommendationService {
     ): Promise<ResumeRecommendationResponse> {
         logger.info(`Starting Job-Specific Resume Recommendations for candidate ${input.candidateId} against job ${input.jobId}`);
 
-        // Validate Input Schema
         const parsedInput = JobSpecificRecommendationRequestSchema.parse(input);
         const { candidateId, jobId } = parsedInput;
 
@@ -110,7 +110,7 @@ export class ResumeRecommendationService {
         // Evaluate via Shared AI Evaluation Service
         const evaluated = await aiEvaluationService.evaluate<ResumeRecommendationSchemaType>(
             candidate,
-            job as any,
+            job,
             RESUME_RECOMMENDATION_PROMPT_CONFIG,
             ResumeRecommendationSchema
         );
@@ -124,29 +124,29 @@ export class ResumeRecommendationService {
             reason: rec.reason,
             evidence: rec.evidence || "",
             expectedImprovement: rec.expectedImprovement,
-            jobRequirement: rec.jobRequirement,
+            jobRequirement: rec.jobRequirement || undefined,
         }));
 
-        // Persist Recommendation in DB
+        // Persist to Database
         const createdRecord = await prisma.resumeRecommendation.create({
             data: {
                 candidateId: candidate.id,
                 jobId: job.id,
-                mode: "JOB_SPECIFIC",
+                mode: ResumeRecommendationMode.JOB_SPECIFIC,
                 overallSummary: evaluated.overallSummary,
-                recommendations: JSON.parse(JSON.stringify(recommendations)),
+                recommendations: recommendations as unknown as Prisma.InputJsonValue,
                 aiModel: AI_CONFIG.model,
                 promptVersion: RESUME_RECOMMENDATION_PROMPT_CONFIG.version,
             },
         });
 
-        logger.info(`Successfully stored Job-Specific Resume Recommendation (ID: ${createdRecord.id})`);
+        logger.info(`Successfully saved job-specific recommendations record ${createdRecord.id}`);
 
         return {
             id: createdRecord.id,
             candidateId: createdRecord.candidateId,
             jobId: createdRecord.jobId,
-            mode: createdRecord.mode as any,
+            mode: createdRecord.mode,
             overallSummary: createdRecord.overallSummary,
             recommendations: recommendations,
             aiModel: createdRecord.aiModel,
@@ -168,16 +168,35 @@ export class ResumeRecommendationService {
         // Validate permissions on Candidate
         await this.loadAndAuthorizeCandidate(candidateId, currentUser);
 
+        const whereClause: Prisma.ResumeRecommendationWhereInput = { candidateId };
+
+        // Recruiter: Filter out unassigned JOB_SPECIFIC recommendations at query level
+        if (currentUser.role === Role.RECRUITER) {
+            whereClause.OR = [
+                { mode: ResumeRecommendationMode.GENERAL },
+                {
+                    mode: ResumeRecommendationMode.JOB_SPECIFIC,
+                    job: {
+                        recruiters: {
+                            some: {
+                                recruiterId: currentUser.id,
+                            },
+                        },
+                    },
+                },
+            ];
+        }
+
         const history = await prisma.resumeRecommendation.findMany({
-            where: { candidateId },
+            where: whereClause,
             orderBy: { createdAt: "desc" },
         });
 
-        return history.map((record: any) => ({
+        return history.map((record: ResumeRecommendation) => ({
             id: record.id,
             candidateId: record.candidateId,
             jobId: record.jobId,
-            mode: record.mode as any,
+            mode: record.mode,
             overallSummary: record.overallSummary,
             aiModel: record.aiModel,
             promptVersion: record.promptVersion,
@@ -204,15 +223,24 @@ export class ResumeRecommendationService {
         }
 
         // Validate permissions on candidate profile linked to this record
-        await this.loadAndAuthorizeCandidate(record.candidateId, currentUser);
+        const candidate = await this.loadAndAuthorizeCandidate(record.candidateId, currentUser);
+
+        // Recruiter/Job authorization check for JOB_SPECIFIC mode
+        if (record.mode === ResumeRecommendationMode.JOB_SPECIFIC) {
+            if (!record.jobId) {
+                throw new ValidationError("Job ID is missing for job-specific recommendation.");
+            }
+            // Load and authorize job to ensure recruiter is assigned and scoping is correct
+            await this.loadAndAuthorizeJob(record.jobId, candidate.companyId, currentUser);
+        }
 
         return {
             id: record.id,
             candidateId: record.candidateId,
             jobId: record.jobId,
-            mode: record.mode as any,
+            mode: record.mode,
             overallSummary: record.overallSummary,
-            recommendations: record.recommendations as any[],
+            recommendations: record.recommendations as unknown as ResumeRecommendationItem[],
             aiModel: record.aiModel,
             promptVersion: record.promptVersion,
             createdAt: record.createdAt.toISOString(),
@@ -224,11 +252,12 @@ export class ResumeRecommendationService {
     // HELPERS & AUTHORIZATION METHODS
     // ==========================================
 
-    private async loadAndAuthorizeCandidate(candidateId: string, currentUser: AuthenticatedUser) {
-        let candidate: any;
-
+    private async loadAndAuthorizeCandidate(
+        candidateId: string,
+        currentUser: AuthenticatedUser
+    ): Promise<SafeCandidate> {
         if (currentUser.role === Role.CANDIDATE) {
-            candidate = await prisma.candidate.findFirst({
+            const rawCandidate = await prisma.candidate.findFirst({
                 where: { email: currentUser.email, isActive: true },
                 include: {
                     skills: { include: { skill: true } },
@@ -238,11 +267,14 @@ export class ResumeRecommendationService {
                     notes: true,
                 },
             });
-            if (!candidate || candidate.id !== candidateId) {
+            if (!rawCandidate || rawCandidate.id !== candidateId) {
                 throw new ForbiddenError("You are not authorized to access this candidate's details");
             }
-        } else if (currentUser.role === Role.COMPANY_ADMIN || currentUser.role === Role.RECRUITER) {
-            candidate = await prisma.candidate.findFirst({
+            return rawCandidate as unknown as SafeCandidate;
+        }
+
+        if (currentUser.role === Role.COMPANY_ADMIN || currentUser.role === Role.RECRUITER) {
+            const rawCandidate = await prisma.candidate.findFirst({
                 where: { id: candidateId, companyId: currentUser.companyId!, isActive: true },
                 include: {
                     skills: { include: { skill: true } },
@@ -252,17 +284,20 @@ export class ResumeRecommendationService {
                     notes: true,
                 },
             });
-            if (!candidate) {
+            if (!rawCandidate) {
                 throw new NotFoundError("Candidate not found.");
             }
-        } else {
-            throw new ForbiddenError("You do not have permission to perform this action");
+            return rawCandidate as unknown as SafeCandidate;
         }
 
-        return candidate;
+        throw new ForbiddenError("You do not have permission to perform this action");
     }
 
-    private async loadAndAuthorizeJob(jobId: string, candidateCompanyId: string, currentUser: AuthenticatedUser) {
+    private async loadAndAuthorizeJob(
+        jobId: string,
+        candidateCompanyId: string,
+        currentUser: AuthenticatedUser
+    ): Promise<SafeJob> {
         const job = await prisma.job.findFirst({
             where: { id: jobId, isActive: true },
             include: {
@@ -285,7 +320,7 @@ export class ResumeRecommendationService {
             if (job.companyId !== currentUser.companyId) {
                 throw new ForbiddenError("Cross-company access is forbidden");
             }
-            const isAssigned = job.recruiters.some((r: any) => r.recruiterId === currentUser.id);
+            const isAssigned = job.recruiters.some((r) => r.recruiterId === currentUser.id);
             if (!isAssigned) {
                 throw new ForbiddenError("You do not have permission to access this job.");
             }
@@ -295,13 +330,13 @@ export class ResumeRecommendationService {
             }
         }
 
-        return job;
+        return job as unknown as SafeJob;
     }
 
-    private validateResumeInfo(candidate: any) {
+    private validateResumeInfo(candidate: SafeCandidate): void {
         // Validate Parsed Resume presence
         const resumeDoc = candidate.documents?.find(
-            (doc: any) => doc.documentType === "RESUME" && doc.isActive
+            (doc) => doc.documentType === "RESUME" && doc.isActive
         );
         if (!resumeDoc) {
             throw new ValidationError("Candidate resume is missing.");
