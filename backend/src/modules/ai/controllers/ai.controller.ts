@@ -7,9 +7,11 @@ import { atsScoreService } from "../services/ats-score.service";
 import { jobMatchingService } from "../services/job-matching.service";
 import { resumeRecommendationService } from "../services/resume-recommendation.service";
 import { interviewService } from "../services/interview.service";
+import { aiInsightsService } from "../services/ai-insights.service";
 import { ValidationError, UnauthorizedError } from "../../../shared/errors";
 import { GetHistoryParamsSchema, GetDetailsParamsSchema } from "../schemas/resume-recommendation.schema";
 import { GetInterviewHistoryParamsSchema, GetInterviewDetailsParamsSchema } from "../schemas/interview.schema";
+import { GetInsightsHistoryParamsSchema, GetInsightsDetailsParamsSchema } from "../schemas/insights.schema";
 
 export const aiController = {
     healthCheck: async (req: Request, res: Response): Promise<void> => {
@@ -198,5 +200,46 @@ export const aiController = {
         res
             .status(HTTP_STATUS.OK)
             .json(successResponse("Interview kit details retrieved successfully.", result));
+    },
+
+    generateInsights: async (req: Request, res: Response): Promise<void> => {
+        const currentUser = req.user;
+        if (!currentUser) {
+            throw new UnauthorizedError("Unauthenticated");
+        }
+
+        const result = await aiInsightsService.generateInsights(req.body, currentUser);
+
+        res
+            .status(HTTP_STATUS.OK)
+            .json(successResponse("AI insights generated successfully.", result));
+    },
+
+    getInsightsHistory: async (req: Request, res: Response): Promise<void> => {
+        const currentUser = req.user;
+        if (!currentUser) {
+            throw new UnauthorizedError("Unauthenticated");
+        }
+
+        const params = GetInsightsHistoryParamsSchema.parse(req.params);
+        const result = await aiInsightsService.getInsightsHistory(params.candidateId, currentUser);
+
+        res
+            .status(HTTP_STATUS.OK)
+            .json(successResponse("AI insights history retrieved successfully.", result));
+    },
+
+    getInsightsDetails: async (req: Request, res: Response): Promise<void> => {
+        const currentUser = req.user;
+        if (!currentUser) {
+            throw new UnauthorizedError("Unauthenticated");
+        }
+
+        const params = GetInsightsDetailsParamsSchema.parse(req.params);
+        const result = await aiInsightsService.getInsightsDetails(params.id, currentUser);
+
+        res
+            .status(HTTP_STATUS.OK)
+            .json(successResponse("AI insight details retrieved successfully.", result));
     },
 };

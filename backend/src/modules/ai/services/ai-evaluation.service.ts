@@ -15,7 +15,8 @@ export class AiEvaluationService {
         candidate: SafeCandidate,
         job: SafeJob | null | undefined,
         promptConfig: { template: string; version: string; name: string },
-        schema: z.ZodSchema<T>
+        schema: z.ZodSchema<T>,
+        extraContext?: string
     ): Promise<T> {
         logger.info(`AI Evaluation Started for candidate ${candidate.id} and job ${job?.id || "none"}`);
 
@@ -96,6 +97,10 @@ Experience Min: ${job.experienceMin !== null ? job.experienceMin : "Not specifie
 Experience Max: ${job.experienceMax !== null ? job.experienceMax : "Not specified"} years
 Required Skills: ${jobSkillsString}
 `;
+            }
+
+            if (extraContext) {
+                userPrompt += `\n${extraContext.trim()}\n`;
             }
 
             const prompt = PromptBuilder.build(promptConfig.template, userPrompt);

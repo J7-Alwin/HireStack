@@ -673,4 +673,178 @@ export const aiSwaggerSchemas = {
             },
         },
     },
+    GenerateAiInsightsRequest: {
+        type: "object",
+        required: ["candidateId", "jobId"],
+        properties: {
+            candidateId: {
+                type: "string",
+                example: "clxyz12340000t3t1cr4a6136",
+                description: "CUID of the candidate to generate insights for",
+            },
+            jobId: {
+                type: "string",
+                example: "clxyz56780000t3t1cr4a6136",
+                description: "CUID of the job opening to evaluate against",
+            },
+        },
+    },
+    AiInsightDetailsResponse: {
+        type: "object",
+        properties: {
+            success: {
+                type: "boolean",
+                example: true,
+            },
+            message: {
+                type: "string",
+                example: "AI insights generated successfully.",
+            },
+            data: {
+                type: "object",
+                properties: {
+                    id: {
+                        type: "string",
+                        example: "clinsight12340000t3t1cr4a6136",
+                    },
+                    candidateId: {
+                        type: "string",
+                        example: "clxyz12340000t3t1cr4a6136",
+                    },
+                    jobId: {
+                        type: "string",
+                        example: "clxyz56780000t3t1cr4a6136",
+                        nullable: true,
+                    },
+                    overallInsight: {
+                        type: "string",
+                        example: "High-potential candidate with strong TypeScript and Node.js expertise, though lacking Kubernetes production experience.",
+                    },
+                    strengths: {
+                        type: "array",
+                        items: { type: "string" },
+                        example: ["5+ years scaling Node.js backend systems", "Solid PostgreSQL schema optimization"],
+                    },
+                    weaknesses: {
+                        type: "array",
+                        items: { type: "string" },
+                        example: ["Limited exposure to Kubernetes cluster management"],
+                    },
+                    skillGaps: {
+                        type: "array",
+                        items: { type: "string" },
+                        example: ["Kubernetes", "gRPC"],
+                    },
+                    experienceConcerns: {
+                        type: "array",
+                        items: { type: "string" },
+                        example: ["Has primarily worked at seed-stage startups; may need onboarding for enterprise compliance"],
+                    },
+                    hiringRisks: {
+                        type: "array",
+                        items: { type: "string" },
+                        example: ["Ramp-up time required for container orchestration requirements"],
+                    },
+                    hiringConfidence: {
+                        type: "integer",
+                        minimum: 0,
+                        maximum: 100,
+                        example: 85,
+                    },
+                    jobFitObservations: {
+                        type: "array",
+                        items: { type: "string" },
+                        example: ["Core backend responsibilities directly align with previous experience at Acme Cloud"],
+                    },
+                    recruiterFocusAreas: {
+                        type: "array",
+                        items: { type: "string" },
+                        example: ["Probe depth of distributed system troubleshooting and query tuning"],
+                    },
+                    recommendation: {
+                        type: "string",
+                        example: "Proceed to technical panel interview; assess container orchestration adaptability.",
+                    },
+                    aiModel: {
+                        type: "string",
+                        example: "llama3.2",
+                    },
+                    promptVersion: {
+                        type: "string",
+                        example: "1.0.0",
+                    },
+                    createdAt: {
+                        type: "string",
+                        example: "2026-08-15T14:00:00Z",
+                    },
+                    updatedAt: {
+                        type: "string",
+                        example: "2026-08-15T14:00:00Z",
+                    },
+                },
+            },
+        },
+    },
+    AiInsightHistoryResponse: {
+        type: "object",
+        properties: {
+            success: {
+                type: "boolean",
+                example: true,
+            },
+            message: {
+                type: "string",
+                example: "AI insights history retrieved successfully.",
+            },
+            data: {
+                type: "array",
+                items: {
+                    type: "object",
+                    properties: {
+                        id: {
+                            type: "string",
+                            example: "clinsight12340000t3t1cr4a6136",
+                        },
+                        candidateId: {
+                            type: "string",
+                            example: "clxyz12340000t3t1cr4a6136",
+                        },
+                        jobId: {
+                            type: "string",
+                            example: "clxyz56780000t3t1cr4a6136",
+                            nullable: true,
+                        },
+                        overallInsight: {
+                            type: "string",
+                            example: "High-potential candidate with strong TypeScript and Node.js expertise.",
+                        },
+                        hiringConfidence: {
+                            type: "integer",
+                            example: 85,
+                        },
+                        recommendation: {
+                            type: "string",
+                            example: "Proceed to technical panel interview.",
+                        },
+                        aiModel: {
+                            type: "string",
+                            example: "llama3.2",
+                        },
+                        promptVersion: {
+                            type: "string",
+                            example: "1.0.0",
+                        },
+                        createdAt: {
+                            type: "string",
+                            example: "2026-08-15T14:00:00Z",
+                        },
+                        updatedAt: {
+                            type: "string",
+                            example: "2026-08-15T14:00:00Z",
+                        },
+                    },
+                },
+            },
+        },
+    },
 };

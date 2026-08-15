@@ -222,6 +222,7 @@ model Job {
   jobMatches      JobMatch[]
   resumeRecommendations ResumeRecommendation[]
   interviewAssistants   InterviewAssistant[]
+  aiInsights            AiInsight[]
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
 
@@ -371,6 +372,7 @@ model Candidate {
   jobMatches         JobMatch[]
   resumeRecommendations ResumeRecommendation[]
   interviewAssistants   InterviewAssistant[]
+  aiInsights            AiInsight[]
   createdAt          DateTime             @default(now())
   updatedAt          DateTime             @updatedAt
 
@@ -935,3 +937,29 @@ model InterviewAssistant {
   @@index([jobId])
   @@index([candidateId, createdAt])
 }
+
+model AiInsight {
+  id                  String    @id @default(cuid())
+  candidateId         String
+  candidate           Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  jobId               String?
+  job                 Job?      @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  overallInsight      String
+  strengths           Json      // array of strings
+  weaknesses          Json      // array of strings
+  skillGaps           Json      // array of strings
+  experienceConcerns  Json      // array of strings
+  hiringRisks         Json      // array of strings
+  hiringConfidence    Int       // 0 - 100
+  jobFitObservations  Json      // array of strings
+  recruiterFocusAreas Json      // array of strings
+  recommendation      String
+  aiModel             String
+  promptVersion       String
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  @@index([candidateId])
+  @@index([jobId])
+  @@index([candidateId, createdAt])
+}

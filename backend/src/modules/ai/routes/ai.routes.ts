@@ -99,4 +99,23 @@ router.get(
     asyncHandler(aiController.getInterviewDetails)
 );
 
+// AI Insights Endpoints
+router.post(
+    "/insights",
+    authorizeRoles(Role.COMPANY_ADMIN, Role.RECRUITER),
+    asyncHandler(aiController.generateInsights)
+);
+
+router.get(
+    "/insights/history/:candidateId",
+    authorizeRoles(Role.COMPANY_ADMIN, Role.RECRUITER),
+    asyncHandler(aiController.getInsightsHistory)
+);
+
+router.get(
+    "/insights/:id",
+    authorizeRoles(Role.COMPANY_ADMIN, Role.RECRUITER),
+    asyncHandler(aiController.getInsightsDetails)
+);
+
 export default router;

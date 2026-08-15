@@ -777,4 +777,174 @@
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  */
+
+/**
+ * @openapi
+ * /v1/ai/insights:
+ *   post:
+ *     tags:
+ *       - AI
+ *     summary: Generate AI Insights
+ *     description: Generates comprehensive, evidence-grounded recruiter insights evaluating a candidate against a job opening. In Version 1.0, AI Insights is strictly Job-Specific and requires both candidateId and jobId, synthesizing candidate background, job requirements, and available AI evaluations.
+ *     operationId: generateAiInsights
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/GenerateAiInsightsRequest'
+ *     responses:
+ *       200:
+ *         description: AI insights generated successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AiInsightDetailsResponse'
+ *       400:
+ *         description: Validation error or invalid input format.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ValidationError'
+ *       401:
+ *         description: Unauthorized.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/UnauthorizedError'
+ *       403:
+ *         description: Forbidden role, cross-company access, or unassigned recruiter job.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: Candidate or job not found.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Internal server error or AI evaluation failure.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+
+/**
+ * @openapi
+ * /v1/ai/insights/history/{candidateId}:
+ *   get:
+ *     tags:
+ *       - AI
+ *     summary: Get AI Insights History
+ *     description: Retrieves the list of historical AI Insight evaluations generated for a specific candidate in reverse chronological order. For recruiters, results are strictly filtered to only include insights for active jobs assigned to them.
+ *     operationId: getInsightsHistory
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: candidateId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: CUID of the candidate
+ *     responses:
+ *       200:
+ *         description: AI insights history retrieved successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AiInsightHistoryResponse'
+ *       400:
+ *         description: Invalid candidate ID format.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ValidationError'
+ *       401:
+ *         description: Unauthorized.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/UnauthorizedError'
+ *       403:
+ *         description: Forbidden role or unauthorized access.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: Candidate not found.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Internal server error.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
+
+/**
+ * @openapi
+ * /v1/ai/insights/{id}:
+ *   get:
+ *     tags:
+ *       - AI
+ *     summary: Get AI Insight Details
+ *     description: Retrieves the complete detailed AI Insight evaluation report for a specific evaluation ID. For recruiters, access requires an active assignment to the job associated with the insight (access to insights of deleted jobs is restricted to Company Admins).
+ *     operationId: getInsightsDetails
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: CUID of the AI Insight record
+ *     responses:
+ *       200:
+ *         description: AI insight details retrieved successfully.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/AiInsightDetailsResponse'
+ *       400:
+ *         description: Invalid insight ID format.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ValidationError'
+ *       401:
+ *         description: Unauthorized.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/UnauthorizedError'
+ *       403:
+ *         description: Forbidden role, cross-company access, unassigned recruiter job, or recruiter access to deleted job insight.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       404:
+ *         description: AI Insight record not found.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         description: Internal server error.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ */
 export const aiSwaggerPaths = {};
