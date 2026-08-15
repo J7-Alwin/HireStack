@@ -74,4 +74,29 @@ router.get(
     asyncHandler(aiController.getRecommendationDetails)
 );
 
+// AI Interview Assistant Endpoints
+router.post(
+    "/interview",
+    authorizeRoles(Role.COMPANY_ADMIN, Role.RECRUITER, Role.CANDIDATE),
+    asyncHandler(aiController.generateGeneralInterview)
+);
+
+router.post(
+    "/interview/job",
+    authorizeRoles(Role.COMPANY_ADMIN, Role.RECRUITER, Role.CANDIDATE),
+    asyncHandler(aiController.generateJobInterview)
+);
+
+router.get(
+    "/interview/history/:candidateId",
+    authorizeRoles(Role.COMPANY_ADMIN, Role.RECRUITER, Role.CANDIDATE),
+    asyncHandler(aiController.getInterviewHistory)
+);
+
+router.get(
+    "/interview/:id",
+    authorizeRoles(Role.COMPANY_ADMIN, Role.RECRUITER, Role.CANDIDATE),
+    asyncHandler(aiController.getInterviewDetails)
+);
+
 export default router;

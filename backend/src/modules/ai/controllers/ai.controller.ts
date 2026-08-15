@@ -6,8 +6,10 @@ import { aiService } from "../services/ai.service";
 import { atsScoreService } from "../services/ats-score.service";
 import { jobMatchingService } from "../services/job-matching.service";
 import { resumeRecommendationService } from "../services/resume-recommendation.service";
+import { interviewService } from "../services/interview.service";
 import { ValidationError, UnauthorizedError } from "../../../shared/errors";
 import { GetHistoryParamsSchema, GetDetailsParamsSchema } from "../schemas/resume-recommendation.schema";
+import { GetInterviewHistoryParamsSchema, GetInterviewDetailsParamsSchema } from "../schemas/interview.schema";
 
 export const aiController = {
     healthCheck: async (req: Request, res: Response): Promise<void> => {
@@ -143,4 +145,58 @@ export const aiController = {
             .status(HTTP_STATUS.OK)
             .json(successResponse("Resume recommendation details retrieved successfully.", result));
     },
-};
+
+    generateGeneralInterview: async (req: Request, res: Response): Promise<void> => {
+        const currentUser = req.user;
+        if (!currentUser) {
+            throw new UnauthorizedError("Unauthenticated");
+        }
+
+        const result = await interviewService.generateGeneralInterview(req.body, currentUser);
+
+        res
+            .status(HTTP_STATUS.OK)
+            .json(successResponse("General interview kit generated successfully.", result));
+    },
+
+    generateJobInterview: async (req: Request, res: Response): Promise<void> => {
+        const currentUser = req.user;
+        if (!currentUser) {
+            throw new UnauthorizedError("Unauthenticated");
+        }
+
+        const result = await interviewService.generateJobInterview(req.body, currentUser);
+
+        res
+            .status(HTTP_STATUS.OK)
+            .json(successResponse("Job-specific interview kit generated successfully.", result));
+    },
+
+    getInterviewHistory: async (req: Request, res: Response): Promise<void> => {
+        const currentUser = req.user;
+        if (!currentUser) {
+            throw new UnauthorizedError("Unauthenticated");
+        }
+
+        const params = GetInterviewHistoryParamsSchema.parse(req.params);
+        const result = await interviewService.getInterviewHistory(params.candidateId, currentUser);
+
+        res
+            .status(HTTP_STATUS.OK)
+            .json(successResponse("Interview history retrieved successfully.", result));
+    },
+
+    getInterviewDetails: async (req: Request, res: Response): Promise<void> => {
+        const currentUser = req.user;
+        if (!currentUser) {
+            throw new UnauthorizedError("Unauthenticated");
+        }
+
+        const params = GetInterviewDetailsParamsSchema.parse(req.params);
+        const result = await interviewService.getInterviewDetails(params.id, currentUser);
+
+        res
+            .status(HTTP_STATUS.OK)
+            .json(successResponse("Interview kit details retrieved successfully.", result));
+    },
+};

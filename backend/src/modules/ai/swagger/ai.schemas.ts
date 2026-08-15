@@ -490,4 +490,187 @@ export const aiSwaggerSchemas = {
             },
         },
     },
+    InterviewRequest: {
+        type: "object",
+        required: ["candidateId"],
+        properties: {
+            candidateId: {
+                type: "string",
+                example: "clxyz12340000t3t1cr4a6136",
+            },
+        },
+    },
+    JobSpecificInterviewRequest: {
+        type: "object",
+        required: ["candidateId", "jobId"],
+        properties: {
+            candidateId: {
+                type: "string",
+                example: "clxyz12340000t3t1cr4a6136",
+            },
+            jobId: {
+                type: "string",
+                example: "clxyz56780000t3t1cr4a6136",
+            },
+        },
+    },
+    InterviewQuestion: {
+        type: "object",
+        required: ["category", "question", "reason", "difficulty", "followUps"],
+        properties: {
+            category: {
+                type: "string",
+                enum: [
+                    "TECHNICAL",
+                    "HR",
+                    "BEHAVIORAL",
+                    "PROJECT",
+                    "ROLE_SPECIFIC",
+                    "FOLLOW_UP",
+                ],
+                example: "TECHNICAL",
+            },
+            question: {
+                type: "string",
+                example: "Explain how you used the technology mentioned in your project.",
+            },
+            reason: {
+                type: "string",
+                example: "Tests the candidate's practical understanding.",
+            },
+            difficulty: {
+                type: "string",
+                enum: ["EASY", "MEDIUM", "HARD"],
+                example: "MEDIUM",
+            },
+            followUps: {
+                type: "array",
+                items: {
+                    type: "string",
+                },
+                example: ["What challenges did you encounter?"],
+            },
+        },
+    },
+    InterviewResponse: {
+        type: "object",
+        properties: {
+            success: {
+                type: "boolean",
+                example: true,
+            },
+            message: {
+                type: "string",
+                example: "Interview kit generated successfully.",
+            },
+            data: {
+                type: "object",
+                properties: {
+                    id: {
+                        type: "string",
+                        example: "clint12340000t3t1cr4a6136",
+                    },
+                    candidateId: {
+                        type: "string",
+                        example: "clxyz12340000t3t1cr4a6136",
+                    },
+                    jobId: {
+                        type: "string",
+                        example: "clxyz56780000t3t1cr4a6136",
+                        nullable: true,
+                    },
+                    mode: {
+                        type: "string",
+                        enum: ["GENERAL", "JOB_SPECIFIC"],
+                        example: "JOB_SPECIFIC",
+                    },
+                    overallSummary: {
+                        type: "string",
+                        example: "Tailored interview kit covering core backend engineering and system design capabilities.",
+                    },
+                    questions: {
+                        type: "array",
+                        items: {
+                            $ref: "#/components/schemas/InterviewQuestion",
+                        },
+                    },
+                    aiModel: {
+                        type: "string",
+                        example: "llama3.2",
+                    },
+                    promptVersion: {
+                        type: "string",
+                        example: "1.0.0",
+                    },
+                    createdAt: {
+                        type: "string",
+                        example: "2026-08-15T12:00:00Z",
+                    },
+                    updatedAt: {
+                        type: "string",
+                        example: "2026-08-15T12:00:00Z",
+                    },
+                },
+            },
+        },
+    },
+    InterviewHistoryResponse: {
+        type: "object",
+        properties: {
+            success: {
+                type: "boolean",
+                example: true,
+            },
+            message: {
+                type: "string",
+                example: "Interview history retrieved successfully.",
+            },
+            data: {
+                type: "array",
+                items: {
+                    type: "object",
+                    properties: {
+                        id: {
+                            type: "string",
+                            example: "clint12340000t3t1cr4a6136",
+                        },
+                        candidateId: {
+                            type: "string",
+                            example: "clxyz12340000t3t1cr4a6136",
+                        },
+                        jobId: {
+                            type: "string",
+                            example: "clxyz56780000t3t1cr4a6136",
+                            nullable: true,
+                        },
+                        mode: {
+                            type: "string",
+                            enum: ["GENERAL", "JOB_SPECIFIC"],
+                            example: "JOB_SPECIFIC",
+                        },
+                        overallSummary: {
+                            type: "string",
+                            example: "Tailored interview kit covering core backend engineering and system design capabilities.",
+                        },
+                        aiModel: {
+                            type: "string",
+                            example: "llama3.2",
+                        },
+                        promptVersion: {
+                            type: "string",
+                            example: "1.0.0",
+                        },
+                        createdAt: {
+                            type: "string",
+                            example: "2026-08-15T12:00:00Z",
+                        },
+                        updatedAt: {
+                            type: "string",
+                            example: "2026-08-15T12:00:00Z",
+                        },
+                    },
+                },
+            },
+        },
+    },
 };

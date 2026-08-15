@@ -221,6 +221,7 @@ model Job {
   atsScores       ATSScore[]
   jobMatches      JobMatch[]
   resumeRecommendations ResumeRecommendation[]
+  interviewAssistants   InterviewAssistant[]
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
 
@@ -369,6 +370,7 @@ model Candidate {
   atsScores          ATSScore[]
   jobMatches         JobMatch[]
   resumeRecommendations ResumeRecommendation[]
+  interviewAssistants   InterviewAssistant[]
   createdAt          DateTime             @default(now())
   updatedAt          DateTime             @updatedAt
 
@@ -910,6 +912,26 @@ model ResumeRecommendation {
   @@index([jobId])
 }
 
+enum InterviewAssistantMode {
+  GENERAL
+  JOB_SPECIFIC
+}
 
+model InterviewAssistant {
+  id              String                 @id @default(cuid())
+  candidateId     String
+  candidate       Candidate              @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  jobId           String?
+  job             Job?                   @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  mode            InterviewAssistantMode
+  overallSummary  String
+  questions       Json                   // array of interview questions
+  aiModel         String
+  promptVersion   String
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
 
-
+  @@index([candidateId])
+  @@index([jobId])
+  @@index([candidateId, createdAt])
+}
