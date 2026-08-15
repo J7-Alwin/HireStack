@@ -1,3 +1,4 @@
+import "dotenv/config";
 import * as fs from "fs";
 import * as path from "path";
 import { prisma } from "../src/config/prisma";
@@ -421,6 +422,22 @@ async function runSmokeTests() {
             "you can only request recommendations for jobs you have applied to"
         );
 
+        // Test 9b: Candidate Job Scope Validation (Candidate applied but application is REJECTED)
+        console.log("TEST 9b: Candidate accessing Job B with inactive application (REJECTED) should throw ForbiddenError");
+        await prisma.application.updateMany({
+            where: { candidateId: candidateProfile.id, jobId: jobB.id },
+            data: { status: "REJECTED" }
+        });
+        await assertThrows(
+            () => resumeRecommendationService.generateJobRecommendations({ candidateId: candidateProfile.id, jobId: jobB.id }, candidateAuth),
+            ForbiddenError,
+            "you can only request recommendations for jobs you have applied to"
+        );
+        await prisma.application.updateMany({
+            where: { candidateId: candidateProfile.id, jobId: jobB.id },
+            data: { status: "ACTIVE" }
+        });
+
         // Test 10: Candidate Job Scope Success (Candidate applied to Job B)
         console.log("TEST 10: Candidate accessing applied Job B should be authorized and succeed");
         const candJobSpecific = await resumeRecommendationService.generateJobRecommendations(
@@ -574,7 +591,7 @@ async function runSmokeTests() {
         await assertThrows(
             () => resumeRecommendationService.generateGeneralRecommendations({ candidateId: candidateProfile.id }, recruiterBAuth),
             ValidationError,
-            "resume pdf file not found"
+            "could not be accessed"
         );
 
     } finally {

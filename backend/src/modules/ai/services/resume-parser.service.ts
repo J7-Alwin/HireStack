@@ -40,12 +40,12 @@ function parseDateToISO(dateStr: string | null | undefined): string | null {
     }
 
     // Try parsing year and month (e.g. "2020-05" or "05-2020" or "2020/05" or "05/2020")
-    if (/^\d{4}[-\/]\d{1,2}$/.test(trimmed)) {
-        const [y, m] = trimmed.split(/[-\/]/);
+    if (/^\d{4}[-/]\d{1,2}$/.test(trimmed)) {
+        const [y, m] = trimmed.split(/[-/]/);
         return `${y}-${m.padStart(2, "0")}-01T00:00:00.000Z`;
     }
-    if (/^\d{1,2}[-\/]\d{4}$/.test(trimmed)) {
-        const [m, y] = trimmed.split(/[-\/]/);
+    if (/^\d{1,2}[-/]\d{4}$/.test(trimmed)) {
+        const [m, y] = trimmed.split(/[-/]/);
         return `${y}-${m.padStart(2, "0")}-01T00:00:00.000Z`;
     }
 
@@ -287,7 +287,7 @@ export class ResumeParserService {
 
         const candidateExperience = experience.map((exp) => {
             let startDateISO = parseDateToISO(exp.startDate) || new Date().toISOString();
-            let endDateISO = exp.currentlyWorking ? null : parseDateToISO(exp.endDate);
+            const endDateISO = exp.currentlyWorking ? null : parseDateToISO(exp.endDate);
 
             if (endDateISO && new Date(startDateISO) > new Date(endDateISO)) {
                 startDateISO = endDateISO;
@@ -324,7 +324,7 @@ export class ResumeParserService {
     private mapEducation(education: ResumeEducation[]) {
         return education.map((edu) => {
             let startDateISO = parseDateToISO(edu.startYear);
-            let endDateISO = parseDateToISO(edu.endYear);
+            const endDateISO = parseDateToISO(edu.endYear);
 
             if (startDateISO && endDateISO && new Date(startDateISO) > new Date(endDateISO)) {
                 startDateISO = endDateISO;

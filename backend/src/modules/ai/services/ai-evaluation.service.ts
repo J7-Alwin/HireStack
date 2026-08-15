@@ -37,14 +37,17 @@ export class AiEvaluationService {
                 }
 
                 if (!fs.existsSync(filePath)) {
-                    throw new ValidationError(`Resume PDF file not found at path: ${filePath}`);
+                    logger.error(`Resume PDF file not found at path: ${filePath}`);
+                    throw new ValidationError("Resume PDF file could not be accessed.");
                 }
 
                 try {
                     const buffer = await fs.promises.readFile(filePath);
                     rawText = await PdfExtractor.extract(buffer);
                 } catch (error) {
-                    throw new ValidationError(`Failed to extract text from resume PDF: ${error instanceof Error ? error.message : String(error)}`);
+                    const errMsg = error instanceof Error ? error.message : String(error);
+                    logger.error(`Failed to extract text from resume PDF: ${errMsg}`);
+                    throw new ValidationError("Resume PDF file could not be accessed.");
                 }
             }
 

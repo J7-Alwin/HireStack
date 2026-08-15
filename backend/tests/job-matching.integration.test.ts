@@ -13,7 +13,7 @@ import {
     SkillProficiency,
 } from "@prisma/client";
 import { AuthenticatedUser } from "../src/shared/types";
-import { ValidationError, NotFoundError, ForbiddenError } from "../src/shared/errors";
+import { NotFoundError, ForbiddenError } from "../src/shared/errors";
 
 function assert(condition: boolean, message: string) {
     if (!condition) {
@@ -21,9 +21,13 @@ function assert(condition: boolean, message: string) {
     }
 }
 
-async function assertThrows(fn: () => Promise<any>, errorClass: any, expectedMessage?: string) {
+async function assertThrows(
+    fn: () => Promise<unknown>,
+    errorClass: new (...args: never[]) => Error,
+    expectedMessage?: string
+) {
     let threw = false;
-    let caughtError: any = null;
+    let caughtError: unknown = null;
 
     try {
         await fn();
@@ -54,7 +58,7 @@ async function runTests() {
 
     // Mock AI Service to run tests offline/deterministically
     const originalGenerate = aiService.generate;
-    aiService.generate = async (prompt: string) => {
+    aiService.generate = async (_prompt: string) => {
         return {
             content: JSON.stringify({
                 matchPercentage: 90,

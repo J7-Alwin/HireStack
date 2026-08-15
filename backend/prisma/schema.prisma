@@ -190,7 +190,7 @@ model Job {
   company         Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
   departmentId    String
   department      Department     @relation(fields: [departmentId], references: [id], onDelete: Cascade)
-  jobCode         String         @unique
+  jobCode         String
   title           String
   description     String
   responsibilities String?
@@ -909,5 +909,7 @@ model ResumeRecommendation {
   @@index([candidateId])
   @@index([jobId])
 }
+
+
 
 

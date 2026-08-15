@@ -1,5 +1,5 @@
 import { prisma } from "../../../config/prisma";
-import { Role, ResumeRecommendationMode, ResumeRecommendation, Prisma } from "@prisma/client";
+import { Role, ResumeRecommendationMode, ResumeRecommendation, Prisma, ApplicationStatus } from "@prisma/client";
 import { ValidationError, NotFoundError, ForbiddenError } from "../../../shared/errors";
 import { AuthenticatedUser } from "../../../shared/types";
 import { aiEvaluationService } from "./ai-evaluation.service";
@@ -319,7 +319,12 @@ export class ResumeRecommendationService {
         // Role-based restrictions
         if (currentUser.role === Role.CANDIDATE) {
             const hasApplication = await prisma.application.findFirst({
-                where: { candidateId, jobId, deletedAt: null }
+                where: {
+                    candidateId,
+                    jobId,
+                    status: ApplicationStatus.ACTIVE,
+                    deletedAt: null
+                }
             });
             if (!hasApplication) {
                 throw new ForbiddenError("You can only request recommendations for jobs you have applied to.");

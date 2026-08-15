@@ -52,7 +52,7 @@ async function runTests() {
 
     // Mock AI Service to run tests offline/deterministically
     const originalGenerate = aiService.generate;
-    aiService.generate = async (prompt: string) => {
+    aiService.generate = async (_prompt: string) => {
         return {
             content: JSON.stringify({
                 overallScore: 85,

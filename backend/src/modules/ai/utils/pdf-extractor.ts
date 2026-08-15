@@ -24,8 +24,8 @@ export class PdfExtractor {
             return text;
         } catch (error) {
             throw new Error(
-                `Failed to extract PDF content: ${error instanceof Error ? error.message : "Unknown error"
-                }`
+                `Failed to extract PDF content: ${error instanceof Error ? error.message : "Unknown error"}`,
+                { cause: error }
             );
         }
     }
