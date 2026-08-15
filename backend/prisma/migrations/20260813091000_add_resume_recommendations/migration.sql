@@ -27,4 +27,4 @@ CREATE INDEX "ResumeRecommendation_jobId_idx" ON "ResumeRecommendation"("jobId")
 ALTER TABLE "ResumeRecommendation" ADD CONSTRAINT "ResumeRecommendation_candidateId_fkey" FOREIGN KEY ("candidateId") REFERENCES "Candidate"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "ResumeRecommendation" ADD CONSTRAINT "ResumeRecommendation_jobId_fkey" FOREIGN KEY ("jobId") REFERENCES "Job"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "ResumeRecommendation" ADD CONSTRAINT "ResumeRecommendation_jobId_fkey" FOREIGN KEY ("jobId") REFERENCES "Job"("id") ON DELETE SET NULL ON UPDATE CASCADE;

@@ -897,7 +897,7 @@ model ResumeRecommendation {
   candidateId     String
   candidate       Candidate                @relation(fields: [candidateId], references: [id], onDelete: Cascade)
   jobId           String?
-  job             Job?                     @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  job             Job?                     @relation(fields: [jobId], references: [id], onDelete: SetNull)
   mode            ResumeRecommendationMode
   overallSummary  String
   recommendations Json                     // array of recommendations

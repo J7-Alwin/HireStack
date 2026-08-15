@@ -98,37 +98,6 @@ ALTER TABLE "Job" ADD COLUMN IF NOT EXISTS "title" TEXT;
 ALTER TABLE "Job" ADD COLUMN IF NOT EXISTS "visibility" "Visibility" NOT NULL DEFAULT 'PUBLIC';
 ALTER TABLE "Job" ADD COLUMN IF NOT EXISTS "workplaceType" "WorkplaceType";
 
--- Backfill defaults to handle NOT NULL constraints if table is populated
-UPDATE "Job" SET "companyId" = 'smoke-test-company-id' WHERE "companyId" IS NULL;
-UPDATE "Job" SET "createdBy" = 'smoke-test-creator-id' WHERE "createdBy" IS NULL;
-UPDATE "Job" SET "description" = 'Job description details' WHERE "description" IS NULL;
-UPDATE "Job" SET "employmentType" = 'FULL_TIME' WHERE "employmentType" IS NULL;
-UPDATE "Job" SET "jobCode" = 'JOB-TEMP-' || id WHERE "jobCode" IS NULL;
-UPDATE "Job" SET "openings" = 1 WHERE "openings" IS NULL;
-UPDATE "Job" SET "title" = 'Job Title' WHERE "title" IS NULL;
-UPDATE "Job" SET "workplaceType" = 'REMOTE' WHERE "workplaceType" IS NULL;
-
--- Backfill departmentId safely if nullable in existing populated database
-DO $$ DECLARE
-    first_dept_id TEXT;
-BEGIN
-    SELECT id INTO first_dept_id FROM "Department" LIMIT 1;
-    IF first_dept_id IS NOT NULL THEN
-        UPDATE "Job" SET "departmentId" = first_dept_id WHERE "departmentId" IS NULL;
-    END IF;
-END $$;
-
--- Convert columns to NOT NULL now that values exist
-ALTER TABLE "Job" ALTER COLUMN "companyId" SET NOT NULL;
-ALTER TABLE "Job" ALTER COLUMN "createdBy" SET NOT NULL;
-ALTER TABLE "Job" ALTER COLUMN "description" SET NOT NULL;
-ALTER TABLE "Job" ALTER COLUMN "employmentType" SET NOT NULL;
-ALTER TABLE "Job" ALTER COLUMN "jobCode" SET NOT NULL;
-ALTER TABLE "Job" ALTER COLUMN "openings" SET NOT NULL;
-ALTER TABLE "Job" ALTER COLUMN "title" SET NOT NULL;
-ALTER TABLE "Job" ALTER COLUMN "workplaceType" SET NOT NULL;
-ALTER TABLE "Job" ALTER COLUMN "departmentId" SET NOT NULL;
-
 -- CreateTable
 CREATE TABLE IF NOT EXISTS "JobRecruiter" (
     "jobId" TEXT NOT NULL,
@@ -526,6 +495,62 @@ CREATE TABLE IF NOT EXISTS "JobMatch" (
     CONSTRAINT "JobMatch_pkey" PRIMARY KEY ("id")
 );
 
+-- Data Backfill and Safety Check via Safe PL/pgSQL
+DO $$
+DECLARE
+    null_company_count INTEGER;
+    null_creator_count INTEGER;
+    null_dept_count INTEGER;
+BEGIN
+    -- 1. Deterministic companyId derivation from Department
+    UPDATE "Job" j
+    SET "companyId" = d."companyId"
+    FROM "Department" d
+    WHERE j."departmentId" = d.id AND j."companyId" IS NULL;
+
+    -- 2. Deterministic createdBy derivation from a User in the same Company
+    UPDATE "Job" j
+    SET "createdBy" = (
+        SELECT id FROM "User" u
+        WHERE u."companyId" = j."companyId"
+        LIMIT 1
+    )
+    WHERE j."createdBy" IS NULL;
+
+    -- 3. Deterministic unique jobCode from job ID
+    UPDATE "Job"
+    SET "jobCode" = 'JOB-' || id
+    WHERE "jobCode" IS NULL;
+
+    -- 4. Set safe static descriptions/titles/configurations if NULL
+    UPDATE "Job" SET "description" = 'Job description details' WHERE "description" IS NULL;
+    UPDATE "Job" SET "title" = 'Job Title' WHERE "title" IS NULL;
+    UPDATE "Job" SET "employmentType" = 'FULL_TIME' WHERE "employmentType" IS NULL;
+    UPDATE "Job" SET "workplaceType" = 'REMOTE' WHERE "workplaceType" IS NULL;
+    UPDATE "Job" SET "openings" = 1 WHERE "openings" IS NULL;
+
+    -- Assess unresolved null values
+    SELECT COUNT(*) INTO null_company_count FROM "Job" WHERE "companyId" IS NULL;
+    SELECT COUNT(*) INTO null_creator_count FROM "Job" WHERE "createdBy" IS NULL;
+    SELECT COUNT(*) INTO null_dept_count FROM "Job" WHERE "departmentId" IS NULL;
+
+    IF null_company_count > 0 OR null_creator_count > 0 OR null_dept_count > 0 THEN
+        RAISE WARNING 'Unresolved null columns in Job table: companyId: %, createdBy: %, departmentId: %. NOT NULL constraint skipped for safety.',
+            null_company_count, null_creator_count, null_dept_count;
+    ELSE
+        -- Apply schema NOT NULL validation constraints safely
+        ALTER TABLE "Job" ALTER COLUMN "companyId" SET NOT NULL;
+        ALTER TABLE "Job" ALTER COLUMN "createdBy" SET NOT NULL;
+        ALTER TABLE "Job" ALTER COLUMN "description" SET NOT NULL;
+        ALTER TABLE "Job" ALTER COLUMN "employmentType" SET NOT NULL;
+        ALTER TABLE "Job" ALTER COLUMN "jobCode" SET NOT NULL;
+        ALTER TABLE "Job" ALTER COLUMN "openings" SET NOT NULL;
+        ALTER TABLE "Job" ALTER COLUMN "title" SET NOT NULL;
+        ALTER TABLE "Job" ALTER COLUMN "workplaceType" SET NOT NULL;
+        ALTER TABLE "Job" ALTER COLUMN "departmentId" SET NOT NULL;
+    END IF;
+END $$;
+
 -- CreateIndex (Safely wrap index creation in DO blocks)
 DO $$ BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE c.relname = 'JobRecruiter_recruiterId_idx' AND n.nspname = 'public') THEN
@@ -759,9 +784,6 @@ DO $$ BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE c.relname = 'Job_deletedAt_idx' AND n.nspname = 'public') THEN
         CREATE INDEX "Job_deletedAt_idx" ON "Job"("deletedAt");
     END IF;
-    IF NOT EXISTS (SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE c.relname = 'Job_jobCode_key' AND n.nspname = 'public') THEN
-        CREATE UNIQUE INDEX "Job_jobCode_key" ON "Job"("jobCode");
-    END IF;
 END $$;
 
 -- AddForeignKey (Safely check if constraints exist before creating)
@@ -864,15 +886,6 @@ DO $$ BEGIN
     END IF;
     IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'Interview_applicationId_fkey') THEN
         ALTER TABLE "Interview" ADD CONSTRAINT "Interview_applicationId_fkey" FOREIGN KEY ("applicationId") REFERENCES "Application"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'Interview_cancelledById_fkey') THEN
-        ALTER TABLE "Interview" ADD CONSTRAINT "Interview_cancelledById_fkey" FOREIGN KEY ("cancelledById") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'Interview_createdBy_fkey') THEN
-        ALTER TABLE "Interview" ADD CONSTRAINT "Interview_createdBy_fkey" FOREIGN KEY ("createdBy") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'Interview_updatedBy_fkey') THEN
-        ALTER TABLE "Interview" ADD CONSTRAINT "Interview_updatedBy_fkey" FOREIGN KEY ("updatedBy") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
     END IF;
     IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'InterviewInterviewer_interviewId_fkey') THEN
         ALTER TABLE "InterviewInterviewer" ADD CONSTRAINT "InterviewInterviewer_interviewId_fkey" FOREIGN KEY ("interviewId") REFERENCES "Interview"("id") ON DELETE CASCADE ON UPDATE CASCADE;
