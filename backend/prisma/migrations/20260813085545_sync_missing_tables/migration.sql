@@ -499,54 +499,41 @@ CREATE TABLE IF NOT EXISTS "JobMatch" (
 DO $$
 DECLARE
     null_company_count INTEGER;
-    null_creator_count INTEGER;
-    null_dept_count INTEGER;
+    null_job_code_count INTEGER;
 BEGIN
-    -- 1. Deterministic companyId derivation from Department
+    -- 1. Deterministic companyId derivation from Department (safe business relationship)
     UPDATE "Job" j
     SET "companyId" = d."companyId"
     FROM "Department" d
     WHERE j."departmentId" = d.id AND j."companyId" IS NULL;
 
-    -- 2. Deterministic createdBy derivation from a User in the same Company
-    UPDATE "Job" j
-    SET "createdBy" = (
-        SELECT id FROM "User" u
-        WHERE u."companyId" = j."companyId"
-        LIMIT 1
-    )
-    WHERE j."createdBy" IS NULL;
-
-    -- 3. Deterministic unique jobCode from job ID
+    -- 2. Deterministic unique jobCode from stable job ID
     UPDATE "Job"
     SET "jobCode" = 'JOB-' || id
     WHERE "jobCode" IS NULL;
 
-    -- 4. Set safe static descriptions/titles/configurations if NULL
-    UPDATE "Job" SET "description" = 'Job description details' WHERE "description" IS NULL;
-    UPDATE "Job" SET "title" = 'Job Title' WHERE "title" IS NULL;
-    UPDATE "Job" SET "employmentType" = 'FULL_TIME' WHERE "employmentType" IS NULL;
-    UPDATE "Job" SET "workplaceType" = 'REMOTE' WHERE "workplaceType" IS NULL;
-    UPDATE "Job" SET "openings" = 1 WHERE "openings" IS NULL;
+    -- 3. We intentionally leave 'createdBy', 'description', 'title', 'employmentType', 'workplaceType', and 'openings' nullable.
+    -- We do NOT run any update statement with fabricated static defaults.
 
-    -- Assess unresolved null values
+    -- Assess unresolved null values for companyId and jobCode
     SELECT COUNT(*) INTO null_company_count FROM "Job" WHERE "companyId" IS NULL;
-    SELECT COUNT(*) INTO null_creator_count FROM "Job" WHERE "createdBy" IS NULL;
-    SELECT COUNT(*) INTO null_dept_count FROM "Job" WHERE "departmentId" IS NULL;
+    SELECT COUNT(*) INTO null_job_code_count FROM "Job" WHERE "jobCode" IS NULL;
 
-    IF null_company_count > 0 OR null_creator_count > 0 OR null_dept_count > 0 THEN
-        RAISE WARNING 'Unresolved null columns in Job table: companyId: %, createdBy: %, departmentId: %. NOT NULL constraint skipped for safety.',
-            null_company_count, null_creator_count, null_dept_count;
-    ELSE
-        -- Apply schema NOT NULL validation constraints safely
+    -- Enforce NOT NULL constraints only on companyId and jobCode if successfully resolved
+    IF null_company_count = 0 THEN
         ALTER TABLE "Job" ALTER COLUMN "companyId" SET NOT NULL;
-        ALTER TABLE "Job" ALTER COLUMN "createdBy" SET NOT NULL;
-        ALTER TABLE "Job" ALTER COLUMN "description" SET NOT NULL;
-        ALTER TABLE "Job" ALTER COLUMN "employmentType" SET NOT NULL;
+    ELSE
+        RAISE WARNING 'Unresolved NULLs found for Job.companyId: %. Column kept nullable.', null_company_count;
+    END IF;
+
+    IF null_job_code_count = 0 THEN
         ALTER TABLE "Job" ALTER COLUMN "jobCode" SET NOT NULL;
-        ALTER TABLE "Job" ALTER COLUMN "openings" SET NOT NULL;
-        ALTER TABLE "Job" ALTER COLUMN "title" SET NOT NULL;
-        ALTER TABLE "Job" ALTER COLUMN "workplaceType" SET NOT NULL;
+    ELSE
+        RAISE WARNING 'Unresolved NULLs found for Job.jobCode: %. Column kept nullable.', null_job_code_count;
+    END IF;
+
+    -- Enforce NOT NULL on departmentId only if no existing NULL records exist
+    IF NOT EXISTS (SELECT 1 FROM "Job" WHERE "departmentId" IS NULL) THEN
         ALTER TABLE "Job" ALTER COLUMN "departmentId" SET NOT NULL;
     END IF;
 END $$;
@@ -795,7 +782,7 @@ DO $$ BEGIN
         ALTER TABLE "Job" ADD CONSTRAINT "Job_departmentId_fkey" FOREIGN KEY ("departmentId") REFERENCES "Department"("id") ON DELETE CASCADE ON UPDATE CASCADE;
     END IF;
     IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'Job_createdBy_fkey') THEN
-        ALTER TABLE "Job" ADD CONSTRAINT "Job_createdBy_fkey" FOREIGN KEY ("createdBy") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+        ALTER TABLE "Job" ADD CONSTRAINT "Job_createdBy_fkey" FOREIGN KEY ("createdBy") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
     END IF;
     IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'JobRecruiter_jobId_fkey') THEN
         ALTER TABLE "JobRecruiter" ADD CONSTRAINT "JobRecruiter_jobId_fkey" FOREIGN KEY ("jobId") REFERENCES "Job"("id") ON DELETE CASCADE ON UPDATE CASCADE;
