@@ -167,6 +167,9 @@ async function runSmokeTests() {
         const recruiterA = await prisma.user.create({
             data: { email: TEST_RECRUITER_A_EMAIL, password: "hash", name: "Recruiter A", role: Role.RECRUITER, status: AccountStatus.ACTIVE, companyId: companyA.id }
         });
+        const recruiterA2 = await prisma.user.create({
+            data: { email: "smoke-insights-recruiter-a2@example.com", password: "hash", name: "Recruiter A2", role: Role.RECRUITER, status: AccountStatus.ACTIVE, companyId: companyA.id }
+        });
         const recruiterB = await prisma.user.create({
             data: { email: TEST_RECRUITER_B_EMAIL, password: "hash", name: "Recruiter B", role: Role.RECRUITER, status: AccountStatus.ACTIVE, companyId: companyB.id }
         });
@@ -184,6 +187,7 @@ async function runSmokeTests() {
         const adminAAuth: AuthenticatedUser = { id: adminUserA.id, email: adminUserA.email, role: "COMPANY_ADMIN", status: AccountStatus.ACTIVE, companyId: companyA.id };
         const adminBAuth: AuthenticatedUser = { id: adminUserB.id, email: adminUserB.email, role: "COMPANY_ADMIN", status: AccountStatus.ACTIVE, companyId: companyB.id };
         const recruiterAAuth: AuthenticatedUser = { id: recruiterA.id, email: recruiterA.email, role: "RECRUITER", status: AccountStatus.ACTIVE, companyId: companyA.id };
+        const recruiterA2Auth: AuthenticatedUser = { id: recruiterA2.id, email: recruiterA2.email, role: "RECRUITER", status: AccountStatus.ACTIVE, companyId: companyA.id };
         const candidateAAuth: AuthenticatedUser = { id: candidateUserA.id, email: candidateUserA.email, role: "CANDIDATE", status: AccountStatus.ACTIVE, companyId: companyA.id };
 
         // 3. Create Jobs
@@ -643,6 +647,65 @@ async function runSmokeTests() {
         assert(dbRecord!.hiringConfidence === 92, "DB record hiringConfidence must match");
         console.log("   ✅ AI Insight record created and verified in database.");
 
+        // Test 11b: Resume Recommendation Context Scoping (Verify strict candidateId + jobId + mode scoping)
+        console.log("TEST 11b: Resume Recommendation Context Scoping (Verify strict candidateId + jobId + mode scoping)");
+        // Seed Job B Recommendation for Candidate A
+        const jobBRec = await prisma.resumeRecommendation.create({
+            data: {
+                candidateId: candidateProfileA.id,
+                jobId: jobB.id,
+                mode: ResumeRecommendationMode.JOB_SPECIFIC,
+                overallSummary: "SPECIAL_JOB_B_FRONTEND_UNIQUE_RECOMMENDATION",
+                recommendations: [
+                    { category: "KEYWORD", suggestion: "Add React Architecture skills", impact: "HIGH" }
+                ],
+                aiModel: AI_CONFIG.model,
+                promptVersion: "1.0.0",
+            }
+        });
+
+        // Seed General Recommendation for Candidate A
+        const generalRec = await prisma.resumeRecommendation.create({
+            data: {
+                candidateId: candidateProfileA.id,
+                mode: ResumeRecommendationMode.GENERAL,
+                overallSummary: "SPECIAL_GENERAL_UNIQUE_RECOMMENDATION",
+                recommendations: [
+                    { category: "STRUCTURE", suggestion: "Improve resume layout", impact: "LOW" }
+                ],
+                aiModel: AI_CONFIG.model,
+                promptVersion: "1.0.0",
+            }
+        });
+
+        let capturedPrompt = "";
+        aiService.generate = async (prompt) => {
+            capturedPrompt = typeof prompt === "string" ? prompt : JSON.stringify(prompt);
+            return {
+                content: JSON.stringify(mockValidInsightAI),
+                responseTime: 200,
+            };
+        };
+
+        // Generate for Candidate A on Job A (where Job A currently has its own recommendation seeded earlier in setup)
+        await aiInsightsService.generateInsights(
+            { candidateId: candidateProfileA.id, jobId: jobA.id },
+            adminAAuth
+        );
+
+        // Verify that Job B recommendation is NOT in capturedPrompt
+        assert(!capturedPrompt.includes("SPECIAL_JOB_B_FRONTEND_UNIQUE_RECOMMENDATION"), "Job B recommendation must NOT be included when generating insights for Job A");
+        // Verify that General recommendation is NOT in capturedPrompt
+        assert(!capturedPrompt.includes("SPECIAL_GENERAL_UNIQUE_RECOMMENDATION"), "General recommendation must NOT be included when generating job-specific insights");
+        // Verify that Job A recommendation IS in capturedPrompt
+        assert(capturedPrompt.includes("Strong resume tailored for senior distributed systems roles"), "Job A recommendation MUST be included in the evaluation context");
+        console.log("   ✅ Resume Recommendation context scoping strictly verified.");
+
+        // Cleanup test recommendations
+        await prisma.resumeRecommendation.deleteMany({
+            where: { id: { in: [jobBRec.id, generalRec.id] } }
+        });
+
         // Test 12: Generate AI Insights without prior evaluations (Candidate B on Job A)
         console.log("TEST 12: Generate AI Insights without prior evaluations (Graceful fallback)");
         aiService.generate = async () => ({
@@ -880,6 +943,79 @@ async function runSmokeTests() {
         assert(preservedRecord !== null, "AiInsight record must NOT be deleted when job is deleted");
         assert(preservedRecord!.jobId === null, "AiInsight record jobId must be set to NULL (SetNull)");
         console.log("   ✅ Job deletion SetNull behavior verified.");
+
+        // Test 21b: Deleted-Job Authorization Matrix (Recruiter vs Admin access on deleted job insights)
+        console.log("TEST 21b: Deleted-job authorization matrix (Admin vs Assigned Recruiter vs Unassigned Recruiter vs Cross-Company)");
+        const jobForDelete = await prisma.job.create({
+            data: {
+                companyId: companyA.id,
+                departmentId: deptA.id,
+                jobCode: "JOB-DEL-AUTH-INS",
+                title: "Job to be Deleted",
+                description: "Temporary role for deleted-job authorization verification",
+                employmentType: "FULL_TIME",
+                workplaceType: "REMOTE",
+                openings: 1,
+                isActive: true,
+                createdBy: adminUserA.id,
+                recruiters: {
+                    create: { recruiterId: recruiterA.id, assignedById: adminUserA.id }
+                }
+            }
+        });
+
+        const deletedJobInsight = await aiInsightsService.generateInsights(
+            { candidateId: candidateProfileA.id, jobId: jobForDelete.id },
+            adminAAuth
+        );
+        assert(deletedJobInsight.id !== undefined, "Insight generated before job deletion");
+
+        // Delete the job
+        await prisma.job.delete({ where: { id: jobForDelete.id } });
+
+        // Confirm record remains with jobId = null
+        const orphanedInsight = await prisma.aiInsight.findUnique({
+            where: { id: deletedJobInsight.id }
+        });
+        assert(orphanedInsight !== null, "AiInsight must remain after job deletion");
+        assert(orphanedInsight!.jobId === null, "AiInsight jobId must be set to null");
+
+        // 1. Company Admin A (same company) can view in history and details
+        const adminHistory = await aiInsightsService.getInsightsHistory(candidateProfileA.id, adminAAuth);
+        assert(adminHistory.some((h) => h.id === deletedJobInsight.id), "Company Admin A must still see deleted-job insight in history");
+        const adminDetails = await aiInsightsService.getInsightsDetails(deletedJobInsight.id, adminAAuth);
+        assert(adminDetails.id === deletedJobInsight.id, "Company Admin A must be able to view deleted-job insight details");
+
+        // 2. Recruiter A (formerly assigned to the deleted job) CANNOT view deleted job insight in history or details
+        const recAHistory = await aiInsightsService.getInsightsHistory(candidateProfileA.id, recruiterAAuth);
+        assert(!recAHistory.some((h) => h.id === deletedJobInsight.id), "Recruiter A must NOT see deleted-job insight in history");
+        await assertThrows(
+            () => aiInsightsService.getInsightsDetails(deletedJobInsight.id, recruiterAAuth),
+            ForbiddenError,
+            "permission to access insights for a deleted job"
+        );
+
+        // 3. Recruiter A2 (same company A, unassigned to the job) CANNOT view deleted job insight in history or details
+        const recA2History = await aiInsightsService.getInsightsHistory(candidateProfileA.id, recruiterA2Auth);
+        assert(!recA2History.some((h) => h.id === deletedJobInsight.id), "Recruiter A2 must NOT see deleted-job insight in history");
+        await assertThrows(
+            () => aiInsightsService.getInsightsDetails(deletedJobInsight.id, recruiterA2Auth),
+            ForbiddenError,
+            "permission to access insights for a deleted job"
+        );
+
+        // 4. Cross-company user (Admin B from Company B) cannot access candidate or deleted-job insight
+        await assertThrows(
+            () => aiInsightsService.getInsightsHistory(candidateProfileA.id, adminBAuth),
+            NotFoundError,
+            "candidate not found"
+        );
+        await assertThrows(
+            () => aiInsightsService.getInsightsDetails(deletedJobInsight.id, adminBAuth),
+            NotFoundError,
+            "candidate not found"
+        );
+        console.log("   ✅ Deleted-job authorization matrix strictly verified.");
 
         console.log("\n--- TEST SUITE 6: ROUTE PARAMETER & SCHEMA VALIDATION ---");
 

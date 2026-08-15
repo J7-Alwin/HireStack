@@ -785,7 +785,7 @@
  *     tags:
  *       - AI
  *     summary: Generate AI Insights
- *     description: Generates comprehensive, evidence-grounded recruiter insights evaluating a candidate against a job opening, synthesizing candidate background, job requirements, and available AI evaluations.
+ *     description: Generates comprehensive, evidence-grounded recruiter insights evaluating a candidate against a job opening. In Version 1.0, AI Insights is strictly Job-Specific and requires both candidateId and jobId, synthesizing candidate background, job requirements, and available AI evaluations.
  *     operationId: generateAiInsights
  *     security:
  *       - bearerAuth: []
@@ -841,7 +841,7 @@
  *     tags:
  *       - AI
  *     summary: Get AI Insights History
- *     description: Retrieves the list of historical AI Insight evaluations generated for a specific candidate in reverse chronological order.
+ *     description: Retrieves the list of historical AI Insight evaluations generated for a specific candidate in reverse chronological order. For recruiters, results are strictly filtered to only include insights for active jobs assigned to them.
  *     operationId: getInsightsHistory
  *     security:
  *       - bearerAuth: []
@@ -898,7 +898,7 @@
  *     tags:
  *       - AI
  *     summary: Get AI Insight Details
- *     description: Retrieves the complete detailed AI Insight evaluation report for a specific evaluation ID.
+ *     description: Retrieves the complete detailed AI Insight evaluation report for a specific evaluation ID. For recruiters, access requires an active assignment to the job associated with the insight (access to insights of deleted jobs is restricted to Company Admins).
  *     operationId: getInsightsDetails
  *     security:
  *       - bearerAuth: []
@@ -929,7 +929,7 @@
  *             schema:
  *               $ref: '#/components/schemas/UnauthorizedError'
  *       403:
- *         description: Forbidden role, cross-company access, or unassigned recruiter job.
+ *         description: Forbidden role, cross-company access, unassigned recruiter job, or recruiter access to deleted job insight.
  *         content:
  *           application/json:
  *             schema:

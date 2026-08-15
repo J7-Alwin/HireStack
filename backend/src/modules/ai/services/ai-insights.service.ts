@@ -1,5 +1,5 @@
 import { prisma } from "../../../config/prisma";
-import { Role, Prisma, AiInsight } from "@prisma/client";
+import { Role, Prisma, AiInsight, ResumeRecommendationMode } from "@prisma/client";
 import { ValidationError, NotFoundError, ForbiddenError } from "../../../shared/errors";
 import { AuthenticatedUser } from "../../../shared/types";
 import { aiEvaluationService } from "./ai-evaluation.service";
@@ -22,7 +22,8 @@ import { SafeJob } from "../../jobs/job.types";
 
 export class AiInsightsService {
     /**
-     * Generate AI Insights for candidate and job
+     * Generate AI Insights for candidate and job.
+     * Note: In Version 1.0, AI Insights is strictly Job-Specific and requires both candidateId and jobId.
      */
     async generateInsights(
         input: { candidateId: string; jobId: string },
@@ -42,7 +43,7 @@ export class AiInsightsService {
         // Load & Authorize Job
         const job = await this.loadAndAuthorizeJob(jobId, candidate.id, candidate.companyId, currentUser);
 
-        // Load existing AI evaluations where available
+        // Load existing AI evaluations strictly scoped to candidateId and jobId
         const [atsScore, jobMatch, resumeRec] = await Promise.all([
             prisma.aTSScore.findFirst({
                 where: { candidateId: candidate.id, jobId: job.id },
@@ -53,7 +54,11 @@ export class AiInsightsService {
                 orderBy: { createdAt: "desc" },
             }),
             prisma.resumeRecommendation.findFirst({
-                where: { candidateId: candidate.id },
+                where: {
+                    candidateId: candidate.id,
+                    jobId: job.id,
+                    mode: ResumeRecommendationMode.JOB_SPECIFIC,
+                },
                 orderBy: { createdAt: "desc" },
             }),
         ]);
@@ -162,20 +167,16 @@ export class AiInsightsService {
 
         const whereClause: Prisma.AiInsightWhereInput = { candidateId: parsed.candidateId };
 
-        // Recruiter: Filter out unassigned job insights at query level
+        // Recruiter: Only show insights for active jobs assigned to this recruiter.
+        // Insights for deleted jobs (jobId: null) or unassigned jobs are strictly excluded.
         if (currentUser.role === Role.RECRUITER) {
-            whereClause.OR = [
-                { jobId: null },
-                {
-                    job: {
-                        recruiters: {
-                            some: {
-                                recruiterId: currentUser.id,
-                            },
-                        },
+            whereClause.job = {
+                recruiters: {
+                    some: {
+                        recruiterId: currentUser.id,
                     },
                 },
-            ];
+            };
         }
 
         const history = await prisma.aiInsight.findMany({
@@ -216,11 +217,17 @@ export class AiInsightsService {
             throw new NotFoundError("AI Insight not found.");
         }
 
-        // Validate permissions on candidate profile linked to this record
+        // Validate permissions on candidate profile linked to this record (multi-tenant company check)
         const candidate = await this.loadAndAuthorizeCandidate(record.candidateId, currentUser);
 
-        // Recruiter/Job authorization check if jobId is present
-        if (record.jobId) {
+        // For Recruiter: Enforce active job assignment. Deleted jobs (jobId: null) or unassigned jobs are forbidden.
+        if (currentUser.role === Role.RECRUITER) {
+            if (!record.jobId) {
+                throw new ForbiddenError("You do not have permission to access insights for a deleted job.");
+            }
+            await this.loadAndAuthorizeJob(record.jobId, candidate.id, candidate.companyId, currentUser);
+        } else if (record.jobId) {
+            // For Company Admin: Verify job company scoping if jobId is present
             await this.loadAndAuthorizeJob(record.jobId, candidate.id, candidate.companyId, currentUser);
         }
 
