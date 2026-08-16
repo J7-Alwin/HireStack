@@ -1,3 +1,6 @@
+import { AiOptimizationConfig } from "../types/optimization.types";
+import { AiOptimizationConfigSchema } from "../schemas/optimization.schema";
+
 export const AI_CONFIG = {
     provider: "ollama",
 
@@ -14,3 +17,18 @@ export const AI_CONFIG = {
 
     timeout: Number(process.env.AI_TIMEOUT ?? 60000),
 } as const;
+
+/**
+ * Validated AI Optimization and Pipeline Resilience Configuration
+ */
+const rawOptimizationConfig = {
+    timeoutMs: Number(process.env.AI_TIMEOUT ?? 60000),
+    maxRetries: Number(process.env.AI_MAX_RETRIES ?? 2),
+    retryBackoffMs: Number(process.env.AI_RETRY_BACKOFF_MS ?? 1000),
+    cacheTtlSeconds: Number(process.env.AI_CACHE_TTL_SECONDS ?? 3600),
+    enableCaching: process.env.AI_ENABLE_CACHING === "true",
+    enableDeduplication: process.env.AI_ENABLE_DEDUPLICATION !== "false",
+};
+
+export const AI_OPTIMIZATION_CONFIG: AiOptimizationConfig =
+    AiOptimizationConfigSchema.parse(rawOptimizationConfig);

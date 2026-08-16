@@ -6,4 +6,4 @@ export * from "./job-matching.service";
 export * from "./resume-recommendation.service";
 export * from "./interview.service";
 export * from "./ai-insights.service";
-
+export * from "./ai-optimization.service";
