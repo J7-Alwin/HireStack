@@ -39,16 +39,15 @@ export class AiEvaluationService {
                 }
 
                 if (!fs.existsSync(filePath)) {
-                    logger.error(`Resume PDF file not found at path: ${filePath}`);
+                    logger.error("Resume PDF file not found", { candidateId: candidate.id });
                     throw new ValidationError("Resume PDF file could not be accessed.");
                 }
 
                 try {
                     const buffer = await fs.promises.readFile(filePath);
                     rawText = await PdfExtractor.extract(buffer);
-                } catch (error) {
-                    const errMsg = error instanceof Error ? error.message : String(error);
-                    logger.error(`Failed to extract text from resume PDF: ${errMsg}`);
+                } catch {
+                    logger.error("Failed to extract text from resume PDF", { candidateId: candidate.id });
                     throw new ValidationError("Resume PDF file could not be accessed.");
                 }
             }
@@ -117,8 +116,9 @@ Required Skills: ${jobSkillsString}
                     // Call AI Service
                     logger.info("AI Request Sent");
                     const response = await aiService.generate(prompt);
-                    logger.info("AI Response Received");
-                    logger.info(`AI Response Time: ${response.responseTime}ms`);
+                    logger.info("AI Response Received", {
+                        responseTimeMs: response.responseTime,
+                    });
 
                     // Parse JSON
                     let parsedResponse: unknown;
