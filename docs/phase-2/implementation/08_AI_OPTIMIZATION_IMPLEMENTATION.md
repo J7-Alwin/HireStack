@@ -124,3 +124,56 @@ The dedicated test suite `backend/tests/ai-optimization.integration.test.ts` exe
 
 **AI OPTIMIZATION STATUS: GO**
 "Stage 8 AI Optimization is complete and ready to merge."
+
+---
+
+## 6. Final Improvement / Hardening Pass
+
+### Cache Identity
+- **Output-Affecting Configuration Included:** `temperature` (derived from `AI_CONFIG.temperature`), `model` (derived from `AI_CONFIG.model`), `promptVersion`, `feature`, `companyId`, `candidateId`, `jobId`, and `inputHash` (SHA-256 slice of user prompt).
+- **Deterministic Cache Identity Format:**
+  `ai:${feature}:${companyId}:${candidateId || 'none'}:${jobId || 'none'}:${promptVersion}:${model}:t${temperature}:${inputHash}`
+- **Separation Guarantees:**
+  - Different `temperature` (e.g. 0.2 vs 0.8) produces strictly distinct cache keys and triggers fresh AI evaluation.
+  - Different `model` (e.g. llama3.2 vs llama3.3-70b) produces distinct keys.
+  - Different `promptVersion` (e.g. 1.0.0 vs 1.1.0) produces distinct keys.
+  - Different `companyId` (cross-tenant) produces distinct keys with zero cross-tenant contamination.
+  - Different `jobId` and `inputHash` produce distinct keys.
+
+### Logging Safety
+- **Metadata Logged:** Operational identifiers (`feature`, `status`, `durationMs`, `retryCount`, `model`, `promptVersion`, `candidateId`, `jobId`, `errorCategory`).
+- **Sensitive Information Excluded:** Raw resume texts, candidate profile PII, full prompt contents, LLM generation outputs, filesystem absolute paths, and secrets/tokens are never logged.
+
+### Authorization Safety
+- Authorization and tenant isolation checks occur upstream before cache lookup, deduplication, or execution in all 5 AI modules. Unauthenticated or cross-tenant requests are rejected prior to accessing any cached evaluation results.
+
+### Tests Added / Updated
+- `tests/ai-optimization.integration.test.ts`:
+  - **Test A:** Identical components produce identical key.
+  - **Test B:** Temperature separation (0.2 vs 0.8).
+  - **Test C:** Model separation (`llama3.2` vs `llama3.3-70b`).
+  - **Test D:** Prompt version separation (`1.0.0` vs `1.1.0`).
+  - **Test E:** Tenant separation (`company-1` vs `company-2`).
+  - **Test F:** Job separation (`job-1` vs `job-2`).
+  - **Test G:** Input separation (`inputHashA` vs `inputHashB`).
+  - **Test 3.4:** Real cache isolation under temperature changes (0.2 stored -> 0.8 is cache miss and evaluates AI -> 0.8 second call is cache hit).
+  - **Test 5.3:** Context separation in request deduplication across distinct jobs and companies.
+
+### Verification Execution Summary
+- `npx prisma validate`: **PASS (Exit 0)**
+- `npx prisma migrate status`: **PASS (12 migrations, up to date)**
+- `npx prisma generate`: **PASS (Exit 0)**
+- `npm run type-check`: **PASS (0 errors)**
+- `npm run build`: **PASS (0 errors)**
+- `npx eslint .`: **PASS (0 errors, 0 warnings)**
+- `npx tsx tests/ai-optimization.integration.test.ts`: **PASS (All 7 suites)**
+- `npx tsx tests/ats-score.integration.test.ts`: **PASS (Exit 0)**
+- `npx tsx tests/job-matching.integration.test.ts`: **PASS (Exit 0)**
+- `npx tsx tests/smoke-recommendations.ts`: **PASS (25/25 suites)**
+- `npx tsx tests/smoke-interview-assistant.ts`: **PASS (24/24 suites)**
+- `npx tsx tests/smoke-ai-insights.ts`: **PASS (22/22 suites)**
+- `npx tsx tests/candidates.integration.test.ts`: **PASS (17/17 tests)**
+- `npx tsx tests/jobs.integration.test.ts`: **PASS (Exit 0)**
+- `npx tsx tests/applications.integration.test.ts`: **PASS (Exit 0)**
+- `npx tsx tests/interviews.integration.test.ts`: **PASS (Exit 0)**
+- Repeatability check: **PASS (Ran optimization suite repeatedly with 100% success)**

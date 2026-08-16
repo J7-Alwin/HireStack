@@ -71,6 +71,7 @@ export class AiOptimizationService {
             jobId: params.job?.id,
             promptVersion: params.promptConfig.version,
             model: AI_CONFIG.model,
+            temperature: AI_CONFIG.temperature,
             inputHash,
         });
 

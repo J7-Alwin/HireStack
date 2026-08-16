@@ -316,11 +316,11 @@ async function runOptimizationTests() {
     assert(cacheManager.get("expired-key") === null, "Expired cache entry must return null and be evicted");
     console.log("   ✅ Cache TTL expiration verified.");
 
-    console.log("TEST 3.3: Deterministic Cache Key Generation & Separation");
+    console.log("TEST 3.3: Deterministic Cache Key Generation & Configuration Separation");
     const inputHashA = cacheManager.generateInputHash("Candidate Resume Text Profile A");
     const inputHashB = cacheManager.generateInputHash("Candidate Resume Text Profile B");
 
-    // Identical components -> Identical key
+    // Test A — Identical components -> Identical key
     const key1 = cacheManager.buildCacheKey({
         feature: AiFeatureType.ATS_SCORE,
         companyId: "clcompany0001",
@@ -328,6 +328,7 @@ async function runOptimizationTests() {
         jobId: "cljob0001",
         promptVersion: "1.0.0",
         model: "llama3.2",
+        temperature: 0.2,
         inputHash: inputHashA,
     });
 
@@ -338,35 +339,25 @@ async function runOptimizationTests() {
         jobId: "cljob0001",
         promptVersion: "1.0.0",
         model: "llama3.2",
+        temperature: 0.2,
         inputHash: inputHashA,
     });
-    assert(key1 === key1Duplicate, "Identical components must generate identical cache key");
+    assert(key1 === key1Duplicate, "Test A: Identical components must generate identical cache key");
 
-    // Input hash separation
-    const keyDiffInput = cacheManager.buildCacheKey({
+    // Test B — Temperature separation (0.2 vs 0.8)
+    const keyDiffTemp = cacheManager.buildCacheKey({
         feature: AiFeatureType.ATS_SCORE,
         companyId: "clcompany0001",
         candidateId: "clcandidate0001",
         jobId: "cljob0001",
         promptVersion: "1.0.0",
         model: "llama3.2",
-        inputHash: inputHashB,
-    });
-    assert(key1 !== keyDiffInput, "Different input hashes must generate different cache keys");
-
-    // Prompt version separation
-    const keyDiffVersion = cacheManager.buildCacheKey({
-        feature: AiFeatureType.ATS_SCORE,
-        companyId: "clcompany0001",
-        candidateId: "clcandidate0001",
-        jobId: "cljob0001",
-        promptVersion: "1.1.0",
-        model: "llama3.2",
+        temperature: 0.8,
         inputHash: inputHashA,
     });
-    assert(key1 !== keyDiffVersion, "Different prompt versions (1.0.0 vs 1.1.0) must generate different keys");
+    assert(key1 !== keyDiffTemp, "Test B: Different temperatures (0.2 vs 0.8) must generate different keys");
 
-    // Model separation
+    // Test C — Model separation
     const keyDiffModel = cacheManager.buildCacheKey({
         feature: AiFeatureType.ATS_SCORE,
         companyId: "clcompany0001",
@@ -374,9 +365,62 @@ async function runOptimizationTests() {
         jobId: "cljob0001",
         promptVersion: "1.0.0",
         model: "llama3.3-70b",
+        temperature: 0.2,
         inputHash: inputHashA,
     });
-    assert(key1 !== keyDiffModel, "Different AI models must generate different keys");
+    assert(key1 !== keyDiffModel, "Test C: Different AI models must generate different keys");
+
+    // Test D — Prompt version separation
+    const keyDiffVersion = cacheManager.buildCacheKey({
+        feature: AiFeatureType.ATS_SCORE,
+        companyId: "clcompany0001",
+        candidateId: "clcandidate0001",
+        jobId: "cljob0001",
+        promptVersion: "1.1.0",
+        model: "llama3.2",
+        temperature: 0.2,
+        inputHash: inputHashA,
+    });
+    assert(key1 !== keyDiffVersion, "Test D: Different prompt versions (1.0.0 vs 1.1.0) must generate different keys");
+
+    // Test E — Tenant separation
+    const keyDiffTenant = cacheManager.buildCacheKey({
+        feature: AiFeatureType.ATS_SCORE,
+        companyId: "clcompany0002",
+        candidateId: "clcandidate0001",
+        jobId: "cljob0001",
+        promptVersion: "1.0.0",
+        model: "llama3.2",
+        temperature: 0.2,
+        inputHash: inputHashA,
+    });
+    assert(key1 !== keyDiffTenant, "Test E: Different tenants must generate different keys");
+
+    // Test F — Job separation
+    const keyDiffJob = cacheManager.buildCacheKey({
+        feature: AiFeatureType.ATS_SCORE,
+        companyId: "clcompany0001",
+        candidateId: "clcandidate0001",
+        jobId: "cljob0002",
+        promptVersion: "1.0.0",
+        model: "llama3.2",
+        temperature: 0.2,
+        inputHash: inputHashA,
+    });
+    assert(key1 !== keyDiffJob, "Test F: Different jobs must generate different keys");
+
+    // Test G — Input separation
+    const keyDiffInput = cacheManager.buildCacheKey({
+        feature: AiFeatureType.ATS_SCORE,
+        companyId: "clcompany0001",
+        candidateId: "clcandidate0001",
+        jobId: "cljob0001",
+        promptVersion: "1.0.0",
+        model: "llama3.2",
+        temperature: 0.2,
+        inputHash: inputHashB,
+    });
+    assert(key1 !== keyDiffInput, "Test G: Different input hashes must generate different cache keys");
 
     // Feature separation
     const keyDiffFeature = cacheManager.buildCacheKey({
@@ -386,10 +430,28 @@ async function runOptimizationTests() {
         jobId: "cljob0001",
         promptVersion: "1.0.0",
         model: "llama3.2",
+        temperature: 0.2,
         inputHash: inputHashA,
     });
     assert(key1 !== keyDiffFeature, "Different AI features must generate different keys");
-    console.log("   ✅ Cache key determinism and component separation verified.");
+    console.log("   ✅ Cache key determinism and component separation across all 7 dimensions verified.");
+
+    console.log("TEST 3.4: Real Cache Isolation Under Temperature Changes");
+    cacheManager.clear();
+    cacheManager.set(key1, { evaluation: "TEMP_0.2_EVAL" }, 300, sampleMetadata);
+
+    // Query with temp 0.8 key -> Cache Miss
+    assert(cacheManager.get(keyDiffTemp) === null, "Temperature 0.8 lookup must be a cache miss when 0.2 is stored");
+
+    // Store temp 0.8 result
+    cacheManager.set(keyDiffTemp, { evaluation: "TEMP_0.8_EVAL" }, 300, sampleMetadata);
+
+    // Both coexist independently
+    const res02 = cacheManager.get<{ evaluation: string }>(key1);
+    const res08 = cacheManager.get<{ evaluation: string }>(keyDiffTemp);
+    assert(res02 !== null && res02.data.evaluation === "TEMP_0.2_EVAL", "Temp 0.2 returns its own cached output");
+    assert(res08 !== null && res08.data.evaluation === "TEMP_0.8_EVAL", "Temp 0.8 returns its own cached output");
+    console.log("   ✅ Real cache behavior with temperature separation verified.");
 
     // -------------------------------------------------------------
     // TEST SUITE 4: MULTI-TENANT ISOLATION
@@ -404,6 +466,7 @@ async function runOptimizationTests() {
         jobId: "cljob00000000000000000000y",
         promptVersion: "1.0.0",
         model: "llama3.2",
+        temperature: 0.2,
         inputHash: inputHashA,
     });
 
@@ -414,6 +477,7 @@ async function runOptimizationTests() {
         jobId: "cljob00000000000000000000y",
         promptVersion: "1.0.0",
         model: "llama3.2",
+        temperature: 0.2,
         inputHash: inputHashA,
     });
 

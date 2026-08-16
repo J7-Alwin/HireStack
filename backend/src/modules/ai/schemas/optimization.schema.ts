@@ -79,6 +79,7 @@ export const AiCacheKeyComponentsSchema = z.object({
     jobId: z.string().cuid("Invalid job ID format").optional(),
     promptVersion: z.string().trim().min(1, "Prompt version cannot be empty"),
     model: z.string().trim().min(1, "Model cannot be empty"),
+    temperature: z.number().min(0, "Temperature cannot be negative").max(2, "Temperature cannot exceed 2.0"),
     inputHash: z.string().trim().min(8, "Input hash must be at least 8 characters"),
 });
 

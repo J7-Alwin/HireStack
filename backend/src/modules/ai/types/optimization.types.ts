@@ -70,6 +70,7 @@ export interface AiCacheKeyComponents {
     jobId?: string;
     promptVersion: string;
     model: string;
+    temperature: number;
     inputHash: string;
 }
 

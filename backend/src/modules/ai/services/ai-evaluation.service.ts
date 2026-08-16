@@ -19,7 +19,7 @@ export class AiEvaluationService {
         schema: z.ZodSchema<T>,
         extraContext?: string
     ): Promise<T> {
-        logger.info(`AI Evaluation Started for candidate ${candidate.id} and job ${job?.id || "none"}`);
+        logger.info("AI Evaluation Started", { candidateId: candidate.id, jobId: job?.id || "none" });
 
         try {
             // Find resume document if any

@@ -21,7 +21,7 @@ export class AiCacheManager {
         const validated = AiCacheKeyComponentsSchema.parse(components);
         const candPart = validated.candidateId || "none";
         const jobPart = validated.jobId || "none";
-        return `ai:${validated.feature}:${validated.companyId}:${candPart}:${jobPart}:${validated.promptVersion}:${validated.model}:${validated.inputHash}`;
+        return `ai:${validated.feature}:${validated.companyId}:${candPart}:${jobPart}:${validated.promptVersion}:${validated.model}:t${validated.temperature}:${validated.inputHash}`;
     }
 
     /**
