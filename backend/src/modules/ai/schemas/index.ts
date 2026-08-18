@@ -4,4 +4,4 @@ export * from "./resume-recommendation.schema";
 export * from "./interview.schema";
 export * from "./resume.schema";
 export * from "./insights.schema";
-
+export * from "./optimization.schema";

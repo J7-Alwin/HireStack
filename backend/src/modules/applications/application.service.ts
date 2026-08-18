@@ -664,7 +664,7 @@ export const applicationService = {
       }
 
       return result;
-    });
+    }, { timeout: 15000, maxWait: 10000 });
   },
 
   restoreApplication: async (id: string, currentUser: AuthenticatedUser) => {
@@ -721,6 +721,6 @@ export const applicationService = {
       }
 
       return await applicationRepository.restore(id, tx);
-    });
+    }, { timeout: 15000, maxWait: 10000 });
   },
 };

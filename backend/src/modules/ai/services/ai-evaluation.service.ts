@@ -7,6 +7,7 @@ import { PromptBuilder } from "../utils/prompt-builder";
 import { JsonParser } from "../utils/json-parser";
 import { PdfExtractor } from "../utils/pdf-extractor";
 import { aiService } from "./ai.service";
+import { aiOptimizationService } from "./ai-optimization.service";
 import { SafeCandidate } from "../../candidates/candidate.types";
 import { SafeJob } from "../../jobs/job.types";
 
@@ -18,7 +19,7 @@ export class AiEvaluationService {
         schema: z.ZodSchema<T>,
         extraContext?: string
     ): Promise<T> {
-        logger.info(`AI Evaluation Started for candidate ${candidate.id} and job ${job?.id || "none"}`);
+        logger.info("AI Evaluation Started", { candidateId: candidate.id, jobId: job?.id || "none" });
 
         try {
             // Find resume document if any
@@ -38,16 +39,15 @@ export class AiEvaluationService {
                 }
 
                 if (!fs.existsSync(filePath)) {
-                    logger.error(`Resume PDF file not found at path: ${filePath}`);
+                    logger.error("Resume PDF file not found", { candidateId: candidate.id });
                     throw new ValidationError("Resume PDF file could not be accessed.");
                 }
 
                 try {
                     const buffer = await fs.promises.readFile(filePath);
                     rawText = await PdfExtractor.extract(buffer);
-                } catch (error) {
-                    const errMsg = error instanceof Error ? error.message : String(error);
-                    logger.error(`Failed to extract text from resume PDF: ${errMsg}`);
+                } catch {
+                    logger.error("Failed to extract text from resume PDF", { candidateId: candidate.id });
                     throw new ValidationError("Resume PDF file could not be accessed.");
                 }
             }
@@ -103,35 +103,45 @@ Required Skills: ${jobSkillsString}
                 userPrompt += `\n${extraContext.trim()}\n`;
             }
 
-            const prompt = PromptBuilder.build(promptConfig.template, userPrompt);
-            logger.info("Prompt Generated");
+            return await aiOptimizationService.optimizeEvaluation<T>({
+                candidate,
+                job,
+                promptConfig,
+                userPrompt,
+                schema,
+                executeAi: async () => {
+                    const prompt = PromptBuilder.build(promptConfig.template, userPrompt);
+                    logger.info("Prompt Generated");
 
-            // Call AI Service
-            logger.info("AI Request Sent");
-            const response = await aiService.generate(prompt);
-            logger.info("AI Response Received");
-            logger.info(`AI Response Time: ${response.responseTime}ms`);
+                    // Call AI Service
+                    logger.info("AI Request Sent");
+                    const response = await aiService.generate(prompt);
+                    logger.info("AI Response Received", {
+                        responseTimeMs: response.responseTime,
+                    });
 
-            // Parse JSON
-            let parsedResponse: unknown;
-            try {
-                parsedResponse = JsonParser.parse<unknown>(response.content);
-            } catch (error) {
-                logger.error("AI Evaluation Failed: Invalid JSON", error);
-                throw new ValidationError("Failed to parse response from AI model as valid JSON.");
-            }
+                    // Parse JSON
+                    let parsedResponse: unknown;
+                    try {
+                        parsedResponse = JsonParser.parse<unknown>(response.content);
+                    } catch (error) {
+                        logger.error("AI Evaluation Failed: Invalid JSON", error);
+                        throw new ValidationError("Failed to parse response from AI model as valid JSON.");
+                    }
 
-            // Schema Validation
-            let validatedResponse: T;
-            try {
-                validatedResponse = schema.parse(parsedResponse);
-            } catch (error) {
-                logger.error("AI Evaluation Failed: Schema Failure", error);
-                throw error;
-            }
-            logger.info("Schema Validation Passed");
+                    // Schema Validation
+                    let validatedResponse: T;
+                    try {
+                        validatedResponse = schema.parse(parsedResponse);
+                    } catch (error) {
+                        logger.error("AI Evaluation Failed: Schema Failure", error);
+                        throw error;
+                    }
+                    logger.info("Schema Validation Passed");
 
-            return validatedResponse;
+                    return validatedResponse;
+                },
+            });
         } catch (error) {
             logger.error("AI Evaluation Failed", error);
             throw error;

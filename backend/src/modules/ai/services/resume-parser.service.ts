@@ -235,7 +235,7 @@ export class ResumeParserService {
             await fs.promises.mkdir(uploadDir, { recursive: true });
             const filePath = path.join(uploadDir, uniqueFileName);
             await fs.promises.writeFile(filePath, file.buffer);
-            logger.info(`[ResumeParserService] File saved locally to: ${filePath}`);
+            logger.info("[ResumeParserService] File saved locally", { fileName: uniqueFileName });
             return uniqueFileName;
         } catch (error) {
             logger.error("Parsing Errors", { error: error instanceof Error ? error.message : "File storage failure" });
