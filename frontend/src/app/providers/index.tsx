@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react'
+import { QueryClientProvider } from '@tanstack/react-query'
 import { ErrorBoundary } from '@/app/error-boundary/ErrorBoundary'
 import { ToastProvider } from '@/components/ui/toast'
+import { queryClient } from '@/services/api'
 
 export interface AppProvidersProps {
   readonly children: ReactNode
@@ -9,13 +11,18 @@ export interface AppProvidersProps {
 /**
  * Central Application Providers
  *
- * Wraps the application in fundamental providers (ErrorBoundary, ToastProvider,
- * and in future stages: QueryProvider, AuthProvider, etc.).
+ * Provider hierarchy:
+ * ErrorBoundary
+ *   └── QueryClientProvider
+ *         └── ToastProvider
+ *               └── [children]
  */
 export function AppProviders({ children }: AppProvidersProps) {
   return (
     <ErrorBoundary>
-      <ToastProvider>{children}</ToastProvider>
+      <QueryClientProvider client={queryClient}>
+        <ToastProvider>{children}</ToastProvider>
+      </QueryClientProvider>
     </ErrorBoundary>
   )
 }

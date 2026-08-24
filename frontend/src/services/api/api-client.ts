@@ -1,80 +1,38 @@
 import { env } from '@/config/env'
+import { ApiError } from './api-error'
+import type {
+  ApiClientConfig,
+  ApiErrorDetail,
+  ApiResponse,
+  HttpMethod,
+  RequestOptions,
+} from '@/types'
 
-export interface ApiResponse<T = unknown> {
-  readonly success: boolean
-  readonly message?: string
-  readonly data: T
-  readonly timestamp?: string
-}
-
-export interface ApiErrorDetail {
-  readonly field?: string
-  readonly message: string
-}
-
-export class ApiError extends Error {
-  readonly status: number
-  readonly errors?: readonly ApiErrorDetail[]
-  readonly data?: unknown
-
-  constructor(
-    message: string,
-    status: number,
-    errors?: readonly ApiErrorDetail[],
-    data?: unknown
-  ) {
-    super(message)
-    this.name = 'ApiError'
-    this.status = status
-    this.errors = errors
-    this.data = data
-    Object.setPrototypeOf(this, ApiError.prototype)
-  }
-
-  get isClientError(): boolean {
-    return this.status >= 400 && this.status < 500
-  }
-
-  get isServerError(): boolean {
-    return this.status >= 500
-  }
-
-  get isUnauthorized(): boolean {
-    return this.status === 401
-  }
-
-  get isForbidden(): boolean {
-    return this.status === 403
-  }
-
-  get isNotFound(): boolean {
-    return this.status === 404
-  }
-}
-
-export interface RequestOptions extends Omit<RequestInit, 'body'> {
-  readonly params?: Record<string, string | number | boolean | undefined | null>
-  readonly body?: unknown
-}
-
-export interface ApiClientConfig {
-  readonly baseUrl: string
-  readonly defaultHeaders?: Record<string, string>
+/**
+ * Authentication Token Provider Interface
+ * Allows Stage 4 authentication layer to inject tokens without coupling Stage 3 to auth business logic.
+ */
+export interface AuthTokenProvider {
+  getAccessToken: () => string | null | Promise<string | null>
+  onUnauthorized?: () => void
 }
 
 /**
  * Centralized API Client
  *
- * Handles HTTP requests, URL composition, header injection, JSON parsing,
- * and error normalization. Business logic must not be placed here.
+ * Primary HTTP gateway for the HireStack frontend application.
+ * Manages URL composition, header injection, JSON parsing, error normalization,
+ * AbortSignal request cancellation, and authentication token attachment.
  */
 export class ApiClient {
   private readonly baseUrl: string
   private readonly defaultHeaders: Record<string, string>
-  private getAuthToken?: () => string | null | Promise<string | null>
+  private readonly defaultTimeoutMs: number
+  private tokenProvider?: AuthTokenProvider
 
   constructor(config: ApiClientConfig) {
     this.baseUrl = config.baseUrl.replace(/\/+$/, '')
+    this.defaultTimeoutMs = config.timeoutMs || 30000
     this.defaultHeaders = {
       'Content-Type': 'application/json',
       Accept: 'application/json',
@@ -83,23 +41,39 @@ export class ApiClient {
   }
 
   /**
-   * Set dynamic token getter for future authentication integration
+   * Registers a token provider for authentication integration.
    */
-  public setTokenGetter(getter: () => string | null | Promise<string | null>): void {
-    this.getAuthToken = getter
+  public setTokenProvider(provider: AuthTokenProvider): void {
+    this.tokenProvider = provider
   }
 
-  private buildUrl(path: string, params?: RequestOptions['params']): string {
+  /**
+   * Builds normalized URL with query parameters.
+   */
+  public buildUrl(
+    path: string,
+    params?: RequestOptions['params']
+  ): string {
     const cleanPath = path.startsWith('/') ? path : `/${path}`
     const fullUrl = `${this.baseUrl}${cleanPath}`
 
-    if (!params) {
+    if (!params || Object.keys(params).length === 0) {
       return fullUrl
     }
 
     const searchParams = new URLSearchParams()
     for (const [key, value] of Object.entries(params)) {
-      if (value !== undefined && value !== null) {
+      if (value === undefined || value === null || value === '') {
+        continue
+      }
+
+      if (Array.isArray(value)) {
+        for (const item of value) {
+          if (item !== undefined && item !== null) {
+            searchParams.append(key, String(item))
+          }
+        }
+      } else {
         searchParams.append(key, String(value))
       }
     }
@@ -108,11 +82,23 @@ export class ApiClient {
     return queryString ? `${fullUrl}?${queryString}` : fullUrl
   }
 
+  /**
+   * Main request handler with AbortSignal and timeout support.
+   */
   public async request<T = unknown>(
     path: string,
-    options: RequestOptions = {}
-  ): Promise<T> {
-    const { params, body, headers, ...restOptions } = options
+    options: RequestOptions & { readonly method?: HttpMethod } = {}
+  ): Promise<ApiResponse<T>> {
+    const {
+      method = 'GET',
+      params,
+      body,
+      headers,
+      signal: externalSignal,
+      timeoutMs = this.defaultTimeoutMs,
+      ...restOptions
+    } = options
+
     const url = this.buildUrl(path, params)
 
     const requestHeaders: Record<string, string> = {
@@ -120,16 +106,26 @@ export class ApiClient {
       ...(headers as Record<string, string> | undefined),
     }
 
-    if (this.getAuthToken) {
-      const token = await this.getAuthToken()
-      if (token) {
-        requestHeaders['Authorization'] = `Bearer ${token}`
+    // Attach Bearer Token if available
+    if (this.tokenProvider) {
+      try {
+        const token = await this.tokenProvider.getAccessToken()
+        if (token) {
+          requestHeaders['Authorization'] = `Bearer ${token}`
+        }
+      } catch {
+        // Silently continue if token resolution fails; backend will return 401 if required
       }
     }
 
     let payload: BodyInit | undefined
-    if (body !== undefined) {
-      if (body instanceof FormData || typeof body === 'string' || body instanceof Blob) {
+    if (body !== undefined && body !== null) {
+      if (
+        body instanceof FormData ||
+        typeof body === 'string' ||
+        body instanceof Blob ||
+        body instanceof ArrayBuffer
+      ) {
         payload = body
         // Let the browser set the boundary for FormData
         if (body instanceof FormData) {
@@ -140,42 +136,108 @@ export class ApiClient {
       }
     }
 
+    // Set up timeout controller combined with external signal
+    const timeoutController = new AbortController()
+    let timeoutId: ReturnType<typeof setTimeout> | undefined
+
+    if (timeoutMs > 0) {
+      timeoutId = setTimeout(() => {
+        timeoutController.abort(new Error(`Request timed out after ${timeoutMs}ms`))
+      }, timeoutMs)
+    }
+
+    let effectiveSignal = timeoutController.signal
+    if (externalSignal) {
+      if (externalSignal.aborted) {
+        if (timeoutId) clearTimeout(timeoutId)
+        throw ApiError.from(externalSignal.reason || new DOMException('Aborted', 'AbortError'))
+      }
+
+      // Chain external abort to controller
+      externalSignal.addEventListener('abort', () => {
+        timeoutController.abort(externalSignal.reason)
+      })
+      effectiveSignal = timeoutController.signal
+    }
+
     try {
       const response = await fetch(url, {
         ...restOptions,
+        method,
         headers: requestHeaders,
         body: payload,
+        signal: effectiveSignal,
       })
 
-      const isJson = response.headers.get('content-type')?.includes('application/json')
-      const data = isJson ? await response.json() : await response.text()
+      if (timeoutId) clearTimeout(timeoutId)
+
+      const requestId = response.headers.get('x-request-id') || undefined
+      const contentType = response.headers.get('content-type') || ''
+      const isJson = contentType.includes('application/json')
+
+      let parsedData: unknown
+      if (response.status === 204) {
+        parsedData = null
+      } else if (isJson) {
+        parsedData = await response.json()
+      } else {
+        parsedData = await response.text()
+      }
 
       if (!response.ok) {
-        const errorMessage =
-          (typeof data === 'object' && data !== null && 'message' in data && typeof (data as { message: unknown }).message === 'string')
-            ? (data as { message: string }).message
-            : `Request failed with status ${response.status}`
+        let errorMessage = `Request failed with status ${response.status}`
+        let errorsList: ApiErrorDetail[] | undefined
+        let responseData: unknown = parsedData
 
-        const errors =
-          typeof data === 'object' && data !== null && 'errors' in data && Array.isArray((data as { errors: unknown }).errors)
-            ? ((data as { errors: ApiErrorDetail[] }).errors)
-            : undefined
+        if (typeof parsedData === 'object' && parsedData !== null) {
+          const resp = parsedData as Record<string, unknown>
+          if (typeof resp.message === 'string' && resp.message.trim().length > 0) {
+            errorMessage = resp.message
+          }
+          if (Array.isArray(resp.errors)) {
+            errorsList = resp.errors as ApiErrorDetail[]
+          }
+          if ('data' in resp) {
+            responseData = resp.data
+          }
+        }
 
-        throw new ApiError(errorMessage, response.status, errors, data)
+        if (response.status === 401 && this.tokenProvider?.onUnauthorized) {
+          this.tokenProvider.onUnauthorized()
+        }
+
+        throw new ApiError({
+          status: response.status,
+          message: errorMessage,
+          errors: errorsList,
+          requestId,
+          data: responseData,
+        })
       }
 
-      return data as T
+      // If backend returns standard ApiResponse envelope
+      if (
+        typeof parsedData === 'object' &&
+        parsedData !== null &&
+        'success' in parsedData &&
+        typeof (parsedData as Record<string, unknown>).success === 'boolean'
+      ) {
+        return parsedData as ApiResponse<T>
+      }
+
+      // Wrap direct payloads into normalized ApiResponse envelope
+      return {
+        success: true,
+        message: 'Success',
+        data: parsedData as T,
+      }
     } catch (error) {
-      if (error instanceof ApiError) {
-        throw error
-      }
-
-      const message = error instanceof Error ? error.message : 'Network request failed'
-      throw new ApiError(message, 0)
+      if (timeoutId) clearTimeout(timeoutId)
+      throw ApiError.from(error)
     }
   }
 
-  public get<T = unknown>(path: string, options?: RequestOptions): Promise<T> {
+  public get<T = unknown>(path: string, options?: RequestOptions): Promise<ApiResponse<T>> {
     return this.request<T>(path, { ...options, method: 'GET' })
   }
 
@@ -183,7 +245,7 @@ export class ApiClient {
     path: string,
     body?: unknown,
     options?: Omit<RequestOptions, 'body'>
-  ): Promise<T> {
+  ): Promise<ApiResponse<T>> {
     return this.request<T>(path, { ...options, method: 'POST', body })
   }
 
@@ -191,7 +253,7 @@ export class ApiClient {
     path: string,
     body?: unknown,
     options?: Omit<RequestOptions, 'body'>
-  ): Promise<T> {
+  ): Promise<ApiResponse<T>> {
     return this.request<T>(path, { ...options, method: 'PUT', body })
   }
 
@@ -199,12 +261,16 @@ export class ApiClient {
     path: string,
     body?: unknown,
     options?: Omit<RequestOptions, 'body'>
-  ): Promise<T> {
+  ): Promise<ApiResponse<T>> {
     return this.request<T>(path, { ...options, method: 'PATCH', body })
   }
 
-  public delete<T = unknown>(path: string, options?: RequestOptions): Promise<T> {
+  public delete<T = unknown>(path: string, options?: RequestOptions): Promise<ApiResponse<T>> {
     return this.request<T>(path, { ...options, method: 'DELETE' })
+  }
+
+  public head(path: string, options?: RequestOptions): Promise<ApiResponse<null>> {
+    return this.request<null>(path, { ...options, method: 'HEAD' })
   }
 }
 
