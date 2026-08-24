@@ -1,6 +1,10 @@
+import { Badge } from '@/components/ui/badge'
+import { Card } from '@/components/ui/card'
+import { DecorativeSpark } from '@/components/ui/decorative'
+
 /**
  * Root Foundation Screen (Development Placeholder)
- * Will be replaced in Stage 4 & Stage 5 with actual routes and authenticated shells.
+ * Incorporates HireStack Editorial SaaS visual direction.
  */
 export function FoundationRoot() {
   return (
@@ -11,43 +15,57 @@ export function FoundationRoot() {
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '24px',
+        padding: 'var(--space-6)',
+        backgroundColor: 'var(--color-background)',
         textAlign: 'center',
+        position: 'relative',
+        overflow: 'hidden',
       }}
     >
-      <div
+      <Card
+        variant="elevated"
+        padding="lg"
         style={{
           maxWidth: '560px',
           width: '100%',
-          padding: '40px',
-          borderRadius: '12px',
-          border: '1px solid #e5e7eb',
-          backgroundColor: '#ffffff',
-          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1)',
+          position: 'relative',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 'var(--space-4)',
         }}
       >
+        <div style={{ position: 'absolute', top: '-12px', right: '-12px' }}>
+          <DecorativeSpark size={28} color="var(--color-lime)" />
+        </div>
+
+        <Badge variant="accent" withDot size="sm">
+          Stage 2 Design System
+        </Badge>
+
         <h1
           style={{
-            fontSize: '28px',
+            fontSize: 'var(--text-h1)',
             fontWeight: 700,
-            color: '#111827',
-            margin: '0 0 12px 0',
-            letterSpacing: '-0.025em',
+            color: 'var(--color-text-primary)',
+            letterSpacing: 'var(--tracking-tight)',
+            margin: 0,
           }}
         >
           HireStack ATS
         </h1>
+
         <p
           style={{
-            fontSize: '16px',
-            color: '#4b5563',
+            fontSize: 'var(--text-body)',
+            color: 'var(--color-text-secondary)',
             margin: 0,
-            lineHeight: 1.5,
+            lineHeight: 'var(--leading-relaxed)',
           }}
         >
           Frontend foundation initialized.
         </p>
-      </div>
+      </Card>
     </main>
   )
 }

@@ -1,4 +1,6 @@
 import { Link } from 'react-router-dom'
+import { Card } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 
 /**
  * 404 Not Found Page
@@ -13,27 +15,49 @@ export function NotFoundPage() {
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '24px',
+        padding: 'var(--space-6)',
+        backgroundColor: 'var(--color-background)',
         textAlign: 'center',
       }}
     >
-      <h1 style={{ fontSize: '24px', fontWeight: 600, color: '#111827', marginBottom: '8px' }}>
-        404 — Page Not Found
-      </h1>
-      <p style={{ fontSize: '14px', color: '#6b7280', marginBottom: '20px' }}>
-        The page you are looking for does not exist.
-      </p>
-      <Link
-        to="/"
+      <Card
+        variant="elevated"
+        padding="lg"
         style={{
-          fontSize: '14px',
-          fontWeight: 500,
-          color: '#2563eb',
-          textDecoration: 'none',
+          maxWidth: '480px',
+          width: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 'var(--space-4)',
         }}
       >
-        Return to Home
-      </Link>
+        <h1
+          style={{
+            fontSize: 'var(--text-h2)',
+            fontWeight: 700,
+            color: 'var(--color-text-primary)',
+            margin: 0,
+          }}
+        >
+          404 — Page Not Found
+        </h1>
+        <p
+          style={{
+            fontSize: 'var(--text-body-sm)',
+            color: 'var(--color-text-secondary)',
+            margin: 0,
+            lineHeight: 1.5,
+          }}
+        >
+          The page you are looking for does not exist or has been moved.
+        </p>
+        <Link to="/">
+          <Button variant="primary" size="md">
+            Return to Home
+          </Button>
+        </Link>
+      </Card>
     </main>
   )
 }

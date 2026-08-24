@@ -1,0 +1,202 @@
+/**
+ * HireStack ATS — Centralized Design Tokens
+ * Stage 2 — Design System Foundation
+ *
+ * Visual Direction: HireStack Editorial SaaS / Premium ATS
+ * Palette:
+ *  - CHARCOAL: #2B2B2B
+ *  - WARM WHITE: #F6F5F2
+ *  - WHITE: #FFFFFF
+ *  - LIME (Accent only): #E3FF7A
+ *  - SOFT GRAY: #DAD9D6
+ */
+
+:root {
+  /* =========================================================================
+     1. Brand & Base Palette
+     ========================================================================= */
+  --color-charcoal: #2b2b2b;
+  --color-charcoal-subtle: #383838;
+  --color-charcoal-dark: #1e1e1e;
+  --color-warm-white: #f6f5f2;
+  --color-warm-white-subtle: #eeedea;
+  --color-white: #ffffff;
+  --color-lime: #e3ff7a;
+  --color-lime-dark: #c9e856;
+  --color-lime-subtle: rgba(227, 255, 122, 0.25);
+  --color-soft-gray: #dad9d6;
+  --color-soft-gray-subtle: #e8e7e4;
+  --color-soft-gray-dark: #b8b7b3;
+
+  /* =========================================================================
+     2. Semantic Surface & Background Tokens
+     ========================================================================= */
+  --color-background: var(--color-warm-white);
+  --color-background-subtle: var(--color-warm-white-subtle);
+  --color-background-inverse: var(--color-charcoal);
+
+  --color-surface: var(--color-white);
+  --color-surface-elevated: var(--color-white);
+  --color-surface-muted: var(--color-warm-white-subtle);
+  --color-surface-dark: var(--color-charcoal);
+
+  /* =========================================================================
+     3. Semantic Text Tokens
+     ========================================================================= */
+  --color-text-primary: var(--color-charcoal);
+  --color-text-secondary: #575653;
+  --color-text-muted: #82817d;
+  --color-text-inverse: var(--color-warm-white);
+  --color-text-inverse-secondary: #c4c3bf;
+  --color-text-inverse-muted: #94938f;
+
+  /* =========================================================================
+     4. Border Tokens
+     ========================================================================= */
+  --color-border: var(--color-soft-gray);
+  --color-border-subtle: var(--color-soft-gray-subtle);
+  --color-border-strong: var(--color-charcoal);
+  --color-border-dark: #404040;
+
+  /* =========================================================================
+     5. Accent Tokens (Lime is Accent CTA / metric / indicator only)
+     ========================================================================= */
+  --color-accent: var(--color-lime);
+  --color-accent-hover: var(--color-lime-dark);
+  --color-accent-muted: var(--color-lime-subtle);
+  --color-accent-foreground: var(--color-charcoal);
+
+  /* =========================================================================
+     6. Status Tokens (Accessible color contrast combinations)
+     ========================================================================= */
+  --color-success: #15803d;
+  --color-success-bg: #f0fdf4;
+  --color-success-border: #bbf7d0;
+  --color-success-text: #14532d;
+
+  --color-warning: #b45309;
+  --color-warning-bg: #fffbeb;
+  --color-warning-border: #fde68a;
+  --color-warning-text: #78350f;
+
+  --color-error: #b91c1c;
+  --color-error-bg: #fef2f2;
+  --color-error-border: #fecaca;
+  --color-error-text: #7f1d1d;
+
+  --color-info: #1d4ed8;
+  --color-info-bg: #eff6ff;
+  --color-info-border: #bfdbfe;
+  --color-info-text: #1e3a8a;
+
+  /* =========================================================================
+     7. Focus Tokens
+     ========================================================================= */
+  --focus-ring: 0 0 0 2px var(--color-white), 0 0 0 4px var(--color-charcoal);
+  --focus-ring-accent: 0 0 0 2px var(--color-white), 0 0 0 4px var(--color-charcoal);
+  --focus-ring-error: 0 0 0 2px var(--color-white), 0 0 0 4px var(--color-error);
+
+  /* =========================================================================
+     8. Border Radius Scale
+     ========================================================================= */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-pill: 9999px;
+
+  /* =========================================================================
+     9. Spacing Scale (4px increments)
+     ========================================================================= */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+  --space-24: 96px;
+
+  /* =========================================================================
+     10. Typography Scale
+     ========================================================================= */
+  --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  --text-display: 3.5rem;   /* 56px */
+  --text-h1: 2.5rem;        /* 40px */
+  --text-h2: 1.875rem;      /* 30px */
+  --text-h3: 1.375rem;      /* 22px */
+  --text-h4: 1.125rem;      /* 18px */
+  --text-body: 1rem;         /* 16px */
+  --text-body-sm: 0.875rem;  /* 14px */
+  --text-caption: 0.75rem;   /* 12px */
+
+  --leading-tight: 1.2;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.625;
+
+  --tracking-tight: -0.025em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.025em;
+
+  /* =========================================================================
+     11. Shadows & Elevation
+     ========================================================================= */
+  --shadow-sm: 0 1px 2px 0 rgba(43, 43, 43, 0.04);
+  --shadow-md: 0 4px 12px -2px rgba(43, 43, 43, 0.06), 0 2px 4px -1px rgba(43, 43, 43, 0.03);
+  --shadow-lg: 0 12px 24px -4px rgba(43, 43, 43, 0.08), 0 4px 8px -2px rgba(43, 43, 43, 0.03);
+  --shadow-xl: 0 20px 32px -6px rgba(43, 43, 43, 0.12), 0 8px 16px -4px rgba(43, 43, 43, 0.04);
+
+  /* =========================================================================
+     12. Transitions & Motion
+     ========================================================================= */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* =========================================================================
+     13. Z-Index Scale
+     ========================================================================= */
+  --z-dropdown: 1000;
+  --z-sticky: 1100;
+  --z-modal-backdrop: 1200;
+  --z-modal: 1300;
+  --z-popover: 1400;
+  --z-tooltip: 1500;
+  --z-toast: 1600;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes hs-skeleton-shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
