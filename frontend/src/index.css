@@ -112,3 +112,41 @@ a {
   white-space: nowrap;
   border-width: 0;
 }
+
+/* AppShell Layout & Responsive Rules */
+.hs-app-shell {
+  display: flex;
+  min-height: 100vh;
+  width: 100%;
+  background-color: var(--color-background);
+}
+
+.hs-main-area {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  overflow-x: hidden;
+}
+
+@media (max-width: 1023px) {
+  .hs-sidebar {
+    display: none !important;
+  }
+  .hs-mobile-menu-trigger {
+    display: flex !important;
+  }
+  .hs-search-placeholder {
+    display: none;
+  }
+}
+
+@media (min-width: 1024px) {
+  .hs-sidebar {
+    display: flex !important;
+  }
+  .hs-mobile-menu-trigger {
+    display: none !important;
+  }
+}
+
